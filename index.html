@@ -830,7 +830,12 @@ body.kp-dark .kp-chat-enterprise{background:#080c16!important;color:#eef2ff!impo
 body.kp-dark .kp-chat-enterprise .chatFeedWrap,body.kp-dark .kp-chat-enterprise .chatMsgs{background:#0b1118!important;border-color:#2d3850!important;}
 body.kp-dark .kp-chat-enterprise .chatInputRow.kp-wa-composer{background:#0b1118!important;border-top-color:rgba(255,255,255,.08)!important;}
 </style>
-<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1c1e21"><link rel="apple-touch-icon" href="icon-192.png"></head>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1c1e21"><link rel="apple-touch-icon" href="icon-192.png"><style id="kp-dark-fix">
+body.kp-dark .name,body.kp-dark .card .name,body.kp-dark .kp-channel-user .name,body.kp-dark .kp-drawer-brand strong,body.kp-dark .kp-drawer .name,body.kp-dark .kp-drawer b,body.kp-dark .kp-drawer strong{color:#eef2ff!important}
+body.kp-dark .kp-drawer-brand small{color:#a9b6cf!important}
+body.kp-dark .meta,body.kp-dark .small{color:#9aa7bd}
+</style>
+</head>
 <body class="kp-dark">
 
 <div id="loginScreen" class="login-wrap">
@@ -959,7 +964,7 @@ window.db = firebase.firestore();
 const storage = firebase.storage();
 window.auth = (typeof firebase.auth==='function') ? firebase.auth() : null;
 // Sesión técnica para que Firestore y Storage puedan usar reglas con request.auth.
-if(window.auth){ window.auth.signInAnonymously().catch(err=>console.warn('[KPlace] Firebase Anonymous:',err)); }
+/* sin sesión anónima: se entra solo con Google */
 
 /* ======================= ESTADO GLOBAL ======================= */
 // Estas variables de estado se declaran como globales de verdad (window.X) en vez de con
@@ -10862,7 +10867,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
     for(var pi=0;pi<(o.productos||[]).length;pi++){
       try{
         var u=await (window.kpEnsureProductPhotoLink?window.kpEnsureProductPhotoLink(o.productos[pi]):null);
-        if(u&&!seen[u]){seen[u]=1;links.push(u);}
+        if(u&&!/^data:/i.test(u)&&!seen[u]){seen[u]=1;links.push(u);}
       }catch(e){}
     }
     if(links.length){
@@ -11166,7 +11171,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
     try{
       if(!window.auth)return;
       if(window.auth.currentUser)return;
-      await window.auth.signInAnonymously();
+      return;
     }catch(e){ window.kpMostrarCausa((e&&e.code)||(e&&e.message)||'auth'); }
   }
   window.addEventListener('load',function(){setTimeout(diag,3500)});
@@ -11210,7 +11215,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
     try{
       var q=kpQ(), ids=Object.keys(q);
       if(!ids.length)return;
-      try{ if(window.auth&&!window.auth.currentUser)await window.auth.signInAnonymously(); }catch(e){ return; }
+      if(window.auth&&!window.auth.currentUser)return;
       for(var i=0;i<ids.length;i++){
         var id=ids[i];if(inflight[id])continue;inflight[id]=1;
         try{
@@ -11933,18 +11938,25 @@ window.kpTO=function(p,ms){return Promise.race([Promise.resolve(p),new Promise((
   var LS='kp_pfotos_v1', mem={}, loading={};
   try{ var c=JSON.parse(localStorage.getItem(LS)||'{}'); Object.keys(c).forEach(function(k){ if(c[k])mem[k]=c[k]; }); }catch(e){}
   function persist(){ try{ var o={}; Object.keys(mem).forEach(function(k){ if(mem[k])o[k]=mem[k]; }); localStorage.setItem(LS,JSON.stringify(o)); }catch(e){} }
+  var pub={}; try{ pub=JSON.parse(localStorage.getItem('kp_pfotos_pub')||'{}'); }catch(e){}
+  function persistPub(){ try{ localStorage.setItem('kp_pfotos_pub',JSON.stringify(pub)); }catch(e){} }
   function norm(s){return String(s==null?'':s).trim().toLowerCase().replace(/\s+/g,' ');}
   function hash(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
-  function keyOf(cat,mod){return 'p'+hash(norm(cat)+'|'+norm(mod));}
+  function keyOf(cat,mod,color){return 'p'+hash(norm(cat)+'|'+norm(mod)+(norm(color)?'|'+norm(color):''));}
+  function hasC(c){return /[a-z0-9]/i.test(String(c==null?'':c));}
+  function colorOf(p){var c=p&&p.colorEn; if(!hasC(c)&&p&&p.inventarioId){var it=(window.INVENTARIO||[]).find(function(i){return i.id===p.inventarioId;}); c=it&&it.colorEn;} return hasC(c)?String(c):'';}
+  function needsColor(cat,mod){return (window.INVENTARIO||[]).some(function(i){return i&&norm(i.categoria)===norm(cat)&&norm(i.modelo||'')===norm(mod||'')&&hasC(i.colorEn);});}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function fetchKey(k){
     if(k in mem||loading[k]||typeof db==='undefined')return;
     loading[k]=1;
     TO(db.collection('config').doc('fotoprod_'+k).get(),6000).then(function(s){
-      mem[k]=(s&&s.exists&&s.data().foto)||null; persist(); refresh();
+      mem[k]=(s&&s.exists&&s.data().foto)||null; if(s&&s.exists&&s.data().pub){pub[k]=s.data().pub;persistPub();} persist(); refresh();
     }).catch(function(){}).then(function(){delete loading[k];});
   }
-  function photoFor(cat,mod){
+  function photoFor(cat,mod,color){
+    if(norm(color)){ var kc=keyOf(cat,mod||'',color); fetchKey(kc); return {key:kc,foto:mem[kc]||null}; }
+    if(needsColor(cat,mod))return {key:null,foto:null,wait:true};
     var k1=keyOf(cat,mod||''), k0=keyOf(cat,'');
     fetchKey(k1); if(k0!==k1)fetchKey(k0);
     if(mem[k1])return {key:k1,foto:mem[k1]};
@@ -11953,7 +11965,7 @@ window.kpTO=function(p,ms){return Promise.race([Promise.resolve(p),new Promise((
   }
   function slotHtml(p,i){
     if(!p||!p.categoria||p.categoria==='__custom__')return '';
-    var r=photoFor(p.categoria,p.modelo);
+    var r=photoFor(p.categoria,p.modelo,colorOf(p)); if(r.wait)return '';
     var btn=function(t){return '<button type="button" class="kpPhBtn" onclick="kpFotoPick('+i+')">'+t+'</button>';};
     if(r.foto)return '<div class="kpPhRow"><img class="kpThumb" alt="Foto del producto" src="'+r.foto+'" onclick="kpFotoZoom(\''+r.key+'\')">'+btn('📷 Cambiar foto')+'</div>';
     return '<div class="kpPhRow">'+btn('📷 Agregar foto del producto')+'</div>';
@@ -11990,60 +12002,62 @@ window.kpTO=function(p,ms){return Promise.race([Promise.resolve(p),new Promise((
       return new File([arr],name||'producto.jpg',{type:mime});
     }catch(e){return null;}
   }
-  function uploadPhotoLink(dataUrl,cat,mod){
-    var file=dataUrlToFile(dataUrl,'producto_'+hash(norm(cat)+'|'+norm(mod||''))+'.jpg');
+  function uploadPhotoLink(dataUrl,cat,mod,color){
+    var file=dataUrlToFile(dataUrl,'producto_'+hash(norm(cat)+'|'+norm(mod||'')+'|'+norm(color||''))+'.jpg');
     if(!file||typeof storage==='undefined'||!storage.ref)return Promise.resolve(dataUrl);
     return subirArchivoStorage('fotos_productos',file).catch(function(){return dataUrl;});
   }
-  function savePhoto(cat,mod,url){
-    var k=keyOf(cat,mod||''); mem[k]=url; persist(); refresh();
+  function savePhoto(cat,mod,url,color){
+    var k=keyOf(cat,mod||'',color); mem[k]=url; delete pub[k]; persistPub(); persist(); refresh();
     toast('Guardando foto…');
-    uploadPhotoLink(url,cat,mod).then(function(link){
+    uploadPhotoLink(url,cat,mod,color).then(function(link){
       mem[k]=link; persist(); refresh();
-      return TO(db.collection('config').doc('fotoprod_'+k).set({categoria:cat,modelo:mod||'',foto:link,ts:Date.now()}),8000);
+      return TO(db.collection('config').doc('fotoprod_'+k).set({categoria:cat,modelo:mod||'',color:color||'',foto:link,ts:Date.now()}),8000);
     }).then(function(){toast('Foto guardada y lista para compartir');})
       .catch(function(e){toast('Foto guardada solo en este teléfono ('+(e&&e.code||e&&e.message||'sin conexión')+')');});
   }
-  function removePhoto(cat,mod){
-    var k=keyOf(cat,mod||''); mem[k]=null; persist(); refresh();
+  function removePhoto(cat,mod,color){
+    var k=keyOf(cat,mod||'',color); mem[k]=null; persist(); refresh();
     TO(db.collection('config').doc('fotoprod_'+k).delete(),8000).catch(function(){});
     toast('Foto quitada');
   }
-  function pick(cat,mod){
+  function pick(cat,mod,color){
     if(typeof mostrarOpcionesFoto!=='function'){toast('No se pudo abrir la cámara');return;}
     mostrarOpcionesFoto(function(file){
       if(!file)return;
-      comprimirImagen(file,640,.72).then(function(url){savePhoto(cat,mod,url);});
+      comprimirImagen(file,640,.72).then(function(url){savePhoto(cat,mod,url,color);});
     });
     setTimeout(function(){ var h=document.querySelector('.kp-modal-overlay:last-of-type .kp-modal-head h2'); if(h)h.textContent='Foto del producto'; },0);
   }
-  window.kpFotoPick=function(i){ var p=(window.draftProducts||[])[i]; if(p&&p.categoria)pick(p.categoria,p.modelo||''); };
+  window.kpFotoPick=function(i){ var p=(window.draftProducts||[])[i]; if(!p||!p.categoria)return; if(needsColor(p.categoria,p.modelo)&&!colorOf(p)){toast('Elige primero el color');return;} pick(p.categoria,p.modelo||'',colorOf(p)); };
   window.kpFotoInventoryById=function(id){
     var p=(window.INVENTARIO||[]).find(function(x){return String(x.id)===String(id);});
     if(!p){toast('No se encontró el producto');return;}
     if(!p.categoria){toast('Este producto no tiene categoría');return;}
-    pick(p.categoria,p.modelo||'');
+    pick(p.categoria,p.modelo||'',hasC(p.colorEn)?p.colorEn:'');
   };
   /* La foto queda disponible para el envío de la orden por WhatsApp.
      Busca primero categoría+modelo y luego la foto general de la categoría. */
   window.kpGetProductPhoto=function(p){
     if(!p||!p.categoria||p.categoria==='__custom__')return null;
-    var r=photoFor(p.categoria,p.modelo||'');
+    var r=photoFor(p.categoria,p.modelo||'',colorOf(p));
     return r&&r.foto?r.foto:null;
   };
   window.kpEnsureProductPhotoLink=async function(p){
     if(!p||!p.categoria||p.categoria==='__custom__')return null;
-    var r=photoFor(p.categoria,p.modelo||'');
+    var r=photoFor(p.categoria,p.modelo||'',colorOf(p));
     if(!r||!r.foto)return null;
     if(/^https?:\/\//i.test(r.foto))return r.foto;
     try{
-      var link=await uploadPhotoLink(r.foto,p.categoria,p.modelo||'');
-      if(link&&link!==r.foto){
-        mem[r.key]=link; persist();
-        await TO(db.collection('config').doc('fotoprod_'+r.key).set({categoria:p.categoria,modelo:p.modelo||'',foto:link,ts:Date.now()}),8000);
+      var id=pub[r.key];
+      if(!id){
+        id='f'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+        await TO(db.collection('fotos_publicas').doc(id).set({foto:r.foto,ts:Date.now()}),8000);
+        pub[r.key]=id; persistPub();
+        await TO(db.collection('config').doc('fotoprod_'+r.key).set({pub:id},{merge:true}),8000);
       }
-      return link||r.foto;
-    }catch(e){return r.foto;}
+      return location.origin+location.pathname+'?f='+id;
+    }catch(e){return null;}
   };
   /* Administrador de fotos dentro de Inventario */
   var invList=[];
@@ -12052,8 +12066,8 @@ window.kpTO=function(p,ms){return Promise.race([Promise.resolve(p),new Promise((
     var seen={}; invList=[];
     (window.INVENTARIO||[]).forEach(function(i){
       if(!i||!i.categoria)return;
-      [[i.categoria,''],[i.categoria,i.modelo||'']].forEach(function(pair){
-        var k=keyOf(pair[0],pair[1]); if(seen[k])return; seen[k]=1; invList.push({cat:pair[0],mod:pair[1],key:k});
+      (hasC(i.colorEn)?[[i.categoria,i.modelo||'',i.colorEn]]:[[i.categoria,''],[i.categoria,i.modelo||'']]).forEach(function(pair){
+        var k=keyOf(pair[0],pair[1],pair[2]); if(seen[k])return; seen[k]=1; invList.push({cat:pair[0],mod:pair[1],color:pair[2]||'',key:k});
       });
     });
     var cnt=invList.filter(function(x){return mem[x.key];}).length;
@@ -12061,13 +12075,14 @@ window.kpTO=function(p,ms){return Promise.race([Promise.resolve(p),new Promise((
     box.querySelector('.kpFotoGrid').innerHTML=invList.length?invList.map(function(x,n){
       fetchKey(x.key);
       var img=mem[x.key]?'<img class="kpThumb" alt="" src="'+mem[x.key]+'" onclick="kpFotoZoom(\''+x.key+'\')">':'<div class="kpThumb kpThumbEmpty">📦</div>';
-      return '<div class="kpFotoItem">'+img+'<div class="kpFotoName">'+esc(x.cat)+(x.mod?' · '+esc(x.mod):' (todos los modelos)')+'</div>'+
+      return '<div class="kpFotoItem">'+img+'<div class="kpFotoName">'+esc(x.cat)+(x.color?' · '+esc(x.mod)+' · '+esc(x.color):x.mod?' · '+esc(x.mod):' (todos los modelos)')+'</div>'+
         '<button type="button" class="kpPhBtn" onclick="kpFotoInv('+n+')">'+(mem[x.key]?'Cambiar':'Agregar')+'</button>'+
         (mem[x.key]?'<button type="button" class="kpPhBtn" onclick="kpFotoInvDel('+n+')">Quitar</button>':'')+'</div>';
     }).join(''):'<div class="small">Aún no hay productos en el inventario.</div>';
   }
-  window.kpFotoInv=function(n){var x=invList[n]; if(x)pick(x.cat,x.mod);};
-  window.kpFotoInvDel=function(n){var x=invList[n]; if(x)removePhoto(x.cat,x.mod);};
+  window.kpFotoInv=function(n){var x=invList[n]; if(x)pick(x.cat,x.mod,x.color);};
+  window.kpFotoInvDel=function(n){var x=invList[n]; if(x)removePhoto(x.cat,x.mod,x.color);};
+  document.addEventListener('change',function(e){ if(e.target&&e.target.tagName==='SELECT')setTimeout(refresh,80); });
   function injectInvBox(){
     var v=document.getElementById('view'); if(!v||document.getElementById('kpFotosBox'))return;
     var box=document.createElement('details'); box.id='kpFotosBox'; box.className='kp-panel kpFotosBox';
@@ -12584,6 +12599,81 @@ window.finishLogin=function(){const r=f.apply(this,arguments);setTimeout(()=>{
   if(Notification.permission==='granted')registrar();
   else if(Notification.permission==='default'&&!$('kpBell')){const b=document.createElement('button');b.id='kpBell';b.textContent='🔔 Activar avisos';b.style.cssText='position:fixed;top:10px;right:10px;z-index:99998;padding:8px 12px;border-radius:99px;border:0;background:#2e7d32;color:#fff;font-weight:600';b.onclick=kpActivarAvisos;document.body.appendChild(b);}
   abrirLink();},900);return r;};
+})();
+</script>
+<script>
+/* ===== KPlace · Invitar con Google, permisos y eliminar usuarios ===== */
+(function(){
+const $=id=>document.getElementById(id),norm=x=>String(x||'').trim().toLowerCase(),F=firebase.firestore.FieldValue;
+const sinAc=s=>norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const acc=()=>db.collection('config').doc('acceso'),save=()=>db.collection('config').doc('vendedores').set({lista:VENDEDORES});
+const ROLES={vendedor:'Vendedor',admin:'Administrador',envios:'Administrador de envíos',repartidor:'Repartidor'};
+const flags=r=>({esAdmin:r==='admin',esEncargadoEnvios:r==='envios',esRepartidor:r==='repartidor',esEmpacador:false});
+const IN='width:100%;padding:12px;border:1px solid #cfd4da;border-radius:10px;font-size:15px;margin:6px 0 12px;box-sizing:border-box;color:#1c1e21;background:#fff';
+function overlay(html){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';o.innerHTML='<div style="background:#fff;color:#1c1e21;border-radius:16px;width:100%;max-width:420px;padding:18px;max-height:90vh;overflow:auto">'+html+'</div>';document.body.appendChild(o);return o;}
+window.kpInvitar=function(){
+  if(!(window.CURRENT_USER&&CURRENT_USER.esAdmin)){toast('Solo un administrador puede invitar');return;}
+  const o=overlay('<h3 style="margin:0 0 10px">Invitar con Google</h3><label>Correo de Google de la persona</label><input id="kpIE" type="email" placeholder="nombre@gmail.com" autocapitalize="none" style="'+IN+'"><label>Nombre (opcional)</label><input id="kpIN" style="'+IN+'"><label>Permisos</label><select id="kpIR" style="'+IN+'">'+Object.keys(ROLES).map(k=>'<option value="'+k+'">'+ROLES[k]+'</option>').join('')+'</select><div id="kpIM" style="color:#c0392b;font-size:13px;margin-bottom:8px"></div><div style="display:flex;gap:8px"><button id="kpIC" style="flex:1;padding:12px">Cancelar</button><button id="kpIOk" style="flex:1;padding:12px;background:#2e7d32;color:#fff;border:0;border-radius:10px;font-weight:700">Invitar</button></div>');
+  o.querySelector('#kpIC').onclick=()=>o.remove();
+  o.querySelector('#kpIOk').onclick=async()=>{
+    const email=norm(o.querySelector('#kpIE').value),nom=o.querySelector('#kpIN').value.trim(),r=o.querySelector('#kpIR').value,m=o.querySelector('#kpIM');
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){m.textContent='Escribe un correo válido.';return;}
+    try{
+      await acc().update({emails:F.arrayUnion(email),admins:r==='admin'?F.arrayUnion(email):F.arrayRemove(email)});
+      let v=VENDEDORES.find(x=>norm(x.email)===email);
+      if(v)Object.assign(v,flags(r),{activo:true,aprobado:true,cargo:ROLES[r]});
+      else{v={nombre:nom||email.split('@')[0],usuario:email.split('@')[0],email,activo:true,aprobado:true,fotoPerfil:'',cargo:ROLES[r],...flags(r)};VENDEDORES.push(v);}
+      await save();
+      const txt='Te invito a KPlace como '+ROLES[r]+'. Abre '+location.origin+location.pathname+' y toca "Continuar con Google" con el correo '+email+'.';
+      o.firstChild.innerHTML='<h3 style="margin:0 0 10px">✓ Invitación lista</h3><p>'+escapeHtml(email)+' entra como <b>'+ROLES[r]+'</b> cuando use "Continuar con Google" con ese correo.</p><button id="kpIW" style="width:100%;padding:12px;background:#25d366;color:#fff;border:0;border-radius:10px;font-weight:700;margin-bottom:8px">Enviar por WhatsApp</button><button id="kpICp" style="width:100%;padding:12px;margin-bottom:8px">Copiar mensaje</button><button id="kpIX" style="width:100%;padding:12px">Cerrar</button>';
+      o.querySelector('#kpIW').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+      o.querySelector('#kpICp').onclick=()=>navigator.clipboard.writeText(txt).then(()=>toast('Mensaje copiado'));
+      o.querySelector('#kpIX').onclick=()=>{o.remove();try{KP.renderEnterpriseAdmin();}catch(e){}};
+    }catch(e){m.textContent='No se pudo invitar: '+(e.code||e.message);}
+  };
+};
+window.abrirCrearInvitacion=window.kpInvitar;
+window.kpEliminarUsuario=async function(i){
+  const v=VENDEDORES[i];if(!v)return;
+  const yo=norm(((firebase.auth().currentUser)||{}).email);
+  if(v.email&&norm(v.email)===yo){toast('No puedes eliminarte a ti mismo');return;}
+  if(v.esAdmin&&VENDEDORES.filter(x=>x.esAdmin).length<2){toast('Debe quedar al menos un administrador');return;}
+  if(!confirm('¿Eliminar a '+v.nombre+'? Perderá el acceso a KPlace.'))return;
+  try{
+    if(v.email)await acc().update({emails:F.arrayRemove(norm(v.email)),admins:F.arrayRemove(norm(v.email))});
+    VENDEDORES.splice(i,1);await save();
+    if(v.email){const q=await db.collection('push_tokens').where('email','==',norm(v.email)).get();q.forEach(d=>d.ref.delete());}
+    toast('Usuario eliminado');KP.renderEnterpriseAdmin();
+  }catch(e){toast('No se pudo eliminar');}
+};
+function dedupe(){const ch=VENDEDORES.filter(a=>!a.email&&VENDEDORES.some(b=>b!==a&&b.email&&sinAc(b.nombre)===sinAc(a.nombre)));if(!ch.length)return false;VENDEDORES=VENDEDORES.filter(x=>!ch.includes(x));return true;}
+const R=KP.renderEnterpriseAdmin,FU=KP.filterUsers;
+KP.renderEnterpriseAdmin=function(){
+  if(dedupe())save().catch(()=>{});
+  R.apply(this,arguments);
+  const h=document.querySelector('.kp-enterprise-head');
+  if(h&&!$('kpInvBtn')){const b=document.createElement('button');b.id='kpInvBtn';b.type='button';b.className='btn primary';b.textContent='➕ Invitar con Google';b.onclick=kpInvitar;h.appendChild(b);}
+};
+KP.filterUsers=function(){
+  FU.apply(this,arguments);
+  document.querySelectorAll('#kpEnterpriseUsers .kp-user-actions').forEach(a=>{
+    const ref=a.querySelector('.kp-active');if(!ref||a.querySelector('.kp-del'))return;
+    const b=document.createElement('button');b.type='button';b.className='btn sm red kp-del';b.textContent='Eliminar';
+    b.onclick=()=>kpEliminarUsuario(Number(ref.dataset.index));a.appendChild(b);});
+};
+})();
+</script>
+<script>
+/* ===== Ver foto compartida (?f=ID): pantalla simple y pública ===== */
+(function(){
+  var id=new URLSearchParams(location.search).get('f'); if(!id)return;
+  var o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif';
+  o.textContent='Cargando foto…'; document.body.appendChild(o);
+  db.collection('fotos_publicas').doc(String(id)).get().then(function(s){
+    if(!s.exists||!s.data().foto){o.textContent='La foto ya no está disponible.';return;}
+    o.innerHTML='';var im=new Image();im.src=s.data().foto;im.style.cssText='max-width:100%;max-height:100%;object-fit:contain';o.appendChild(im);
+  }).catch(function(){o.textContent='No se pudo cargar la foto.';});
 })();
 </script>
 </body>
