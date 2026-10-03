@@ -937,6 +937,38 @@ body.kp-chat-open #kpTypingIndicator{padding:0 14px;color:#8696a0}
 body.kp-dark #view .card{background-color:#101827}
 body.kp-dark .btn{border-color:rgba(167,139,250,.28)}
 </style>
+<style id="kp-final2">
+/* campana de arriba fuera */
+#kpBellBtn{display:none!important}
+/* menú: notificaciones arriba */
+.kpn-top{margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.08)}
+.kpn-top button{position:relative}
+.kpn-badge{margin-left:auto;min-width:22px;height:22px;border-radius:11px;background:#ef4444;color:#fff;font:700 12px/22px system-ui;text-align:center;padding:0 6px;display:none}
+.kpn-page{padding:4px 2px 90px;max-width:560px;margin:0 auto}
+.kpn-page h2{margin:2px 0 14px}
+/* tarjeta de orden: sin franja, más compacta */
+.card.pendiente-entrega::before,.card.entregado::before,.card.no-entregado::before{display:none!important}
+.card.pendiente-entrega{border:1px solid rgba(245,158,11,.45)!important;background-image:linear-gradient(160deg,rgba(245,158,11,.10),rgba(245,158,11,0) 50%)!important}
+.card.entregado{border:1px solid rgba(34,197,94,.45)!important;background-image:linear-gradient(160deg,rgba(34,197,94,.12),rgba(34,197,94,0) 50%)!important}
+.card.no-entregado{border:1px solid rgba(239,68,68,.45)!important;background-image:linear-gradient(160deg,rgba(239,68,68,.12),rgba(239,68,68,0) 50%)!important}
+.card.pendiente-entrega,.card.entregado,.card.no-entregado{border-radius:20px!important;margin-bottom:12px!important;padding-bottom:10px!important}
+.kpo-photos{padding:14px 16px 2px!important}
+.kpo-ph{width:68px!important;height:68px!important;border-radius:14px!important}
+.card .row .name{font-size:19px!important}
+.card .row .total{font-size:18px!important;padding:6px 11px!important}
+.card.pendiente-entrega>.row,.card.entregado>.row,.card.no-entregado>.row{margin-top:8px!important;padding-bottom:8px!important}
+.card .prodline{margin:6px 0!important;padding:7px 10px!important;font-size:12.5px!important;line-height:1.3!important;border-radius:10px!important;color:#c3cde4!important}
+.card .chip{font-size:11px!important;padding:4px 9px!important}
+.kpx-toggle{margin-top:6px!important;padding:8px!important;font-size:13px!important}
+/* superficies oscuras de Boxful */
+.boxfulApiBar,.boxfulStatusCard{background:#101827!important;background-image:none!important;border:1px solid #1f2b45!important;color:#e8edf8!important}
+.boxfulStatusText{color:#f1f5ff!important}
+/* audios sin fondo azul */
+.bubble:has(audio){background:#162033!important}
+.bubble audio{width:100%;max-width:260px;height:40px;color-scheme:dark;filter:invert(.9) hue-rotate(180deg) saturate(.7)}
+/* mapa */
+.leaflet-container{background:#e9e6df}
+</style>
 </head>
 <body class="kp-dark">
 
@@ -1830,7 +1862,7 @@ function renderIntegraciones(){
           <button class="btn primary" onclick="openBoxfulApiConfig()">⚙️ Administrar cuentas</button>
           <button class="btn" onclick="kpBoxfulAddAccount();openBoxfulApiConfig()">＋ Agregar cuenta</button>
         </div>
-        ${accounts.length?`<div style="border-top:1px solid #edf0f4;padding-top:12px;display:grid;gap:8px;">${accounts.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #edf0f4;border-radius:12px;background:#fafbfc;"><div style="min-width:0;"><b>${esc(a.name||'Cuenta Boxful')}</b><div style="font-size:11px;color:#8a94a3;margin-top:2px;">${a.accessToken?'🟢 Conectada':'🟡 Pendiente'}${String(a.id)===String(kpBoxfulSelectedId())?' · EN USO':''}</div></div><div class="btnrow" style="margin-top:0;flex-wrap:nowrap;"><button class="btn sm" onclick="kpBoxfulSelectAccount('${String(a.id).replace(/'/g,'\\\'')}')">Usar</button><button class="btn sm" onclick="kpBoxfulRenameAccount('${String(a.id).replace(/'/g,'\\\'')}')">Renombrar</button><button class="btn red sm" onclick="kpBoxfulDeleteAccount('${String(a.id).replace(/'/g,'\\\'')}')">🗑️</button></div></div>`).join('')}</div>`:`<div style="padding:14px;border:1px dashed #d8dee8;border-radius:12px;color:#667085;font-size:12px;">No hay cuentas de Boxful conectadas. Agrega la primera cuando quieras.</div>`}
+        ${accounts.length?`<div style="border-top:1px solid #26324a;padding-top:12px;display:grid;gap:8px;">${accounts.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #26324a;border-radius:12px;background:#17213a;"><div style="min-width:0;"><b>${esc(a.name||'Cuenta Boxful')}</b><div style="font-size:11px;color:#8a94a3;margin-top:2px;">${a.accessToken?'🟢 Conectada':'🟡 Pendiente'}${String(a.id)===String(kpBoxfulSelectedId())?' · EN USO':''}</div></div><div class="btnrow" style="margin-top:0;flex-wrap:nowrap;"><button class="btn sm" onclick="kpBoxfulSelectAccount('${String(a.id).replace(/'/g,'\\\'')}')">Usar</button><button class="btn sm" onclick="kpBoxfulRenameAccount('${String(a.id).replace(/'/g,'\\\'')}')">Renombrar</button><button class="btn red sm" onclick="kpBoxfulDeleteAccount('${String(a.id).replace(/'/g,'\\\'')}')">🗑️</button></div></div>`).join('')}</div>`:`<div style="padding:14px;border:1px dashed #d8dee8;border-radius:12px;color:#667085;font-size:12px;">No hay cuentas de Boxful conectadas. Agrega la primera cuando quieras.</div>`}
       </div>
       <div style="margin-top:16px;background:#f8fafc;border:1px dashed #d8dee8;border-radius:16px;padding:15px 17px;color:#667085;font-size:12px;"><b style="color:#303a4d;">💡 Cuentas ilimitadas</b><br>Puedes agregar, cambiar y eliminar conexiones de Boxful sin un límite impuesto por KPlace.</div>
     </div>`;
@@ -8744,7 +8776,7 @@ KP.gpsPanelAdmin=async function(){
  if(typeof L!=='undefined'){
    if(KP._gpsMap){ try{KP._gpsMap.remove();}catch(e){} KP._gpsMap=null; }
    const map=L.map('kpGpsMap');
-   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(map);
+   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
    const pts=conUbicacion.map(x=>[Number(x.lat),Number(x.lng)]);
    conUbicacion.forEach(x=>{
      L.marker([Number(x.lat),Number(x.lng)],{icon:L.divIcon({className:'kp-moto',html:'<div class="kp-moto-pin">🛵</div>',iconSize:[46,46],iconAnchor:[23,23],popupAnchor:[0,-24]})}).addTo(map).bindPopup(`<b>${esc(x.nombre||x.id)}</b><br>Actualizado ${x.updatedAt?.toDate?x.updatedAt.toDate().toLocaleTimeString('es-HN'):'recientemente'}`);
@@ -15485,7 +15517,7 @@ const IK='kp_inbox',inbox=()=>{try{return JSON.parse(localStorage.getItem(IK)||'
 const saveInbox=a=>{try{localStorage.setItem(IK,JSON.stringify(a.slice(0,60)));}catch(e){}badge();};
 window.kpInboxAdd=function(t,b){const a=inbox();a.unshift({t:t||'Aviso',b:b||'',ts:Date.now(),r:0});saveInbox(a);};
 const T0=window.toast;
-window.toast=function(m){if(/boxful/i.test(String(m))){kpInboxAdd('Boxful',String(m).replace(/^\s*Boxful:\s*/i,''));return;}return T0.apply(this,arguments);};
+const T_0=Date.now(),seenB={};window.toast=function(m){if(/boxful/i.test(String(m))){const k=String(m);if(Date.now()-T_0>30000&&(!seenB[k]||Date.now()-seenB[k]>3600000)){seenB[k]=Date.now();kpInboxAdd('Boxful',k.replace(/^\s*Boxful:\s*/i,''));}return;}return T0.apply(this,arguments);};
 const ICON='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg>';
 function badge(){const n=inbox().filter(x=>!x.r).length+(('Notification' in window&&Notification.permission==='default')?1:0),d=$('kpBellDot');if(d){d.textContent=n>9?'9+':n;d.style.display=n?'':'none';}}
 const TIPOS=[['chat','Mensajes de canales'],['orden_nueva','Órdenes nuevas'],['orden','Cambios en una orden'],['guia','Guía creada'],['comprobante','Comprobante subido'],['nacional','Empacado / proceso nacional'],['entrega','Repartidor en ruta, llegó o no entregó'],['entregado','Paquete entregado'],['pago','Cambio de método de pago'],['retraso','Retrasos de envíos nacionales']];
@@ -15539,7 +15571,7 @@ const OPEN=new Set(JSON.parse(sessionStorage.getItem('kpx_open')||'[]'));
 function cardify(c){
   if(c.dataset.kpx)return;c.dataset.kpx='1';
   const m=c.textContent.match(/ORDEN\s*#\s*(\d+)/i),key=m?m[1]:null,kids=[...c.children];
-  const keep=el=>el.classList.contains('kpo-photos')||el.classList.contains('row')||el.classList.contains('phoneRow')||!!el.querySelector('.phoneRow')||/^\s*ORDEN\s*#/i.test(el.textContent)||/^\s*Vendedor:/i.test(el.textContent.trim())||[...el.querySelectorAll('a,button')].some(b=>/^\W*WhatsApp\W*$/i.test(b.textContent.trim()));
+  const keep=el=>el.classList.contains('kpo-photos')||el.classList.contains('prodline')||el.classList.contains('row')||el.classList.contains('phoneRow')||!!el.querySelector('.phoneRow')||/^\s*ORDEN\s*#/i.test(el.textContent)||/^\s*Vendedor:/i.test(el.textContent.trim())||[...el.querySelectorAll('a,button')].some(b=>/^\W*WhatsApp\W*$/i.test(b.textContent.trim()));
   let last=-1;kids.forEach((el,i)=>{if(keep(el))last=i;else el.classList.add('kpx-more');});
   if(last<0)return;
   const t=document.createElement('button');t.type='button';t.className='kpx-toggle';t.innerHTML='<span class="a">Ver detalles</span><span class="b">Ocultar detalles</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
@@ -15575,6 +15607,93 @@ window.orderActions=function(o){
 /* ---------- Observador común ---------- */
 let tm=null;
 new MutationObserver(()=>{clearTimeout(tm);tm=setTimeout(()=>{document.querySelectorAll('#view .card.pendiente-entrega:not([data-kpx]),#view .card.entregado:not([data-kpx]),#view .card.no-entregado:not([data-kpx])').forEach(cardify);mountBell();badge();},120);}).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+<script>
+/* ===== KPlace · Menú de notificaciones, colores por integrante, tarjetas compactas, superficies oscuras ===== */
+(function(){
+const $=id=>document.getElementById(id),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IK='kp_inbox',inbox=()=>{try{return JSON.parse(localStorage.getItem(IK)||'[]');}catch(e){return[];}};
+const saveInbox=a=>{try{localStorage.setItem(IK,JSON.stringify(a.slice(0,60)));}catch(e){}paintBadge();};
+const unread=()=>inbox().filter(x=>!x.r).length+(('Notification' in window&&Notification.permission==='default')?1:0);
+function paintBadge(){document.querySelectorAll('.kpn-badge').forEach(b=>{const n=unread();b.textContent=n>9?'9+':n;b.style.display=n?'':'none';});}
+/* ---- Menú lateral: "Notificaciones" arriba de todo ---- */
+const dr=$('kpMenuDrawer');
+if(dr)new MutationObserver(()=>{
+  if(dr.querySelector('[data-section="notificaciones"]'))return;
+  const sec=dr.querySelector('.kp-drawer-section');if(!sec)return;
+  const nav=document.createElement('nav');nav.className='kp-drawer-nav kpn-top';
+  nav.innerHTML='<button data-section="notificaciones" onclick="closeKPlaceMenu();setTab(\'notificaciones\')"><span class="dico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg></span>Notificaciones <b class="kpn-badge"></b></button>';
+  sec.before(nav);paintBadge();
+}).observe(dr,{childList:true});
+/* ---- Página de notificaciones ---- */
+const TIPOS=[['chat','Mensajes de canales'],['orden_nueva','Órdenes nuevas'],['orden','Cambios en una orden'],['guia','Guía creada'],['comprobante','Comprobante subido'],['nacional','Empacado / proceso nacional'],['entrega','Repartidor en ruta, llegó o no entregó'],['entregado','Paquete entregado'],['pago','Cambio de método de pago'],['retraso','Retrasos de envíos nacionales']];
+const prefs=()=>{try{return JSON.parse(localStorage.getItem('kp_prefs')||'{}');}catch(e){return{};}};
+function setPref(k,on){const p=prefs();if(on)delete p[k];else p[k]=false;localStorage.setItem('kp_prefs',JSON.stringify(p));const t=localStorage.getItem('kp_fcm_tok');if(t)db.collection('push_tokens').doc(t).set({prefs:p},{merge:true}).catch(()=>{});}
+const ago=ts=>{const m=Math.floor((Date.now()-ts)/60000);return m<1?'ahora':m<60?m+' min':m<1440?Math.floor(m/60)+' h':Math.floor(m/1440)+' d';};
+window.__kpNotifPage=false;
+function notifPage(){
+  const v=$('view');if(!v)return;window.__kpNotifPage=true;
+  const a=inbox(),p=prefs(),perm=('Notification' in window)?Notification.permission:'unsupported';
+  v.innerHTML='<div class="kpn-page"><div class="kp-kicker">AVISOS</div><h2>Notificaciones</h2>'
+   +(perm==='default'?'<button class="kpb-act" id="kpnAct">Activar avisos en este celular</button>':perm==='denied'?'<div class="kpb-warn">Los avisos están bloqueados. Actívalos en Ajustes del navegador → Notificaciones.</div>':'')
+   +'<div class="kpb-list">'+(a.length?a.map(x=>'<div class="kpb-item'+(x.r?'':' new')+'"><div><b>'+esc(x.t)+'</b><span>'+esc(x.b)+'</span></div><small>'+ago(x.ts)+'</small></div>').join(''):'<div class="kpb-empty">No tienes notificaciones pendientes.</div>')+'</div>'
+   +(a.length?'<button class="kpb-link" id="kpnClr">Limpiar bandeja</button>':'')
+   +'<details class="kpb-det" open><summary>Elegir qué avisos recibo</summary>'+TIPOS.map(t=>'<label class="kpb-row"><span>'+t[1]+'</span><input type="checkbox" data-k="'+t[0]+'"'+(p[t[0]]===false?'':' checked')+'></label>').join('')+'</details></div>';
+  const ac=$('kpnAct');if(ac)ac.onclick=async()=>{await kpActivarAvisos();notifPage();};
+  const cl=$('kpnClr');if(cl)cl.onclick=()=>{saveInbox([]);notifPage();};
+  v.querySelectorAll('input[data-k]').forEach(i=>i.onchange=()=>setPref(i.dataset.k,i.checked));
+  a.forEach(x=>x.r=1);saveInbox(a);
+}
+const ST=window.setTab;
+window.setTab=function(id){if(id==='notificaciones'){document.body.classList.remove('kp-chat-open');notifPage();return;}window.__kpNotifPage=false;return ST.apply(this,arguments);};
+const RN=window.render;if(typeof RN==='function')window.render=function(){if(window.__kpNotifPage&&$('view')&&$('view').querySelector('.kpn-page'))return;return RN.apply(this,arguments);};
+/* ---- Colores por integrante en el chat ---- */
+function hue(s){let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))%360;return h;}
+function paintBubbles(root){
+  (root||document).querySelectorAll('.bubble:not([data-kpc])').forEach(b=>{
+    b.dataset.kpc='1';const n=(b.querySelector('.bubbleAutor')||{}).textContent;if(!n)return;
+    const h=hue(n.trim().toLowerCase().replace(/\s+MOD$/,'')),a=b.querySelector('.bubbleAutor');
+    a.style.setProperty('color','hsl('+h+' 78% 70%)','important');
+    if(b.classList.contains('mine'))b.style.setProperty('background','#0f3d36','important');
+    else b.style.setProperty('background','hsl('+h+' 32% 17%)','important');
+    if(b.querySelector('audio'))b.style.setProperty('background','#162033','important');
+  });
+}
+/* ---- Tarjetas de orden compactas ---- */
+function tidy(c){
+  if(c.dataset.kpt)return;c.dataset.kpt='1';
+  c.querySelectorAll('*').forEach(e=>{if(!e.children.length&&/^\s*·\s*Vendedor:/i.test(e.textContent))e.style.display='none';});
+  [...c.children].forEach(e=>{if(e.textContent.trim()==='📍')e.style.display='none';});
+}
+/* ---- Superficies blancas -> oscuras + contraste ---- */
+const num=c=>{const m=String(c).match(/[\d.]+/g);return m?m.map(Number):null;};
+const lum=c=>{const m=num(c);if(!m)return null;const [r,g,b]=m.slice(0,3).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);});return .2126*r+.7152*g+.0722*b;};
+const alp=c=>{const m=num(c);return m&&m.length>3?m[3]:1;};
+function gradLight(g){const m=String(g).match(/rgba?\([^)]*\)/g);if(!m)return false;const ls=m.map(lum).filter(x=>x!=null);return ls.length&&ls.reduce((a,b)=>a+b,0)/ls.length>.8;}
+function bgOf(el){while(el&&el.nodeType===1){const cs=getComputedStyle(el);const c=cs.backgroundColor;if(c&&alp(c)>.5)return c;el=el.parentElement;}return getComputedStyle(document.body).backgroundColor;}
+function skip(el){return el.closest('.leaflet-container,#kpQrOverlay,.kpl,[data-keepwhite],script,style')||/^(IMG|CANVAS|VIDEO|AUDIO|SVG|PATH|INPUT|SELECT|TEXTAREA|OPTION)$/i.test(el.tagName);}
+function darken(root){
+  let n=0;const els=[root,...root.querySelectorAll('*')];
+  for(const el of els){if(n++>2500)break;if(!el||el.nodeType!==1||skip(el))continue;
+    const cs=getComputedStyle(el);let hit=false;
+    if(alp(cs.backgroundColor)>.6&&(lum(cs.backgroundColor)||0)>.8)hit=true;
+    else if(cs.backgroundImage&&cs.backgroundImage!=='none'&&/gradient/.test(cs.backgroundImage)&&gradLight(cs.backgroundImage))hit=true;
+    if(hit&&!el.querySelector('canvas')){el.style.setProperty('background-image','none','important');el.style.setProperty('background-color',el.children.length>2?'#121a2c':'#17213a','important');
+      if(el.style.borderColor===''||(lum(cs.borderTopColor)||0)>.6)el.style.setProperty('border-color','#26324a','important');}
+  }
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let t,k=0;
+  while((t=w.nextNode())&&k<2000){if(!t.nodeValue.trim())continue;k++;const el=t.parentElement;if(!el||skip(el))continue;
+    const cs=getComputedStyle(el);if(alp(cs.color)<.5||cs.backgroundClip==='text'||cs.webkitBackgroundClip==='text')continue;
+    const bl=lum(bgOf(el)),cl=lum(cs.color);if(bl==null||cl==null)continue;
+    if((Math.max(cl,bl)+.05)/(Math.min(cl,bl)+.05)<3)el.style.setProperty('color',bl<.4?'#eef2ff':'#1c1e21','important');}
+}
+let q=new Set(),tm=null;
+new MutationObserver(ms=>{ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)q.add(n);}));clearTimeout(tm);tm=setTimeout(()=>{
+  const a=[...q];q=new Set();a.forEach(n=>{if(!n.isConnected)return;darken(n);paintBubbles(n);});
+  document.querySelectorAll('#view .card:not([data-kpt])').forEach(tidy);paintBubbles();paintBadge();},350);}).observe(document.body,{childList:true,subtree:true});
+setTimeout(()=>{darken(document.body);paintBubbles();},1800);
+paintBadge();
 })();
 </script>
 </body>
