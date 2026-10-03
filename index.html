@@ -835,6 +835,33 @@ body.kp-dark .name,body.kp-dark .card .name,body.kp-dark .kp-channel-user .name,
 body.kp-dark .kp-drawer-brand small{color:#a9b6cf!important}
 body.kp-dark .meta,body.kp-dark .small{color:#9aa7bd}
 </style>
+<style id="kp-visual-fix">
+/* --- tarjetas de orden --- */
+.card.pendiente-entrega,.card.entregado,.card.no-entregado{position:relative;overflow:hidden;border-radius:22px;padding-left:24px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.card.pendiente-entrega::before,.card.entregado::before,.card.no-entregado::before{content:'';position:absolute;left:0;top:0;bottom:0;width:8px}
+.card.pendiente-entrega{background-image:linear-gradient(150deg,rgba(245,158,11,.20),rgba(245,158,11,0) 55%);border-color:rgba(245,158,11,.35)}
+.card.pendiente-entrega::before{background:linear-gradient(#fbbf24,#f59e0b)}
+.card.entregado{background-image:linear-gradient(150deg,rgba(34,197,94,.22),rgba(34,197,94,0) 55%);border-color:rgba(34,197,94,.4)}
+.card.entregado::before{background:linear-gradient(#4ade80,#16a34a)}
+.card.no-entregado{background-image:linear-gradient(150deg,rgba(239,68,68,.22),rgba(239,68,68,0) 55%);border-color:rgba(239,68,68,.4)}
+.card.no-entregado::before{background:linear-gradient(#f87171,#dc2626)}
+.card.pendiente-entrega .name,.card.entregado .name,.card.no-entregado .name{font-size:20px}
+/* --- contraste en modo oscuro --- */
+body.kp-dark #view .card{color:#e8edf8}
+body.kp-dark #view .card [style*="color:#667085"],body.kp-dark #view .card [style*="color:#687386"],body.kp-dark #view .card [style*="color:#596579"],body.kp-dark #view [style*="color:#667085"],body.kp-dark #view [style*="color:#687386"],body.kp-dark #view [style*="color:#596579"]{color:#b9c5dd!important}
+body.kp-dark [style*="color:#303a4d"],body.kp-dark [style*="color:#172033"]{color:#eef2ff!important}
+body.kp-dark [style*="color:#8b1537"]{color:#ff9ab8!important}
+body.kp-dark [style*="background:#fff;border:1px solid #e6e9ef"]{background:#111a2e!important;border-color:#26324a!important}
+body.kp-dark [style*="background:#fff;border:1px solid #e6e9ef"] b,body.kp-dark [style*="background:#fff;border:1px solid #e6e9ef"] h3{color:#f1f5ff!important}
+body.kp-dark [style*="background:#fff;border:1px solid #e6e9ef"] p,body.kp-dark [style*="background:#fff;border:1px solid #e6e9ef"] small{color:#b9c5dd!important}
+body.kp-dark [style*="background:#f8fafc"]{background:#0f172a!important;border-color:#2a3650!important;color:#b9c5dd!important}
+body.kp-dark [style*="background:#f8fafc"] b{color:#f1f5ff!important}
+body.kp-dark .meta,body.kp-dark .small,body.kp-dark label,body.kp-dark small{color:#a9b6cf}
+/* --- GPS --- */
+.kp-moto{background:none;border:0}
+.kp-moto-pin{width:46px;height:46px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:26px;border:3px solid #16a34a;box-shadow:0 6px 16px rgba(0,0,0,.35);animation:kpPulse 2s infinite}
+@keyframes kpPulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.55)}70%{box-shadow:0 0 0 16px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+</style>
 </head>
 <body class="kp-dark">
 
@@ -8634,7 +8661,7 @@ KP.toggleGPS=async function(on){
 };
 KP.refreshGPSUI=function(){const el=document.getElementById('kpGpsBox');if(el)el.innerHTML=`<div class="kp-gps-head"><b>Ubicación en tiempo real</b><span class="kp-gps-state ${KP.gpsOn?'on':'off'}">● ${KP.gpsOn?'Activa':'Desactivada'}</span></div><small>${KP.gpsOn?'Solo administradores y administradores de envíos pueden verla.':'Activala cuando estés trabajando para compartir tu ubicación.'}</small><button class="btn sm ${KP.gpsOn?'red':'green'}" onclick="KP.toggleGPS(${!KP.gpsOn})">${KP.gpsOn?'Desactivar':'Activar ubicación'}</button>`;};
 KP.gpsPanelAdmin=async function(){
- const v=document.getElementById('view');if(!v)return;const branch=userBranch(CURRENT_USER);let q;try{q=await kpTO(db.collection('config').doc('gps').collection('drivers').get(),6000);KP._gpsErr=null;}catch(e){q={docs:[]};KP._gpsErr=e;console.warn('GPS lectura',e);}let arr=q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.sucursalId===branch);
+ const v=document.getElementById('view');if(!v)return;const branch=userBranch(CURRENT_USER);let q;try{q=await kpTO(db.collection('config').doc('gps').collection('drivers').get(),6000);KP._gpsErr=null;(function(){var nm=function(x){return String(x||'').trim().toLowerCase()};var ok=function(d){var x=d.data()||{};return (window.VENDEDORES||[]).some(function(v){return v.esRepartidor&&v.activo!==false&&(nm(v.usuario)===nm(d.id)||nm(v.usuario)===nm(x.usuario)||nm(v.nombre)===nm(x.nombre));});};var bad=q.docs.filter(function(d){return !ok(d);});bad.forEach(function(d){try{d.ref.delete();}catch(e){}});q={docs:q.docs.filter(ok)};})();}catch(e){q={docs:[]};KP._gpsErr=e;console.warn('GPS lectura',e);}let arr=q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.sucursalId===branch);
  const conUbicacion=arr.filter(x=>x.activo&&x.lat!=null&&x.lng!=null);
  v.innerHTML=`<div class="kp-enterprise-head"><div><div class="kp-kicker">SEGURIDAD Y OPERACIÓN</div><h2>Ubicación de repartidores</h2><p>Repartidores de ${esc(branchName(CURRENT_USER))}. Solo administradores y administradores de envíos de esta sucursal pueden ver esta información. Cada repartidor puede activar o desactivar su ubicación cuando quiera.</p></div></div>
  ${KP._gpsErr?`<div class="kp-empty" style="margin-bottom:10px"><b>Sin conexión con la base de datos.</b><br><small>${esc(KP._gpsErr.message||'Error')} · <a href="#" onclick="KP.gpsPanelAdmin();return false">Reintentar</a></small></div>`:''}<div class="kp-map-heading"><div><b>Mapa de repartidores</b><br><small>Ubicaciones activas de la sucursal seleccionada</small></div><span class="kp-gps-state ${conUbicacion.length?'on':'off'}">● ${conUbicacion.length?conUbicacion.length+' activa(s)':'Sin ubicaciones'}</span></div><div id="kpGpsMap" style="height:340px;border-radius:16px;border:1px solid #303743;margin-bottom:14px;${conUbicacion.length?'':'display:flex;align-items:center;justify-content:center;color:#8b95a7;'}">${conUbicacion.length?'':'Ningún repartidor está compartiendo ubicación en este momento.'}</div>
@@ -8642,10 +8669,10 @@ KP.gpsPanelAdmin=async function(){
  if(conUbicacion.length && typeof L!=='undefined'){
    if(KP._gpsMap){ try{KP._gpsMap.remove();}catch(e){} KP._gpsMap=null; }
    const map=L.map('kpGpsMap');
-   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(map);
    const pts=conUbicacion.map(x=>[Number(x.lat),Number(x.lng)]);
    conUbicacion.forEach(x=>{
-     L.marker([Number(x.lat),Number(x.lng)]).addTo(map).bindPopup(`<b>${esc(x.nombre||x.id)}</b><br>Actualizado ${x.updatedAt?.toDate?x.updatedAt.toDate().toLocaleTimeString('es-HN'):'recientemente'}`);
+     L.marker([Number(x.lat),Number(x.lng)],{icon:L.divIcon({className:'kp-moto',html:'<div class="kp-moto-pin">🛵</div>',iconSize:[46,46],iconAnchor:[23,23],popupAnchor:[0,-24]})}).addTo(map).bindPopup(`<b>${esc(x.nombre||x.id)}</b><br>Actualizado ${x.updatedAt?.toDate?x.updatedAt.toDate().toLocaleTimeString('es-HN'):'recientemente'}`);
    });
    if(pts.length===1) map.setView(pts[0],15); else map.fitBounds(pts,{padding:[30,30]});
    KP._gpsMap=map;
@@ -10832,8 +10859,260 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
       L.push('------------------------');L.push('*Productos*');
       prods.forEach(function(p,i){
         var cat=p.categoria==='__custom__'?(p.categoriaManual||'Personalizado'):(p.categoria||'');
-        var partes=[cat,(p.modelo&&p.modelo!==p.categoria)?p.modelo:'',p.tamano?'Talla '+p.tamano:'',(p.colorEs||p.colorEn)?'Color '+(p.colorEs||p.colorEn):'',p.cantidad>1?'x'+p.cantidad:''].filter(Boolean);
+        var partes=[cat,(p.modelo&&p.modelo!==p.categoria)?p.modelo:'',p.tamano?'Talla '+p.tamano:'',(p.colorEs||p.colorEn)?'Color '+((p.colorEn&&p.colorEs&&p.colorEn!==p.colorEs)?p.colorEn+' ('+p.colorEs+')':(p.colorEn||p.colorEs)):'',p.cantidad>1?'x'+p.cantidad:''].filter(Boolean);
         L.push((i+1)+'. '+partes.join(' · '));
+        if(o.__links&&o.__links[i])L.push('   📷 '+o.__links[i]);
+      });
+    }
+    L.push('------------------------');
+    L.push('*Pago*');
+    L.push('Total: *'+money(o.totalPedido!=null?o.totalPedido:(typeof totalOrden==='function'?totalOrden(o):0))+'*');
+    if(o.metodoPago==='mitad'){
+      L.push('Dividido: '+money(o.montoMitad1)+' ('+(o.metodoPagoMitad1||'')+(o.bancoMitad1?' - '+o.bancoMitad1:'')+') + '+money(o.montoMitad2)+' ('+(o.metodoPagoMitad2||'')+(o.bancoMitad2?' - '+o.bancoMitad2:'')+')');
+    }else{
+      var m=String(o.metodoPago||'-');L.push('Método: '+m.charAt(0).toUpperCase()+m.slice(1)+(o.banco?' - '+o.banco:''));
+    }
+    var cobrar=typeof montoEfectivoACobrar==='function'?Number(montoEfectivoACobrar(o)||0):0;
+    if(o.estadoPago==='pagado'){L.push('Estado: *PAGADO*');}
+    else{L.push('Estado: *PENDIENTE DE PAGO*');if(cobrar>0)L.push('Cobrar al entregar: *'+money(cobrar)+'*');}
+    var comp=comprobantesDe(o);
+    if(comp.length){L.push('Comprobante: adjunto');comp.filter(isHttp).forEach(function(u){L.push(u)});}
+    else if(o.metodoPago!=='efectivo'&&o.estadoPago==='pagado'){L.push('Comprobante: sin adjuntar');}
+    if(o.notas)L.push('Notas: '+clean(o.notas));
+    var guia=o.boxfulShipmentNumber||o.boxfulGuideNumber;
+    if(guia){L.push('Guía Boxful: '+guia);if(o.boxfulTrackingUrl)L.push('Rastreo: '+o.boxfulTrackingUrl);}
+    /* Vendedor y sucursal ya van arriba. La sucursal solo se muestra cuando existen 2+ sucursales. */
+    return L.join('\n');
+  };
+
+  /* ---------- 2. Enviar a WhatsApp (solo texto + links de fotos) ---------- */
+  window.kpEnviarOrdenWhatsApp=async function(ref){
+    var o=(ref&&typeof ref==='object')?ref:findOrder(ref);
+    if(!o){toast('No se encontró la orden');return;}
+    var links=[];
+    for(var pi=0;pi<(o.productos||[]).length;pi++){
+      var u=null;
+      try{ u=await (window.kpEnsureProductPhotoLink?window.kpEnsureProductPhotoLink(o.productos[pi]):null); }catch(e){}
+      links.push(u&&!/^data:/i.test(u)?u:null);
+    }
+    var texto=window.kpTextoOrdenWhatsApp(Object.assign({},o,{__links:links}));
+    window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank','noopener');
+  };
+  window.kpCopyOrderWhatsApp=function(id){
+    const o=(window.ORDERS||[]).find(x=>String(x.id)===String(id));if(!o)return;
+    const productLines=(o.productos||[]).map((p,i)=>`${i+1}. ${p.categoria==='__custom__'?(p.categoriaManual||'Personalizado'):p.categoria||''}${p.modelo?` · ${p.modelo}`:''}${p.tamano?` · Talla/tamaño ${p.tamano}`:''}${p.colorEs||p.colorEn?` · Color ${p.colorEs||p.colorEn}${p.colorEn&&p.colorEs&&p.colorEn!==p.colorEs?` (${p.colorEn})`:''}`:''}${p.cantidad!=null?` · Cantidad ${p.cantidad}`:''}${p.precio!=null?` · Precio ${kpMoneda()} ${Number(p.precio||0).toFixed(2)}`:''}${p.ubicacion?` · Ubicación ${p.ubicacion}`:''}`).join('\n');
+    const skip=new Set(['productos','id']);
+    const allFields=Object.entries(o).filter(([k,v])=>!skip.has(k)&&v!==undefined&&v!==null&&v!=='')
+      .map(([k,v])=>`${k.replace(/([A-Z])/g,' $1').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase())}: ${safeValue(v)}`);
+    const seller=(window.VENDEDORES||[]).find(u=>String(u.nombre)===String(o.vendedor));
+    const lines=[
+      `*ORDEN KPLACE #${kpNumeroOrden(o)}*`,
+      `ID de orden: ${o.id}`,
+      `Tipo de orden: ${o.tipoOrden||'Venta regular'}`,
+      `Tipo de entrega: ${window.TIPO_ENTREGA_LABELS?.[o.tipoEntrega]||o.tipoEntrega||'—'}`,
+      `Cliente: ${o.cliente||'—'}`,
+      `Vendedor: ${o.vendedor||'—'}${seller?.numeroUsuario?` · Usuario #${formatUserNumber(seller.numeroUsuario)}`:''}`,
+      o.productos?.length?`Productos:\n${productLines}`:'Productos: —',
+      `Total: ${kpMoneda()} ${Number(totalOrden(o)||0).toFixed(2)}`,
+      '— Todos los datos registrados —',
+      ...allFields
+    ];
+    const text=lines.join('\n');
+    const done=()=>toast('Orden completa copiada. Pégala en WhatsApp.');
+    if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(done).catch(()=>copyFallback(text));
+    else copyFallback(text);
+  };
+  function copyFallback(text){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Orden completa copiada. Pégala en WhatsApp.');}catch(e){toast('No se pudo copiar');}ta.remove();}
+
+  function updateScheduledIndicator(){
+    const count=(window.ORDERS||[]).filter(o=>o.tipoEntrega==='programada'&&!o.enviadaAPrincipal).length;
+    const actions=document.querySelector('.kp-top-actions');
+    let button=document.getElementById('kpScheduleIndicator');
+    if(!count){button?.remove();return;}
+    if(!actions)return;
+    if(!button){
+      button=document.createElement('button');button.id='kpScheduleIndicator';button.type='button';button.className='kp-schedule-indicator';
+      button.title='Órdenes programadas pendientes';button.setAttribute('aria-label','Abrir órdenes programadas pendientes');
+      button.onclick=()=>window.setTab?.('programadas');
+      const activity=document.getElementById('kpActivityBtn');
+      actions.insertBefore(button,activity||actions.querySelector('.kp-user-button')||null);
+    }
+    button.innerHTML=`📅 <span>${count}</span>`;
+  }
+  const oldRender=window.render;
+  if(typeof oldRender==='function'){
+    window.render=function(){const result=oldRender.apply(this,arguments);setTimeout(updateScheduledIndicator,0);return result;};
+  }
+  const oldRenderNotifBar=window.renderNotifBar;
+  if(typeof oldRenderNotifBar==='function'){
+    window.renderNotifBar=function(){const result=oldRenderNotifBar.apply(this,arguments);setTimeout(updateScheduledIndicator,0);return result;};
+  }
+
+  // Chat: conserva su interfaz actual, abre General por defecto y agrega nota de voz.
+  const originalChat=window.renderKPlaceChats2026;
+  if(typeof originalChat==='function'){
+    window.renderKPlaceChats2026=function(){
+      if(window.KPCHAT26&&!window.KPCHAT26.selected)window.KPCHAT26.selected={id:'channel:general',type:'channel',canalId:'general',name:'General',path:'canalMensajes_general'};
+      originalChat();
+      const row=document.querySelector('.kp-chat26-compose');
+      if(row&&!document.getElementById('kpChat26AudioBtn')){
+        const b=document.createElement('button');b.id='kpChat26AudioBtn';b.type='button';b.title='Enviar audio';b.textContent='🎙';b.onclick=window.kpChat26Audio;
+        row.insertBefore(b,row.querySelector('input')||null);
+      }
+    };
+  }
+  function chatPath(sel){
+    if(sel?.type==='channel')return sel.path;
+    const a=String(window.CURRENT_USER?.usuario||window.CURRENT_USER?.nombre||'');
+    const b=String(sel?.user?.usuario||sel?.user?.nombre||'');
+    return `chatPrivado/${[a,b].sort().map(x=>x.replace(/[^a-zA-Z0-9_-]/g,'_')).join('__')}/mensajes`;
+  }
+  window.kpChat26Audio=async function(){
+    const sel=window.KPCHAT26?.selected;if(!sel)return;
+    const send=async file=>{
+      try{toast('Enviando audio…');const url=await subirArchivoStorage('chat_audios',file);await db.collection(chatPath(sel)).add({autor:CURRENT_USER.nombre,autorUsuario:CURRENT_USER.usuario||CURRENT_USER.nombre,audioUrl:url,audioMime:file.type||'audio/webm',tipo:'audio',ts:firebase.firestore.FieldValue.serverTimestamp()});toast('Audio enviado ✓');}
+      catch(e){console.error(e);toast('No se pudo enviar el audio.');}
+    };
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){const i=document.createElement('input');i.type='file';i.accept='audio/*';i.onchange=()=>i.files?.[0]&&send(i.files[0]);i.click();return;}
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});const chunks=[];
+      const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(x=>MediaRecorder.isTypeSupported(x))||'';
+      const rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+      rec.ondataavailable=e=>e.data?.size&&chunks.push(e.data);
+      rec.onstop=()=>{stream.getTracks().forEach(t=>t.stop());const b=document.getElementById('kpChat26AudioBtn');if(b){b.textContent='🎙';b.onclick=window.kpChat26Audio;}send(new File([new Blob(chunks,{type:rec.mimeType||'audio/webm'})],`nota_${Date.now()}.webm`,{type:rec.mimeType||'audio/webm'}));};
+      rec.start();toast('Grabando… vuelve a tocar el micrófono para enviar');
+      const b=document.getElementById('kpChat26AudioBtn');if(b){b.textContent='⏹';b.onclick=()=>rec.stop();}
+    }catch(e){toast('Permite el micrófono o selecciona un audio del teléfono.');}
+  };
+  if(window.CURRENT_USER){
+    window.CURRENT_USER.numeroUsuario=formatUserNumber(window.CURRENT_USER.numeroUsuario||fixed.numeroUsuario);
+    localStorage.setItem('eunoia_current_user',JSON.stringify(window.CURRENT_USER));
+    if(typeof window.renderUserTag==='function')window.renderUserTag(window.CURRENT_USER);
+  }
+  setTimeout(()=>{if(window.CURRENT_USER&&typeof window.render==='function')window.render();},250);
+  setTimeout(()=>{const b=document.getElementById('kpActivityBtn');if(b){b.textContent='';b.title='Avisos';}},1200);
+})();
+</script>
+
+<style id="kp-fase59-css">
+/* El pie del formulario (Guardar orden) quedaba DETRÁS de la barra inferior del celular */
+.sheet-bg{z-index:100!important}
+.sheet{z-index:101!important;padding-bottom:110px!important}
+.sheet-footer{z-index:102!important;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;box-shadow:0 -6px 18px rgba(15,23,42,.12)}
+.toast{z-index:700!important}
+body:has(.sheet.show) .fab,body:has(.sheet.show) .kp-mobile-nav{display:none!important}
+/* Campana: se oculta del topbar y pasa al botón de perfil */
+#kpActivityBtn{display:none!important}
+.kp-user-button{position:relative}
+.kp-avatar-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e0245e;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;border:2px solid #fff;z-index:2}
+#kpAvisosItem{display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;border:0;background:#fff7e6;color:#8a5b00;font-weight:800;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;font-size:13px}
+/* Chip tipo de entrega en cada orden */
+.kp-tipo-chip{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800;background:#e8f0ff;color:#2a5d9f;vertical-align:middle}
+.kp-tipo-chip.nacional,.kp-tipo-chip.roatan{background:#fff0e0;color:#b45309}
+.kp-tipo-chip.programada{background:#f1e8ff;color:#6a4c93}
+.kp-pay-chip{display:inline-block;margin-left:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800}
+.kp-pay-chip.ok{background:#e3f7e9;color:#1d8a44}.kp-pay-chip.pend{background:#fff4df;color:#9a6700}
+.kp-order-seller{font-size:11px;font-weight:800;color:var(--muted,#9aa5b6);margin:-4px 0 9px 0}.kp-single-field-grid{grid-template-columns:1fr!important}
+body.kp-dark .card.pendiente-entrega{background:#151c28!important;border-left-color:#8b5cf6!important;color:#eef2ff!important}
+body.kp-dark .card.entregado{background:#14251f!important;border-left-color:#35c38a!important}
+body.kp-dark .card.no-entregado{background:#29191d!important;border-left-color:#ef6b73!important}
+body.kp-dark .card.pendiente-entrega .chip.pendiente,body.kp-dark .kp-pay-chip.pend{background:#2a2630!important;color:#e7d39a!important;border-color:#4b4250!important}
+body.kp-dark .card.entregado .chip.pagado,body.kp-dark .kp-pay-chip.ok{background:#183b2d!important;color:#7de2b1!important}
+body.kp-dark .card.no-entregado .chip.manana{background:#3b2025!important;color:#ff9ca3!important}
+body.kp-dark .kp-order-number{background:#211936!important;color:#d8b4fe!important;border:1px solid #443263!important}
+body.kp-dark .kp-tipo-chip{background:#1c2d45!important;color:#a9c9ff!important;border:1px solid #304969!important}
+body.kp-dark .kp-pay-chip{border:1px solid #3a4355!important}
+/* Chat estable en celular */
+body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
+.chatFeedWrap{overscroll-behavior:contain}
+.chatFeedWrap .chatMsgs{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0}
+.chatFeedWrap .chatInputRow{flex:none;position:relative}
+.chatFeedWrap .chatInputRow input,.chatFeedWrap .chatInputRow textarea{font-size:16px!important}
+ @media(max-width:700px){.chatFeedWrap{height:calc(100dvh - 170px)}}
+ @media(max-width:700px){
+   body.kp-chat-open #view{position:fixed!important;top:var(--kp-chat-top,66px)!important;left:0!important;right:0!important;bottom:auto!important;height:calc(var(--kp-chat-vh,100dvh) - var(--kp-chat-top,66px) - env(safe-area-inset-bottom,0px))!important;width:100%!important;margin:0!important;padding:8px!important;z-index:80!important;overflow:hidden!important;box-sizing:border-box!important}
+   body.kp-chat-open .kp-chat-enterprise{display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important;overflow:hidden!important}
+   body.kp-chat-open .kp-chat-enterprise .kp-enterprise-head{flex:0 0 auto;margin-bottom:8px!important}
+   body.kp-chat-open #kpEnterpriseChat{flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow:hidden!important}
+   body.kp-chat-open #kpEnterpriseChat .chatFeedWrap{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;height:100%!important;min-height:0!important;max-height:none!important;overflow:hidden!important}
+   body.kp-chat-open #kpEnterpriseChat .chatMsgs{flex:1 1 auto!important;height:100%!important;min-height:0!important;max-height:none!important;overflow-y:auto!important}
+   body.kp-chat-open .kp-chat-enterprise>.chatInputRow{position:sticky!important;bottom:0!important;z-index:6!important;flex:0 0 auto!important;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))!important}
+   body.kp-chat-open #view>.chatFeedWrap{display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important;max-height:none!important}
+   body.kp-chat-open #view>.chatFeedWrap .chatMsgs{flex:1 1 auto!important;min-height:0!important;max-height:none!important}
+ }
+</style>
+<script id="kp-fase59-js">
+(function(){
+  'use strict';
+  var $=function(s,r){return (r||document).querySelector(s)};
+  if(typeof window.kpMoneda!=='function')window.kpMoneda=function(){var c=(window.KP&&KP._camposConfig&&KP._camposConfig.moneda)||{};return c.simbolo||'L.'};
+  var money=function(n){return (typeof kpMoneda==='function'?kpMoneda():'L.')+' '+Number(n||0).toFixed(2)};
+  var tipoLabel=function(t){return (window.TIPO_ENTREGA_LABELS&&window.TIPO_ENTREGA_LABELS[t])||t||'—'};
+  var findOrder=function(id){return (window.ORDERS||[]).find(function(x){return String(x.id)===String(id)})};
+  var isHttp=function(u){return typeof u==='string'&&/^https?:\/\//i.test(u)};
+
+
+  /* ---------- 0. El formulario de orden NUNCA debe quedarse esperando a Firebase ---------- */
+  function conLimite(fn,fallback,ms){
+    return function(){
+      var args=arguments;
+      return Promise.race([
+        Promise.resolve().then(function(){return fn.apply(null,args)}).catch(function(){return fallback()}),
+        new Promise(function(r){setTimeout(function(){r(fallback())},ms)})
+      ]);
+    };
+  }
+  var oldOpen=window.openNewOrder;
+  if(typeof oldOpen==='function'){
+    window.openNewOrder=function(){
+      var r=oldOpen.apply(this,arguments);
+      setTimeout(function(){
+        var sh=document.getElementById('sheet');
+        if(sh&&!sh.classList.contains('show')){try{toast('No se pudo abrir el formulario. Recarga la página e intenta de nuevo.')}catch(e){}}
+      },5000);
+      return r;
+    };
+  }
+  /* Cualquier error de JavaScript se muestra en pantalla para poder diagnosticarlo */
+  var lastErr=0;
+  window.addEventListener('error',function(e){if(Date.now()-lastErr<3000)return;lastErr=Date.now();try{toast('⚠️ Error: '+(e.message||'desconocido'))}catch(x){}});
+  window.addEventListener('unhandledrejection',function(e){if(Date.now()-lastErr<3000)return;lastErr=Date.now();var m=e.reason&&(e.reason.code||e.reason.message)||String(e.reason);if(/boxful|permission-denied|not-found|unavailable|timeout|offline/i.test(m))return;try{toast('⚠️ '+m)}catch(x){}});
+
+  /* ---------- 1. Texto completo de la orden para WhatsApp ---------- */
+  function comprobantesDe(o){
+    return [].concat(o.comprobantes||[],o.comprobantesMitad1||[],o.comprobantesMitad2||[],o.guiaUrl||[]).filter(function(u){return typeof u==='string'&&u});
+  }
+  var TIPOS={tegucigalpa:'Tegucigalpa',nacional:'Nivel Nacional',roatan:'Roatán',programada:'Programada'};
+  window.kpNombreEmpresa=function(){
+    var c=(window.KP&&KP._camposConfig)||{}, x=window.KPLACE_ACTIVE_CONTEXT||{}, u=window.CURRENT_USER||{};
+    var local='';try{local=localStorage.getItem('kp_company_name')||'';}catch(e){}
+    return String(c.nombreNegocio||x.companyName||u.companyName||local||'KPlace').trim();
+  };
+  window.kpTextoOrdenWhatsApp=function(o){
+    var L=[], num=(typeof kpNumeroOrden==='function'&&o.id)?kpNumeroOrden(o):'';
+    var clean=function(v){return String(v==null?'':v).replace(/\s*\n+\s*/g,', ').trim()};
+    var extra={cambio:'ORDEN DE CAMBIO',remplazo:'ORDEN DE REMPLAZO',hazab_envio:'ENVÍO A PERSONALIZAR (HAZAB)',hazab_listo:'LISTA - RECOGER EN HAZAB',frecuente:'PUNTO FRECUENTE',recoleccion:'PUNTO DE RECOLECCIÓN'}[o.tipoOrden];
+    L.push('*'+kpNombreEmpresa().toUpperCase()+'*');
+    L.push('*ORDEN'+(num?' #'+num:'')+'*'+(extra?'  ('+extra+')':''));
+    if(o.vendedor)L.push('Vendedor: *'+clean(o.vendedor)+'*');
+    if((window.KP&&Array.isArray(KP.branches)&&KP.branches.length>1) && o.sucursalNombre)L.push('Sucursal: '+clean(o.sucursalNombre));
+    L.push('Entrega: *'+(TIPOS[o.tipoEntrega]||o.tipoEntrega||'-')+'*');
+    if(o.fecha||o.fechaProgramada)L.push('Fecha: '+(o.fechaProgramada||o.fecha));
+    L.push('------------------------');
+    L.push('*Cliente:* '+clean(o.cliente||'-'));
+    if(o.numero)L.push('Tel: '+o.numero+(o.numero2?' / '+o.numero2:''));
+    if(o.direccion)L.push('Dirección: '+clean(o.direccion));
+    var zona=[o.municipio,o.departamento].filter(Boolean).join(', ');
+    if(zona)L.push('Zona: '+zona);
+    if(o.puntoRecoleccion&&o.puntoRecoleccion.nombre)L.push('Recolectar en: '+o.puntoRecoleccion.nombre+(o.puntoRecoleccion.direccion?' - '+clean(o.puntoRecoleccion.direccion):''));
+    var prods=o.productos||[];
+    if(prods.length){
+      L.push('------------------------');L.push('*Productos*');
+      prods.forEach(function(p,i){
+        var cat=p.categoria==='__custom__'?(p.categoriaManual||'Personalizado'):(p.categoria||'');
+        var partes=[cat,(p.modelo&&p.modelo!==p.categoria)?p.modelo:'',p.tamano?'Talla '+p.tamano:'',(p.colorEs||p.colorEn)?'Color '+((p.colorEn&&p.colorEs&&p.colorEn!==p.colorEs)?p.colorEn+' ('+p.colorEs+')':(p.colorEn||p.colorEs)):'',p.cantidad>1?'x'+p.cantidad:''].filter(Boolean);
+        L.push((i+1)+'. '+partes.join(' · '));
+        if(o.__links&&o.__links[i])L.push('   📷 '+o.__links[i]);
       });
     }
     L.push('------------------------');
@@ -12567,15 +12846,19 @@ const skip=/^(config|solicitudes|kp_archivos|push_|companyStatus|drivers|canalAu
 function emit(d){try{if(!window.CURRENT_USER)return;const k=d.tipo+d.link;if(seen[k]&&Date.now()-seen[k]<3000)return;seen[k]=Date.now();
   A.call(db.collection('push_eventos'),{titulo:d.t,cuerpo:d.b,tipo:d.tipo,link:d.link,autorEmail:((firebase.auth&&firebase.auth().currentUser)||{}).email||'',enviado:false,ts:E.FieldValue.serverTimestamp()});}catch(e){}}
 function ordEv(id,d){const o=(typeof ORDERS!=='undefined'&&ORDERS.find(x=>x.id===id))||{},c=d.cliente||o.cliente||'Cliente';
-  if(d.entregado===true)return {tipo:'entregado',t:'✅ Paquete entregado',b:c};
-  if('estadoNacional' in d)return {tipo:'nacional',t:'📦 Cambió el proceso nacional',b:c+' → '+d.estadoNacional};
-  if(d.trackingUrl||d.guideUrl)return {tipo:'guia',t:'🧾 Guía creada',b:c};
-  return {tipo:'orden',t:'✏️ Cambio en una orden',b:c};}
-function onWrite(p,d){try{if(!d||typeof d!=='object')return;const m=p.match(/^orders\/([^/]+)$/);if(m)emit({...ordEv(m[1],d),link:'orden:'+m[1]});}catch(e){}}
+  const EE={en_ruta:'🛵 Repartidor en ruta',llego:'📍 El repartidor llegó',entregada:'✅ Paquete entregado',no_entregada:'⚠️ No se pudo entregar'};
+  if(d.entregado===true)return {tipo:'entregado',t:'✅ Paquete entregado',b:'Cliente: '+c};
+  if(d.estadoEntrega&&EE[d.estadoEntrega])return {tipo:'entrega',t:EE[d.estadoEntrega],b:'Cliente: '+c};
+  if('estadoNacional' in d)return {tipo:'nacional',t:d.estadoNacional==='empacado'?'📦 Orden empacada':'📦 Cambió el proceso nacional',b:'Cliente: '+c+(d.estadoNacional&&d.estadoNacional!=='empacado'?' → '+d.estadoNacional:'')};
+  if(d.trackingUrl||d.guideUrl||d.boxfulCreatedAt)return {tipo:'guia',t:'🧾 Guía creada',b:'Cliente: '+c};
+  if('comprobantes' in d||'comprobantesMitad1' in d||'comprobantesMitad2' in d)return {tipo:'comprobante',t:'🧾 Comprobante subido',b:'Cliente: '+c};
+  if('metodoPago' in d)return {tipo:'pago',t:'💳 Cambió el método de pago',b:'Cliente: '+c+(d.metodoPago?' → '+d.metodoPago:'')};
+  return {tipo:'orden',t:'✏️ Cambio en una orden',b:'Cliente: '+c};}
+  function onWrite(p,d){try{if(!d||typeof d!=='object')return;const m=p.match(/^orders\/([^/]+)$/);if(m)emit({...ordEv(m[1],d),link:'orden:'+m[1]});}catch(e){}}
 E.DocumentReference.prototype.set=function(d){onWrite(this.path,d);return S.apply(this,arguments);};
 E.DocumentReference.prototype.update=function(d){onWrite(this.path,d);return U.apply(this,arguments);};
 E.CollectionReference.prototype.add=function(d){try{const p=this.path;
-  if(p==='orders')emit({tipo:'orden_nueva',t:'🆕 Orden nueva',b:(d&&d.cliente)||'Cliente',link:'ordenes:'});
+  if(p==='orders')emit({tipo:'orden_nueva',t:'🆕 Orden nueva',b:'Cliente: '+((d&&d.cliente)||'Cliente'),link:'ordenes:'});
   else if(!skip.test(p)&&d&&d.autor)emit({tipo:'chat',t:'💬 '+p.replace(/_/g,' · '),b:d.autor+': '+(d.texto||'📎 archivo'),link:'chat:'+p});}catch(e){}
   return A.apply(this,arguments);};
 async function registrar(){
@@ -12674,6 +12957,50 @@ KP.filterUsers=function(){
     if(!s.exists||!s.data().foto){o.textContent='La foto ya no está disponible.';return;}
     o.innerHTML='';var im=new Image();im.src=s.data().foto;im.style.cssText='max-width:100%;max-height:100%;object-fit:contain';o.appendChild(im);
   }).catch(function(){o.textContent='No se pudo cargar la foto.';});
+})();
+</script>
+<script>
+/* ===== KPlace · El repartidor puede cambiar el método de pago ===== */
+(function(){
+const $=id=>document.getElementById(id);
+const BANCOS=['BAC','FICOHSA','ATLÁNTIDA','DAVIVIENDA','BANPAIS','OCCIDENTE','CUSCATLAN','KASH'];
+const METODOS=[['efectivo','Efectivo'],['transferencia','Transferencia'],['pos','Tarjeta (POS)']];
+const IN='width:100%;padding:11px;border:1px solid #cfd4da;border-radius:10px;font-size:15px;margin:4px 0 10px;box-sizing:border-box;color:#1c1e21;background:#fff';
+const opt=(arr,sel)=>arr.map(x=>{const v=Array.isArray(x)?x[0]:x,t=Array.isArray(x)?x[1]:x;return '<option value="'+v+'"'+(v===sel?' selected':'')+'>'+t+'</option>';}).join('');
+const money0=n=>(typeof money==='function'?money(n):'L. '+Number(n||0).toFixed(2));
+const totalDe=o=>Number(o.totalPedido!=null?o.totalPedido:(typeof totalOrden==='function'?totalOrden(o):0))||0;
+function parte(n,met,banco,monto){return '<div style="border:1px solid #e3e6ea;border-radius:12px;padding:10px;margin-bottom:10px"><b>Parte '+n+'</b><label style="display:block;font-size:12px;color:#555">Método</label><select id="kpPm'+n+'" style="'+IN+'">'+opt(METODOS,met)+'</select><div id="kpPb'+n+'w"><label style="display:block;font-size:12px;color:#555">Banco</label><select id="kpPb'+n+'" style="'+IN+'">'+opt(BANCOS,banco)+'</select></div><label style="display:block;font-size:12px;color:#555">Monto</label><input id="kpPa'+n+'" type="number" inputmode="decimal" value="'+(monto||'')+'" style="'+IN+'"></div>';}
+window.kpCambiarPago=function(id){
+  const o=(window.ORDERS||[]).find(x=>x.id===id);if(!o)return;
+  const total=totalDe(o),ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px';
+  ov.innerHTML='<div style="background:#fff;color:#1c1e21;border-radius:16px;width:100%;max-width:420px;padding:16px;max-height:92vh;overflow:auto"><h3 style="margin:0 0 4px">Método de pago</h3><div style="color:#555;margin-bottom:10px">'+escapeHtml(o.cliente||'Cliente')+' · Total '+money0(total)+'</div>'
+   +'<label style="font-size:12px;color:#555">¿Cómo pagó?</label><select id="kpPm" style="'+IN+'">'+opt([...METODOS,['mitad','Pago dividido']],o.metodoPago||'efectivo')+'</select>'
+   +'<div id="kpPone"><div id="kpPbw"><label style="font-size:12px;color:#555">Banco</label><select id="kpPb" style="'+IN+'">'+opt(BANCOS,o.banco)+'</select></div></div>'
+   +'<div id="kpPtwo" style="display:none">'+parte(1,o.metodoPagoMitad1||'efectivo',o.bancoMitad1,o.montoMitad1)+parte(2,o.metodoPagoMitad2||'transferencia',o.bancoMitad2,o.montoMitad2)+'</div>'
+   +'<div id="kpPerr" style="color:#c0392b;font-size:13px;margin-bottom:8px"></div><div style="display:flex;gap:8px"><button id="kpPc" style="flex:1;padding:12px">Cancelar</button><button id="kpPs" style="flex:1;padding:12px;background:#2e7d32;color:#fff;border:0;border-radius:10px;font-weight:700">Guardar</button></div></div>';
+  document.body.appendChild(ov);
+  const q=s=>ov.querySelector(s),show=()=>{const m=q('#kpPm').value;q('#kpPone').style.display=m==='mitad'?'none':'';q('#kpPtwo').style.display=m==='mitad'?'':'none';q('#kpPbw').style.display=m==='transferencia'?'':'none';[1,2].forEach(n=>q('#kpPb'+n+'w').style.display=q('#kpPm'+n).value==='transferencia'?'':'none');};
+  ['#kpPm','#kpPm1','#kpPm2'].forEach(s=>q(s).onchange=show);
+  q('#kpPa1').oninput=()=>{const a=Number(q('#kpPa1').value)||0;if(a>0&&a<total)q('#kpPa2').value=(total-a).toFixed(2).replace(/\.00$/,'');};
+  show();q('#kpPc').onclick=()=>ov.remove();
+  q('#kpPs').onclick=async()=>{
+    const m=q('#kpPm').value,err=q('#kpPerr');let d={pagoCambiadoPor:(window.CURRENT_USER||{}).nombre||'',pagoCambiadoTs:Date.now()};
+    if(m==='mitad'){
+      const a1=Number(q('#kpPa1').value)||0,a2=Number(q('#kpPa2').value)||0;
+      if(a1<=0||a2<=0||Math.abs(a1+a2-total)>0.5){err.textContent='Los dos montos deben sumar '+money0(total)+'.';return;}
+      const m1=q('#kpPm1').value,m2=q('#kpPm2').value;
+      Object.assign(d,{metodoPago:'mitad',banco:'',montoMitad1:a1,metodoPagoMitad1:m1,bancoMitad1:m1==='transferencia'?q('#kpPb1').value:'',montoMitad2:a2,metodoPagoMitad2:m2,bancoMitad2:m2==='transferencia'?q('#kpPb2').value:''});
+    }else Object.assign(d,{metodoPago:m,banco:m==='transferencia'?q('#kpPb').value:'',montoMitad1:0,montoMitad2:0,metodoPagoMitad1:'',metodoPagoMitad2:'',bancoMitad1:'',bancoMitad2:''});
+    try{await db.collection('orders').doc(id).update(d);ov.remove();toast('Método de pago actualizado');}catch(e){err.textContent='No se pudo guardar: '+(e.code||e.message);}
+  };
+};
+const OA=window.orderActions;
+if(typeof OA==='function')window.orderActions=function(o){
+  let h=OA.apply(this,arguments);
+  try{if(window.CURRENT_USER&&CURRENT_USER.esRepartidor&&o&&o.entregado!==true)h+='<div style="margin-top:8px"><button class="btn" onclick="kpCambiarPago(\''+o.id+'\')">💳 Cambiar método de pago</button></div>';}catch(e){}
+  return h;
+};
 })();
 </script>
 </body>
