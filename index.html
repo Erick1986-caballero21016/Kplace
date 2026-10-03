@@ -15710,14 +15710,19 @@ html body .card .kp-pay-chip.ok,html body.kp-dark .card .kp-pay-chip.ok{backgrou
 html body .card .kp-pay-chip.pend,html body.kp-dark .card .kp-pay-chip.pend{background:rgba(196,170,110,.10)!important;color:#c3ad7e!important;border:1px solid rgba(196,170,110,.22)!important;font-weight:600!important}
 html body .card .row .total,html body.kp-dark .card .row .total{color:#c3cbda!important;background:rgba(148,163,184,.07)!important;font-size:16px!important;font-weight:700!important;padding:5px 10px!important}
 
-/* 4) Producto + foto arriba, compacto */
-.card .kpo-photos.kpo-top{display:flex!important;align-items:center;gap:10px;padding:12px 14px 2px!important;overflow:hidden!important}
-.kpo-thumbs{display:flex;gap:6px;flex:0 0 auto}
-.kpo-thumbs .kpo-ph{width:54px!important;height:54px!important;border-radius:12px!important;box-shadow:none!important}
-.kpo-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
-.kpo-info .kpo-l{font-size:12.5px;line-height:1.25;color:#aab4c6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.kpo-info .kpo-l b{color:#d5dcea;font-weight:600}
-.kpo-info .kpo-more{font-size:11px;color:#7f8ba0}
+/* 4) Producto + foto arriba (una fila por producto, compacto) y sin duplicado en detalles */
+.card .kpo-photos.kpo-top{display:flex!important;flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px 4px!important;overflow:visible!important}
+.kpo-r{display:flex;align-items:center;gap:10px;min-width:0}
+.kpo-r .kpo-ph{width:48px!important;height:48px!important;border-radius:11px!important;box-shadow:none!important;flex:0 0 auto}
+.kpo-r .kpo-nophoto{width:48px;height:48px;border-radius:11px;background:rgba(148,163,184,.08);border:1px dashed rgba(148,163,184,.25);flex:0 0 auto;display:grid;place-items:center;font-size:18px;opacity:.6}
+.kpo-l{flex:1;min-width:0;font-size:13px;line-height:1.3;color:#aab4c6;word-break:break-word}
+.kpo-l b{color:#dbe2ee;font-weight:600}
+.kpo-more{font-size:11.5px;color:#7f8ba0;padding-left:2px}
+.card div:has(>.prodline){display:none!important}
+.card .prodline{display:none!important}
+
+/* 6) Chat: nombres legibles y reproductor oscuro */
+.bubble audio,.kp-chat-enterprise .bubble audio{filter:none!important;color-scheme:dark!important}
 
 /* 5) Ventana de notificaciones */
 .kpnw{position:fixed;inset:0;z-index:99999;background:#0b1220;color:#e8edf8;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);font-family:inherit}
@@ -15771,14 +15776,17 @@ function wr(a){try{localStorage.setItem(IK,JSON.stringify(a.slice(0,80)))}catch(
 function unread(){var n=rd().filter(function(x){return !x.r}).length;
   if('Notification' in window&&Notification.permission==='default')n++;return n}
 function paintBadge(){var n=unread();document.querySelectorAll('.kpn-badge').forEach(function(b){b.textContent=n>9?'9+':n;b.style.display=n?'':'none'})}
+var ERRX=/(rechaz|401|\b[45]\d\d\b|error|no se pudo|fall[oó]|autentic|token|fetch|network|sin conexi|no devolvi|unavailable)/i;
 function grupo(x){
   if(x.tipo==='chat')return 'chat';
   if(x.tipo==='sistema')return 'sistema';
+  if(x.tipo==='boxful'&&ERRX.test((x.t||'')+' '+(x.b||'')))return 'sistema';
   return 'pedidos';
 }
 window.kpInboxAdd=function(t,b,o){
   o=o||{};var a=rd(),now=Date.now();
-  var dup=a.find(function(x){return x.t===(t||'Aviso')&&x.b===(b||'')&&Math.abs(now-x.ts)<120000});
+  var win=(o.tipo==='sistema'||o.tipo==='boxful'||/boxful/i.test(t||''))?21600000:120000;
+  var dup=a.find(function(x){return x.t===(t||'Aviso')&&x.b===(b||'')&&Math.abs(now-x.ts)<win});
   if(dup){var ch=false;if(o.link&&!dup.link){dup.link=o.link;ch=true}if(o.tipo&&dup.tipo==='otros'){dup.tipo=o.tipo;ch=true}if(ch)wr(a);return}
   a.unshift({id:o.id||('l'+now+Math.random().toString(36).slice(2,6)),t:t||'Aviso',b:b||'',ts:o.ts||now,r:0,tipo:o.tipo||(/boxful/i.test(t||'')?'boxful':'otros'),link:o.link||''});
   wr(a);
@@ -15786,15 +15794,39 @@ window.kpInboxAdd=function(t,b,o){
 
 /* ---------- C) Los errores técnicos ya no salen en pantalla: van a notificaciones ---------- */
 var TECH=/(Uncaught|ReferenceError|TypeError|SyntaxError|RangeError|is not defined|is not a function|Cannot read|Cannot set|Failed to fetch|NetworkError|Script error|insufficient permissions)/i;
+var QUIET=/^\s*(?:🎤\s*)?(Grabando|Enviando audio|Audio enviado|Subiendo audio|Cargando)/i;
+var BOXERR=/boxful/i, BOXALERT=/problema con el paquete|Entregado:.*gu[ií]a/i;
 var T1=window.toast;
 window.toast=function(m){
   var s=String(m==null?'':m);
+  if(QUIET.test(s))return;
+  if(BOXALERT.test(s)||(BOXERR.test(s)&&ERRX.test(s))){
+    window.kpInboxAdd('Boxful',s.replace(/^\s*(⚠️?\s*)?(Error\s+)?Boxful:\s*/i,''),{tipo:'boxful'});
+    return;
+  }
   if(/^\s*⚠️?\s*/.test(s)&&(TECH.test(s)||/^\s*⚠️?\s*Error\b/i.test(s))){
     window.kpInboxAdd('⚠️ Aviso del sistema',s.replace(/^\s*⚠️?\s*/,'').replace(/^Error:\s*/i,''),{tipo:'sistema'});
     return;
   }
   return T1.apply(this,arguments);
 };
+/* Red de seguridad: si algo escribe directo en el cuadro de aviso, se limpia */
+(function(){var tb=$('toast');if(!tb)return;
+  new MutationObserver(function(){var s=tb.textContent||'';
+    if(!s)return;
+    if(QUIET.test(s)||BOXALERT.test(s)||(BOXERR.test(s)&&ERRX.test(s))||(TECH.test(s)&&/^\s*⚠️?\s*Error/i.test(s))){
+      if(!QUIET.test(s))window.kpInboxAdd(/boxful/i.test(s)?'Boxful':'⚠️ Aviso del sistema',s.replace(/^\s*⚠️?\s*/,''),{tipo:/boxful/i.test(s)?'boxful':'sistema'});
+      tb.classList.remove('show');tb.textContent='';
+    }
+  }).observe(tb,{childList:true,characterData:true,subtree:true});})();
+/* Subida de audios: sin tarjeta de progreso */
+var KUB=window.kpUploadBar;
+if(typeof KUB==='function'){
+  window.kpUploadBar=function(name){
+    if(/^(nota_|audio_)|\.(webm|m4a|ogg|oga|mp3|aac|wav)$/i.test(String(name||'')))return {set:function(){},done:function(){},fail:function(){}};
+    return KUB.apply(this,arguments);
+  };
+}
 
 /* ---------- D) Avisos de pedidos y chat desde Firebase (sin depender del push) ---------- */
 var listening=false;
@@ -15921,46 +15953,75 @@ window.setTab=function(id){if(id==='notificaciones'){openNW();return}return ST2.
 setInterval(function(){var o=$('kpNW');if(o)renderList()},60000);
 paintBadge();
 
-/* ---------- F) Audios del chat sin fondo ---------- */
-function limpiaAudio(n){
+/* ---------- F) Audios sin fondo + nombres de autor legibles ---------- */
+function hue(s){var h=0;String(s).split('').forEach(function(c){h=(h*31+c.charCodeAt(0))%360});return h}
+function fixChat(n){
   if(!n||n.nodeType!==1)return;
   var bs=n.matches&&n.matches('.bubble')?[n]:[];
   if(n.querySelectorAll)bs=bs.concat([].slice.call(n.querySelectorAll('.bubble')));
   bs.forEach(function(b){
-    if(!b.querySelector('audio'))return;
-    b.dataset.kpc='1';
-    b.style.setProperty('background','transparent','important');
-    b.style.setProperty('box-shadow','none','important');
-    b.style.setProperty('border','0','important');
+    if(b.querySelector('audio')){
+      b.style.setProperty('background','transparent','important');
+      b.style.setProperty('box-shadow','none','important');
+      b.style.setProperty('border','0','important');
+    }
+    var a=b.querySelector('.bubbleAutor');
+    if(a&&!a.dataset.kpa){
+      a.dataset.kpa='1';
+      var m=(getComputedStyle(a).color.match(/[\d.]+/g)||[]).map(Number);
+      if(m.length>=3&&(0.299*m[0]+0.587*m[1]+0.114*m[2])/255<0.55){
+        var nm=(a.textContent||'').trim().toLowerCase().replace(/\s+mod$/,'');
+        a.style.setProperty('color','hsl('+hue(nm)+' 70% 74%)','important');
+      }
+    }
   });
 }
-new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(limpiaAudio)})}).observe(document.body,{childList:true,subtree:true});
-limpiaAudio(document.body);
+new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(fixChat)})}).observe(document.body,{childList:true,subtree:true});
+fixChat(document.body);
 
-/* ---------- G) Tarjeta: producto + foto compacta arriba ---------- */
+/* ---------- G) Tarjeta: una fila por producto (foto + nombre completo con colores EN/ES) ---------- */
+function colorTxt(p){
+  var en=(p.colorEn||'').trim(),es=(p.colorEs||'').trim();
+  if(en&&es&&en.toLowerCase()!==es.toLowerCase())return en+' ('+es+')';
+  return en||es;
+}
 var prevCard=window.orderCard;
 if(typeof prevCard==='function'){
   window.orderCard=function(o){
     var h=prevCard.apply(this,arguments);
     try{
-      var m=h.match(/<div class="kpo-photos">([\s\S]*?)<\/div>/),imgs=[];
-      if(m){imgs=(m[1].match(/<img[^>]*>/g)||[]).slice(0,3);h=h.replace(m[0],'')}
       var prods=(o&&o.productos)||[];
-      if(!imgs.length&&!prods.length)return h;
-      var lines=prods.slice(0,3).map(function(p){
+      h=h.replace(/<div class="kpo-photos">[\s\S]*?<\/div>/,'');
+      if(!prods.length)return h;
+      var rows=prods.slice(0,4).map(function(p){
         var cat=p.categoria==='__custom__'?(p.categoriaManual||'Personalizado'):(p.categoria||'');
-        var rest=[(p.modelo&&p.modelo!==p.categoria)?p.modelo:'',p.tamano||'',p.colorEs||p.colorEn||''].filter(Boolean).join(' · ');
+        var rest=[(p.modelo&&p.modelo!==p.categoria)?p.modelo:'',p.tamano||'',colorTxt(p)].filter(Boolean).join(' · ');
         var q=Number(p.cantidad)>1?' ×'+p.cantidad:'';
-        return '<div class="kpo-l"><b>'+esc(cat)+'</b>'+(rest?' · '+esc(rest):'')+esc(q)+'</div>';
+        var u=null;try{u=window.kpGetProductPhoto&&kpGetProductPhoto(p)}catch(e){}
+        var img=u?'<img class="kpo-ph" src="'+esc(u)+'" onclick="verFoto(this.src)">':'<span class="kpo-nophoto">📦</span>';
+        return '<div class="kpo-r">'+img+'<div class="kpo-l"><b>'+esc(cat)+'</b>'+(rest?' · '+esc(rest):'')+esc(q)+'</div></div>';
       }).join('');
-      if(prods.length>3)lines+='<div class="kpo-more">+'+(prods.length-3)+' más</div>';
-      var top='<div class="kpo-photos kpo-top">'+(imgs.length?'<div class="kpo-thumbs">'+imgs.join('')+'</div>':'')+(lines?'<div class="kpo-info">'+lines+'</div>':'')+'</div>';
+      if(prods.length>4)rows+='<div class="kpo-more">+'+(prods.length-4)+' más</div>';
+      var top='<div class="kpo-photos kpo-top">'+rows+'</div>';
       var mm=h.match(/<div class="card[^"]*">/);
       if(mm){var k=h.indexOf(mm[0])+mm[0].length;h=h.slice(0,k)+top+h.slice(k)}
     }catch(e){console.warn('card',e)}
     return h;
   };
 }
+
+/* ---------- G2) Botón Editar: abre el formulario actual de órdenes ---------- */
+window.editOrder=function(id){
+  try{
+    var o=(window.ORDERS||[]).find(function(x){return String(x.id)===String(id)});
+    if(!o){toast('No se encontró la orden');return}
+    window.editingOrderId=o.id;
+    window.draftProducts=JSON.parse(JSON.stringify(o.productos||[]));
+    if(window.KP&&typeof KP.openEnterpriseOrder==='function'){
+      KP.openEnterpriseOrder(o).catch(function(e){console.error(e);toast('No se pudo abrir la orden para editar')});
+    }else toast('El formulario no está listo, intenta de nuevo');
+  }catch(e){console.error(e);toast('No se pudo abrir la orden para editar')}
+};
 
 /* ---------- H) WhatsApp: cada producto lleva su foto (link) justo debajo ---------- */
 window.kpEnviarOrdenWhatsApp=async function(ref){
