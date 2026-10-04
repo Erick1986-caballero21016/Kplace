@@ -1147,7 +1147,8 @@ window.formatUserNumber=window.formatUserNumber||function(n){return String(n||'1
 /* Captura de errores: van a Notificaciones con el detalle de qué pasó y dónde */
 /* Dirección donde se ven las fotos de producto que se mandan por WhatsApp (vacío = usa la dirección de la app) */
 window.KP_LINK_BASE='https://kplace-hn.github.io/';
-document.addEventListener('click',function(e){var p=e.target.closest&&e.target.closest('#f_tipoEntrega .pill');if(!p)return;setTimeout(function(){var v=(document.querySelector('#f_tipoEntrega .pill.sel')||{}).dataset;var w=document.getElementById('f_municipioWrap');if(w)w.classList.toggle('hide',!(v&&(v.v==='nacional'||v.v==='roatan')))},0)});
+document.addEventListener('click',function(e){var p=e.target.closest&&e.target.closest('#f_tipoEntrega .pill');if(!p)return;setTimeout(function(){var v=((document.querySelector('#f_tipoEntrega .pill.sel')||{}).dataset||{}).v;var t=function(id,on){var w=document.getElementById(id);if(w)w.classList.toggle('hide',!on)};t('f_municipioWrap',v==='nacional');t('f_roatanWrap',v==='roatan');t('f_fechaProgWrap',v==='programada')},0)});
+document.addEventListener('click',function(e){var p=e.target.closest&&e.target.closest('#f_envioRoatan .pill');if(!p)return;document.querySelectorAll('#f_envioRoatan .pill').forEach(function(x){x.classList.remove('sel')});p.classList.add('sel')});
 document.addEventListener('input',function(e){if(e.target&&e.target.style&&e.target.style.outline)e.target.style.outline=''});
 window.__kpErrQ=[];
 window.kpReportError=function(msg,where){var b=String(msg||'Error desconocido')+(where?' · '+where:'');
@@ -6265,34 +6266,40 @@ function abrirRastreoConfirmado(id){
 function renderRastreosNacionales(){
   const view=document.getElementById('view');
   const envios=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&(o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment)&&
-    (globalSearchTerm?orderMatchesSearch(o):o.fecha===selectedDate)).slice().sort((a,b)=>(b.boxfulCreatedAt||b.fecha||'').localeCompare(a.boxfulCreatedAt||a.fecha||''));
+    (globalSearchTerm?(orderMatchesSearch(o)||kpGuiaMatch(o,globalSearchTerm)):(window.kpRastreoTodas||kpDiaCreacion(o)===selectedDate))).slice().sort((a,b)=>(b.boxfulCreatedAt||b.fecha||'').localeCompare(a.boxfulCreatedAt||a.fecha||''));
   const rows=envios.map(o=>{
     const shipment=o.boxfulShipment||{};
     const links=boxfulShipmentLinks(shipment);
-    const numero=o.boxfulShipmentNumber||o.boxfulGuideNumber||shipment.shipmentNumber||shipment.guideNumber||shipment.trackingNumber||shipment.shipment?.shipmentNumber||'—';
+    const numero=o.boxfulShipmentNumber||o.boxfulGuideNumber||kpBuscarGuia(shipment)||'—';
     const status=boxfulStatusText(o);
-    const pdf=o.boxfulGuideUrl||links.guideUrl||shipment.guideUrl||shipment.labelUrl||shipment.pdfUrl||'';
+    const pdf=kpPdfDe(o);
     const tracking=o.boxfulTrackingUrl||links.trackingUrl||shipment.trackingUrl||'';
     const wa=boxfulTrackingWhatsAppUrl(o,numero,tracking);
+    const cod=kpGuiaCobro(o)>0;
     return `<div class="kp-panel" style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-        <div><div class="kp-kicker">Orden ${escapeHtml(String(o.id).slice(-8))}</div><h3 style="margin:3px 0 5px;">${escapeHtml(o.cliente||'Cliente')}</h3><div class="small">${escapeHtml(o.fecha||'')} · ${escapeHtml(o.municipio||o.departamento||'Envío nacional')}</div></div>
-        <span class="chip boxful">📦 ${escapeHtml(status)}</span>
+        <div><label style="display:flex;gap:6px;align-items:center;font-size:11px;font-weight:800"><input type="checkbox" ${kpSel.has(o.id)?'checked':''} onchange="kpSelToggle('${o.id}')"> Orden ${escapeHtml(String(o.id).slice(-8))}</label><h3 style="margin:3px 0 5px;">${escapeHtml(o.cliente||'Cliente')}</h3><div class="small">${escapeHtml(kpDiaCreacion(o)||'')} · ${escapeHtml(o.municipio||o.departamento||'Envío nacional')}</div></div>
+        <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip ${cod?'pendiente':'pagado'}">${cod?'COD':'Pagada'}</span>${o.waEnviadoCliente?'<span class="chip pagado">Enviada al cliente</span>':''}<span class="chip boxful">${escapeHtml(status==='success'?'Guía creada ✅':status)}</span></span>
       </div>
       <div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.5fr);gap:8px 14px;margin-top:13px;font-size:12px;">
         <div><span class="small">Número de guía</span><br><b>${escapeHtml(numero)}</b></div>
         <div><span class="small">Paquetería</span><br><b>${escapeHtml(boxfulQuoteName(o.boxfulSelectedQuote||{},0))}</b></div>
       </div>
-      <div class="small" style="margin-top:10px;">Estado del link: <b>${escapeHtml(status)}</b></div>
-      <div class="btnrow" style="margin-top:12px;">
+      <div class="btnrow" style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
         ${tracking?`<button class="btn primary sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Abrir rastreo</button>`:'<span class="small">Link de seguimiento no guardado</span>'}
-        ${pdf?`<a class="btn green sm" href="${escapeHtml(pdf)}" target="_blank" rel="noopener">📄 Guía PDF</a>`:''}
-        ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}
+        ${pdf?`<a class="btn green sm" href="${escapeHtml(pdf)}" target="_blank" rel="noopener">📄 PDF</a>`:''}
+        ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 WhatsApp cliente</a>`:'<span class="small">Sin teléfono</span>'}
+        ${pdf&&navigator.share?`<button class="btn sm" onclick="navigator.share({title:'Guía',url:'${escapeHtml(pdf)}'}).catch(()=>{})">📤 Compartir PDF</button>`:''}
         ${!o.retrasado&&!o.boxfulCancelled?`<button class="btn gold sm" onclick="marcarRetraso('${o.id}')">🚩 Marcar retraso</button>`:''}
+        ${tracking?`<button class="btn sm" onclick="kpCopiarLink('${escapeHtml(tracking)}')">📋 Copiar link</button>`:''}
       </div>
     </div>`;
   }).join('');
-  view.innerHTML=renderSearchBar()+`<div class="kp-dashboard-head"><div><div class="kp-kicker">Envíos nacionales</div><h2>Rastreo de pedidos</h2><p>Mostrando las guías del ${fmtDate(selectedDate)}. Cambiá la fecha arriba para consultar otro día.</p></div><button class="btn" onclick="setTab('boxful')">← Envíos nacionales</button></div>${envios.length?rows:`<div class="empty">No hay guías para ${fmtDate(selectedDate)}.</div>`}`;
+  const ids=JSON.stringify(envios.map(o=>o.id)).replace(/"/g,'&quot;');
+  const totCod=envios.reduce((t,o)=>t+Number(kpGuiaCobro(o)||0),0);
+  view.innerHTML=renderSearchBar()+`<div class="kp-dashboard-head"><div><div class="kp-kicker">Envíos nacionales</div><h2>Rastreo de pedidos</h2><p>${window.kpRastreoTodas?'Todas las guías creadas.':'Guías creadas el '+fmtDate(selectedDate)+'. Cambiá la fecha arriba para ver otro día.'}</p></div><button class="btn" onclick="setTab('boxful')">← Envíos nacionales</button></div>
+  <div class="kp-panel" style="display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:10px;"><div class="small">Guías: <b>${envios.length}</b> · Total COD: <b>${kpMoneda()} ${totCod.toLocaleString('en-US',{minimumFractionDigits:2})}</b></div><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="kpSelTodas(${ids})">Seleccionar todas</button>${kpSel.size?`<button class="btn green sm" onclick="kpDescargarUnido()">📄 PDF unido (${kpSel.size})</button><button class="btn sm" onclick="kpSelLimpiar()">✕</button>`:''}<button class="btn sm ${window.kpRastreoTodas?'primary':''}" onclick="kpToggleTodas()">${window.kpRastreoTodas?'Ver solo el día':'Todas'}</button></span></div>
+  ${envios.length?rows:`<div class="empty">No hay guías creadas el ${fmtDate(selectedDate)}. Usá "Todas" para ver el resto.</div>`}`;
   updateKPlaceNav();
 }
 
@@ -9166,7 +9173,9 @@ KP.openEnterpriseOrder=async function(o={}){
  <div class="btnrow" id="f_addNumero2Btn" style="${o.numero2?'display:none;':''} margin-top:4px;"><button type="button" class="btn sm" onclick="mostrarNumero2()">+ Agregar otro número</button></div>
  <div id="f_frecuenteFlag" class="small" style="color:var(--wine); font-weight:700; margin-top:4px;"></div>
  <label>Dirección</label><textarea id="f_direccion" maxlength="200" oninput="KP.dirCount()">${esc(o.direccion||'')}</textarea><div id="f_direccionCount" class="small" style="text-align:right;opacity:.7">${(o.direccion||'').length}/200</div></div>
- <div class="kp-order-section"><div class="kp-section-title">Entrega</div><div class="pill-select" id="f_tipoEntrega">${[['tegucigalpa','Tegucigalpa'],['nacional','Nivel Nacional'],['roatan','Roatán'],['programada','Programada']].map(([id,l])=>`<div class="pill ${((o.tipoEntrega||'tegucigalpa')===id)?'sel':''}" data-v="${id}">${l}</div>`).join('')}</div><div id="f_municipioWrap" class="${(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan')?'':'hide'}" style="margin-top:12px;"><div class="grid2"><div style="position:relative;"><label>Departamento</label><input id="f_departamentoInput" placeholder="Escribe el departamento…" autocomplete="off" value="${esc(o.departamento||'')}" oninput="filtrarDepAutocomplete(this.value)" onfocus="filtrarDepAutocomplete(this.value)" onblur="setTimeout(()=>document.getElementById('f_departamentoList').classList.add('hide'),150)"><div id="f_departamentoList" class="autocomplete-list hide" style="position:absolute;z-index:40;background:#111827;border:1px solid #2d3850;border-radius:10px;max-height:220px;overflow-y:auto;width:100%;margin-top:2px;"></div></div><div style="position:relative;"><label>Municipio</label><input id="f_municipioInput" placeholder="Escribe el municipio…" autocomplete="off" value="${esc(o.municipio||'')}" oninput="filtrarMunAutocomplete(this.value)" onfocus="filtrarMunAutocomplete(this.value)" onblur="setTimeout(()=>document.getElementById('f_municipioList').classList.add('hide'),150)"><div id="f_municipioList" class="autocomplete-list hide" style="position:absolute;z-index:40;background:#111827;border:1px solid #2d3850;border-radius:10px;max-height:220px;overflow-y:auto;width:100%;margin-top:2px;"></div></div></div><div class="small" style="margin-top:4px;">Se usa para cotizar y crear la guía en Boxful.</div></div></div>
+ <div class="kp-order-section"><div class="kp-section-title">Entrega</div><div class="pill-select" id="f_tipoEntrega">${[['tegucigalpa','Tegucigalpa'],['nacional','Nivel Nacional'],['roatan','Roatán'],['programada','Programada']].map(([id,l])=>`<div class="pill ${((o.tipoEntrega||'tegucigalpa')===id)?'sel':''}" data-v="${id}">${l}</div>`).join('')}</div><div id="f_municipioWrap" class="${o.tipoEntrega==='nacional'?'':'hide'}" style="margin-top:12px;"><div class="grid2"><div style="position:relative;"><label>Departamento</label><input id="f_departamentoInput" placeholder="Escribe el departamento…" autocomplete="off" value="${esc(o.departamento||'')}" oninput="filtrarDepAutocomplete(this.value)" onfocus="filtrarDepAutocomplete(this.value)" onblur="setTimeout(()=>document.getElementById('f_departamentoList').classList.add('hide'),150)"><div id="f_departamentoList" class="autocomplete-list hide" style="position:absolute;z-index:40;background:#111827;border:1px solid #2d3850;border-radius:10px;max-height:220px;overflow-y:auto;width:100%;margin-top:2px;"></div></div><div style="position:relative;"><label>Municipio</label><input id="f_municipioInput" placeholder="Escribe el municipio…" autocomplete="off" value="${esc(o.municipio||'')}" oninput="filtrarMunAutocomplete(this.value)" onfocus="filtrarMunAutocomplete(this.value)" onblur="setTimeout(()=>document.getElementById('f_municipioList').classList.add('hide'),150)"><div id="f_municipioList" class="autocomplete-list hide" style="position:absolute;z-index:40;background:#111827;border:1px solid #2d3850;border-radius:10px;max-height:220px;overflow-y:auto;width:100%;margin-top:2px;"></div></div></div><div class="small" style="margin-top:4px;">Se usa para cotizar y crear la guía en Boxful.</div></div>
+<div id="f_roatanWrap" class="${o.tipoEntrega==='roatan'?'':'hide'}" style="margin-top:12px;"><label>Tipo de orden de Roatán</label><div class="pill-select" id="f_envioRoatan"><div class="pill ${!o.envioClientePaga?'sel':''}" data-v="pagado">Envío Pagado</div><div class="pill ${o.envioClientePaga?'sel':''}" data-v="pendiente">Cliente Pagará el Envío al recibir</div></div></div>
+<div id="f_fechaProgWrap" class="${o.tipoEntrega==='programada'?'':'hide'}" style="margin-top:12px;"><label>Fecha de envío</label><input type="date" id="f_fechaProg" value="${o.fechaProgramada||''}"><div class="small" style="margin-top:4px;">La orden aparecerá en Programadas hasta esa fecha.</div></div></div>
  <div class="kp-order-section"><div class="kp-section-title">Productos</div><div id="prodList">${prodHtml}</div><button class="btn sm" onclick="addProductRow()">＋ Agregar producto</button><div class="small" style="margin-top:8px;color:#8b95a7;">¿Necesitas otro campo aquí (Color, Talla, Lote, etc.)? Se activa desde <a href="#" onclick="setTab('configNegocio');return false;" style="color:#7c9cff;">Configuración del negocio</a>, no se agrega desde la orden.</div></div>
  <div class="kp-order-section"><div class="kp-section-title">Inventario</div><div class="grid2"><div><label>Descontar inventario</label><select id="kpInvMode"><option value="no" ${o.descontarInventario===false?'selected':''}>No descontar</option><option value="si" ${o.descontarInventario===true?'selected':''}>Sí, descontar</option></select></div><div><label>Bodega / tienda</label><select id="kpInvLocation"><option value="">Seleccionar ubicación…</option>${(typeof UBICACIONES!=='undefined'?UBICACIONES:[]).map(u=>`<option value="${esc(u.id)}" ${u.id===o.inventarioUbicacionId?'selected':''}>${esc(u.nombre)}</option>`).join('')}</select></div></div><div class="small">Si no elegís descontar, el inventario no se mueve. Esto permite crear una orden solo como consulta.</div></div>
  <div class="kp-order-section"><div class="kp-section-title">Pago</div><div class="grid2"><div><label>Total a pagar</label><input type="number" id="f_totalPedido" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" value="${o.totalPedido!=null?o.totalPedido:''}" oninput="onTotalPedidoManualInput()"></div><div><label>Método de pago</label><select id="f_metodoPago" onchange="kpBancoRefresh()"><option value="efectivo" ${(!o.metodoPago||o.metodoPago==='efectivo')?'selected':''}>Efectivo</option><option value="transferencia" ${o.metodoPago==='transferencia'?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPago==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPago==='pos'?'selected':''}>POS (tarjeta)</option><option value="mitad" ${o.metodoPago==='mitad'?'selected':''}>Pago dividido</option></select></div></div>
@@ -9329,11 +9338,20 @@ window.saveOrder=async function(){
   const impuestoActivoChk = document.getElementById('f_impuestoActivo');
   const impuestoData = impuestoActivoChk ? {activo:impuestoActivoChk.checked, tipo:document.getElementById('f_impuestoTipo')?.value||'porcentaje', valor:Number(document.getElementById('f_impuestoValor')?.value||0), monto:calcularImpuestoOrden(sumaProductosArr(products))} : null;
   const companyCtx=window.KPLACE_ACTIVE_CONTEXT||{}; const data={cliente,numero,numero2,codigoArea:(window.KP&&KP.getAreaCode?KP.getAreaCode():'504'),direccion,vendedor:document.getElementById('f_vendedor')?.value||null,companyId:companyCtx.companyId||CURRENT_USER?.companyId||'',companyName:companyCtx.companyName||CURRENT_USER?.companyName||'',sucursalId:branch.id,sucursalNombre:branch.nombre,tipoOrden:orderType,tipoEntrega:tipo,productos:products,totalPedido:total,subtotal:total,metodoPago:method,estadoPago:pay,descontarInventario:invMode,inventarioUbicacionId:invLoc,notas:document.getElementById('f_notas')?.value.trim()||'',canalVenta:'KPlace',...(impuestoData?{impuesto:impuestoData}:{})};
-  if(tipo==='nacional'||tipo==='roatan'){
+  if(tipo==='roatan'){
+   data.departamento='Islas de la Bahía';data.municipio='José Santos Guardiola';
+   data.envioClientePaga=(document.querySelector('#f_envioRoatan .pill.sel')?.dataset.v==='pendiente');
+  }else if(tipo==='programada'){
+   const fp=document.getElementById('f_fechaProg')?.value||'';
+   if(!fp){toast('Elegí la fecha de envío de la orden programada');document.getElementById('f_fechaProg')?.focus();return;}
+   data.fechaProgramada=fp;data.departamento=null;data.municipio=null;data.enviadaAPrincipal=false;
+  }else if(tipo==='nacional'){
    const dpt=valorDepartamentoFinal(),mun=valorMunicipioFinal();
    if(!dpt||!mun){const bad=document.getElementById(!dpt?'f_departamentoInput':'f_municipioInput');if(bad){bad.style.outline='2px solid #ff5c5c';bad.scrollIntoView({block:'center'});bad.focus();}return;}
    data.departamento=dpt;data.municipio=mun;
   }else{data.departamento=null;data.municipio=null;}
+  if(tipo!=='roatan') data.envioClientePaga=false;
+  if(tipo!=='programada') data.fechaProgramada=null;
   if(method==='mitad'){
    const m1=document.getElementById('f_metodoMitad1')?.value||'efectivo',m2=document.getElementById('f_metodoMitad2')?.value||'transferencia';
    const v1=Math.max(0,Number(document.getElementById('f_montoMitad1')?.value||0)),v2=Math.max(0,Number(document.getElementById('f_montoMitad2')?.value||0));
@@ -16327,6 +16345,24 @@ document.addEventListener('click',async function(ev){
   }catch(e){ if(e&&e.name==='AbortError')return; }
   window.open(wa+encodeURIComponent('\n\nGuía en PDF: '+pdf),'_blank','noopener');
 },true);
+})();
+</script>
+<script id="kp-antiflicker">
+(function(){
+  var last=0,timer=null,running=false;
+  function wrap(){
+    var cur=window.render; if(typeof cur!=='function'||cur.__kpT) return;
+    var w=function(){
+      var now=Date.now();
+      if(running||now-last<120){ if(!timer) timer=setTimeout(function(){timer=null;w();},130); return; }
+      last=now; running=true;
+      var y=window.scrollY;
+      try{ return cur.apply(this,arguments); }
+      finally{ running=false; if(Math.abs(window.scrollY-y)>2) window.scrollTo(0,y); }
+    };
+    w.__kpT=true; window.render=w;
+  }
+  wrap(); window.addEventListener('load',function(){wrap();setTimeout(wrap,1200);setTimeout(wrap,3500);});
 })();
 </script>
 </body>
