@@ -16512,5 +16512,40 @@ var tries=0,iv=setInterval(async function(){
 },5000);
 })();
 </script>
+<script id="kp-oct6-js">
+(function(){
+'use strict';
+/* ---- Mensaje de WhatsApp: compacto, con comas en los montos y un solo total ---- */
+function miles(l){return l.replace(/(^|[^\d.,])(\d{4,})\.(\d{2})(?!\d)/g,function(m,a,n,d){return a+n.replace(/\B(?=(\d{3})+(?!\d))/g,',')+'.'+d})}
+function fmt(t){
+  var L=String(t==null?'':t).split('\n').map(function(x){return x.replace(/\s+$/,'')}).filter(function(x){return x.trim()!==''});
+  L=L.map(miles);
+  /* Solo el total (sin "cobrar al entregar" ni "falta por pagar") */
+  L=L.filter(function(x){return !/^(Cobrar al entregar|Falta por pagar):/.test(x)});
+  /* Estado: solo la primera letra en mayúscula */
+  L=L.map(function(x){return x.replace(/^(Estado:\s*\*?)PENDIENTE DE PAGO/,'$1Pendiente de pago').replace(/^(Estado:\s*\*?)PAGADO/,'$1Pagado')});
+  return L.join('\n');
+}
+var prev=window.kpTextoOrdenWhatsApp;
+if(typeof prev==='function'){
+  window.kpTextoOrdenWhatsApp=function(){return fmt(prev.apply(this,arguments))};
+}
+window.__kpFmtWA=fmt;
+
+/* ---- Banco obligatorio solo cuando la orden está PAGADA (si está pendiente es opcional) ---- */
+window.kpBancoFalta=function(id){
+  var s=document.getElementById(id);if(!s)return false;
+  var w=document.getElementById(id+'Wrap');if(w&&w.style.display==='none')return false;
+  var ep=document.getElementById('f_estadoPago');if(!ep||ep.value!=='pagado')return false;  /* pendiente: el banco es opcional */
+  var o=document.getElementById(id+'Otro'),falta=false,el=s;
+  if(s.value==='')falta=true;
+  else if(s.value==='OTRA'&&o&&!o.value.trim()){falta=true;el=o}
+  if(falta){el.style.outline='2px solid #ff5c5c';try{el.scrollIntoView({block:'center',behavior:'smooth'});el.focus()}catch(e){}
+    var clear=function(){el.style.outline='';el.removeEventListener('change',clear);el.removeEventListener('input',clear)};
+    el.addEventListener('change',clear);el.addEventListener('input',clear);}
+  return falta;
+};
+})();
+</script>
 </body>
 </html>
