@@ -16811,7 +16811,7 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-composer,html bod
       try{
         if(o&&o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan')&&!o.enviadaAPrincipal&&(typeof kpCanManageShipping==='function'?kpCanManageShipping():!CURRENT_USER.esRepartidor)){
           var cot=o.boxfulQuote,env=o.boxfulShipmentNumber||o.boxfulGuideNumber;
-          h+='<div class="btnrow"><button class="btn primary sm" onclick="boxfulQuoteOrder(\''+o.id+'\')">\uD83D\uDCB0 '+(cot?'Actualizar cotización':'Cotizar envío')+'</button>'+((cot&&o.boxfulSelectedQuote)?'<button class="btn green sm" onclick="boxfulCreateShipment(\''+o.id+'\')">\uD83D\uDE9A '+(env?'Ver/actualizar guía':'Crear guía')+'</button>':'')+'</div>'+(env?'<div class="boxfulQuote"><b>Guía Boxful:</b> '+escapeHtml(env)+(o.boxfulTrackingUrl?' · <a href="'+escapeHtml(o.boxfulTrackingUrl)+'" target="_blank" rel="noopener">Rastrear envío</a>':'')+'</div>':'');
+          h+='<div class="btnrow"><button class="btn primary sm" onclick="boxfulQuoteOrder(\''+o.id+'\')">\uD83D\uDCB0 '+(cot?'Actualizar cotización':'Cotizar envío')+'</button>'+((env&&o.boxfulSelectedQuote)?'<button class="btn green sm" onclick="boxfulCreateShipment(\''+o.id+'\')">\uD83D\uDE9A Ver/actualizar guía</button>':'')+'</div>'+(env?'<div class="boxfulQuote"><b>Guía Boxful:</b> '+escapeHtml(env)+(o.boxfulTrackingUrl?' · <a href="'+escapeHtml(o.boxfulTrackingUrl)+'" target="_blank" rel="noopener">Rastrear envío</a>':'')+'</div>':'')+(cot?boxfulQuoteSummaryHtml(o):'');
         }
       }catch(e){}
       return h;
