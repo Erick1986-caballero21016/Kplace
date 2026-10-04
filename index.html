@@ -356,6 +356,7 @@ body.kp-dark .login-card{background:#1a2029;color:var(--ink);}
 .kp-role-repartidor .fab{display:none!important;}
 .kp-role-repartidor .kp-drawer-nav button[data-section]:not([data-section="ordenes"]):not([data-section="chat"]){display:none!important;}
 .kp-role-repartidor .kp-drawer-footer button:first-child{display:none!important;}
+.kp-role-solo .kp-sidebar .kp-nav button[data-section]:not([data-section="ordenes"]),.kp-role-solo .kp-drawer-nav button[data-section]:not([data-section="ordenes"]){display:none!important;}
 .chatFeedWrap{height:calc(100vh - 112px);display:flex;flex-direction:column;background:#f7f8fa;border:1px solid #e7ebf0;border-radius:18px;overflow:hidden;box-shadow:0 4px 18px rgba(15,23,42,.05);}
 .chatFeedWrap .chatMsgs{flex:1;min-height:0;max-height:none;border-radius:0;background:#eef1f5;padding:14px 12px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;}
 .chatFeedWrap .chatInputRow{margin:0;padding:9px 10px;background:#fff;border-top:1px solid #e3e7ed;gap:7px;}
@@ -1237,7 +1238,7 @@ db.collection('config').doc('vendedores').onSnapshot(snap=>{
   // perfil que ya fueron guardados en Firestore. Antes este listener reemplazaba
   // siempre VENDEDORES por KP_FIXED_USER y borraba fotoPerfil apenas llegaba el
   // snapshot, por eso la foto parecía guardarse y luego desaparecía.
-  const remoteList = (snap.exists() && Array.isArray(snap.data()?.lista)) ? snap.data().lista : [];
+  const remoteList = (((typeof snap.exists==='function')?snap.exists():snap.exists) && Array.isArray(snap.data()?.lista)) ? snap.data().lista : [];
   const remoteUser = remoteList.find(v =>
     String(v?.usuario || v?.nombre || '').toLowerCase() === String(window.KP_FIXED_USER.usuario || window.KP_FIXED_USER.nombre).toLowerCase()
     || String(v?.nombre || '').toLowerCase() === String(window.KP_FIXED_USER.nombre).toLowerCase()
@@ -1257,29 +1258,35 @@ db.collection('config').doc('vendedores').onSnapshot(snap=>{
     const norm = x=>String(x||'').trim().toLowerCase();
     const yo = VENDEDORES.find(v=>norm(v.nombre)===norm(CURRENT_USER.nombre) || norm(v.usuario)===norm(CURRENT_USER.usuario));
     if(yo){
+      const __prev=[CURRENT_USER.esAdmin,CURRENT_USER.esEncargadoEnvios,CURRENT_USER.esRepartidor,CURRENT_USER.soloOrdenes].join('|');
+      CURRENT_USER.soloOrdenes = !!yo.soloOrdenes;
       CURRENT_USER.esAdmin = !!yo.esAdmin;
       CURRENT_USER.esEncargadoEnvios = !!yo.esEncargadoEnvios;
       CURRENT_USER.esRepartidor = CURRENT_USER.esAdmin ? false : !!yo.esRepartidor;
       CURRENT_USER.cargo = cargoLabel(CURRENT_USER);
       CURRENT_USER.usuario = yo.usuario || CURRENT_USER.usuario || yo.nombre;
+      if(yo.fotoPerfil) CURRENT_USER.fotoPerfil = yo.fotoPerfil;
+      if(yo.numeroUsuario) CURRENT_USER.numeroUsuario = yo.numeroUsuario;
       localStorage.setItem('eunoia_current_user', JSON.stringify(CURRENT_USER));
       document.body.classList.toggle('kp-role-repartidor', !!CURRENT_USER.esRepartidor);
       renderUserTag(CURRENT_USER);
-      buildTabs();
-      if(typeof render==='function') render();
+      const __now=[CURRENT_USER.esAdmin,CURRENT_USER.esEncargadoEnvios,CURRENT_USER.esRepartidor,CURRENT_USER.soloOrdenes].join('|');
+      if(!window.__kpUsersOnce||__prev!==__now){
+        window.__kpUsersOnce=true;
+        buildTabs();
+        if(typeof render==='function') render();
+      }
     }
   }
   checkInvitacionEnURL();
   try{ window.kpAfterUsers&&kpAfterUsers(snap.metadata.fromCache); }catch(e){}
   }catch(e){
     console.error('[KPlace] Error mostrando la lista de usuarios para iniciar sesión:', e);
-    const errEl = document.getElementById('loginError');
-    if(errEl) errEl.textContent = 'No se pudo cargar la lista de usuarios: '+(e.message||'error desconocido');
+    /* sin mensajes en pantalla: solo consola */
   }
 }, function(err){
   console.error('[KPlace] No se pudo leer config/vendedores:', err);
-  const errEl = document.getElementById('loginError');
-  if(errEl) errEl.textContent = 'No se pudo conectar para cargar los usuarios ('+(err.code||err.message||'error')+'). Revisa tu conexión y refresca la página.';
+  /* sin mensajes en pantalla: solo consola */
 });
 
 /* ======================= INVITACIONES ======================= */
@@ -1348,6 +1355,7 @@ function doLogin(){
   });
 }
 function cargoLabel(v){
+  if(v.soloOrdenes&&!v.esAdmin&&!v.esEncargadoEnvios&&!v.esRepartidor) return 'Solo órdenes';
   if(v.esAdmin) return 'Administrador';
   if(v.esEncargadoEnvios) return 'Administrador de envíos';
   if(v.esRepartidor) return 'Repartidor';
@@ -1564,9 +1572,8 @@ function finishLogin(user){
 (function tryAutoLogin(){
   const saved = localStorage.getItem('eunoia_current_user');
   if(!saved) return;
-  const user = JSON.parse(saved);
-  const key = `eunoia_login_${todayStr()}_${user.nombre}`;
-  if(localStorage.getItem(key)){
+  let user=null; try{ user = JSON.parse(saved); }catch(e){}
+  if(user && user.nombre){
     if(user?.esAdmin) user.esRepartidor=false;
     user.cargo = cargoLabel(user);
     CURRENT_USER = user; activeTab = user.esRepartidor ? 'hoy' : 'inicio'; document.body.classList.toggle('kp-role-repartidor', !!user.esRepartidor);
@@ -2246,8 +2253,8 @@ function orderCard(o){
         <div class="name">${o.tipoOrden==='cambio'?'🔄 ':''}${o.tipoOrden==='remplazo'?'♻️ ':''}${o.tipoOrden==='hazab_envio'?'🎁 ':''}${o.tipoOrden==='hazab_listo'?'📦 ':''}${o.cliente}${isFrecuente?' <span class="freq-tag">★ frecuente</span>':''}</div>
         <div class="meta">${o.plataforma||''} · Vendedor: ${o.vendedor}</div>
         <div class="phoneRow">
-          ${o.numero?`<a href="tel:${o.numero}" class="phonePill">${kpIcon('phone',14)}<span>${o.numero}</span></a><a href="https://wa.me/504${o.numero.replace(/\D/g,'')}" target="_blank" rel="noopener" class="phonePill wa" aria-label="WhatsApp" title="Abrir WhatsApp">${kpIcon('whatsapp',16)}<span class="waText">WhatsApp</span></a>`:''}
-          ${o.numero2?`<a href="tel:${o.numero2}" class="phonePill">${kpIcon('phone',14)}<span>${o.numero2}</span></a><a href="https://wa.me/504${o.numero2.replace(/\D/g,'')}" target="_blank" rel="noopener" class="phonePill wa" aria-label="WhatsApp" title="Abrir WhatsApp">${kpIcon('whatsapp',16)}<span class="waText">WhatsApp</span></a>`:''}
+          ${o.numero?`<a href="tel:${kpTelFull(o,o.numero)}" class="phonePill">${kpIcon('phone',14)}<span>${o.numero}</span></a><a href="https://wa.me/${kpWaFull(o,o.numero)}" target="_blank" rel="noopener" class="phonePill wa" aria-label="WhatsApp" title="Abrir WhatsApp">${kpIcon('whatsapp',16)}<span class="waText">WhatsApp</span></a>`:''}
+          ${o.numero2?`<a href="tel:${kpTelFull(o,o.numero2)}" class="phonePill">${kpIcon('phone',14)}<span>${o.numero2}</span></a><a href="https://wa.me/${kpWaFull(o,o.numero2)}" target="_blank" rel="noopener" class="phonePill wa" aria-label="WhatsApp" title="Abrir WhatsApp">${kpIcon('whatsapp',16)}<span class="waText">WhatsApp</span></a>`:''}
         </div>
       </div>
       <div class="total">${CURRENT_USER.esRepartidor ? (montoEfectivoACobrar(o)>0 ? `${kpMoneda()} ${montoEfectivoACobrar(o).toFixed(0)}` : 'Pagado') : `${kpMoneda()} ${totalProd.toFixed(0)}`}</div>
@@ -3064,7 +3071,7 @@ function openOrderSheet(o){
     </div>
     <div id="f_frecuenteFlag" class="small" style="color:var(--wine); font-weight:700; margin-top:4px;"></div>
     <label>Dirección</label>
-    <textarea id="f_direccion">${escapeHtml(o.direccion||'')}</textarea>
+    <textarea id="f_direccion" maxlength="200">${escapeHtml(o.direccion||'')}</textarea>
     <label>Tipo de entrega</label>
     <div class="pill-select" id="f_tipoEntrega">
       ${['tegucigalpa','nacional','roatan','programada'].map(t=>`<div class="pill ${(o.tipoEntrega===t)||(!o.tipoEntrega&&t==='tegucigalpa')?'sel':''}" data-v="${t}" onclick="selPill('f_tipoEntrega',this)">${(window.TIPO_ENTREGA_LABELS&&window.TIPO_ENTREGA_LABELS[t])||t}</div>`).join('')}
@@ -3880,6 +3887,7 @@ function aprobarVendedor(nombre){
   const rolGroupId = `rol_${nombre.replace(/\s+/g,'_')}`;
   const rol = getPillVal(rolGroupId) || 'Vendedor';
   VENDEDORES[idx].aprobado = true;
+  VENDEDORES[idx].soloOrdenes = false;
   VENDEDORES[idx].esAdmin = rol==='Administrador';
   VENDEDORES[idx].esEncargadoEnvios = rol==='Administrador de envíos';
   VENDEDORES[idx].esRepartidor = rol==='Repartidor';
@@ -5033,27 +5041,20 @@ async function resolveBoxfulDestination(d,c){
 // link de rastreo, directo al teléfono guardado en la orden (mismo areaCode que usa Boxful,
 // para que funcione igual de bien si el negocio opera en Honduras, El Salvador o Guatemala).
 function boxfulTrackingWhatsAppUrl(o,numero,tracking){
-  const areaCode=(o.codigoArea||o.areaCode||'504').toString().replace(/\D/g,'')||'504';
   const numeroCliente=(o.numero||'').replace(/\D/g,'');
   if(!numeroCliente) return '';
-  const nombre=o.cliente||'';
-  const productos=(o.productos||[]).map((p,i)=>{
-    const categoria=p.categoria==='__custom__'?(p.categoriaManual||'Producto'):(p.categoria||'Producto');
-    const partes=[categoria,p.modelo,p.tamano,p.colorEn].filter(Boolean);
-    return `${i+1}. ${partes.join(' · ')} · Cantidad: ${p.cantidad||1}`;
-  }).join('\n\n');
-  let msg=`Hola${nombre?' '+nombre:''}.\n\nTu pedido ya va en camino.`;
-  if(numero&&numero!=='—') msg+=`\n\nNúmero de guía: ${numero}`;
-  if(productos) msg+=`\n\nPRODUCTOS\n${productos}`;
+  const nombre=(o.cliente||'').trim();
+  const empresa=(typeof window.kpNombreEmpresa==='function'?window.kpNombreEmpresa():'')||'KPlace';
+  let msg=`Hola${nombre?' '+nombre:''}, buen día ✨\n\nTe adjunto tu número de guía de parte de ${empresa}.`;
+  if(numero&&numero!=='') msg+=`\n\n🚚 Número de guía: ${numero}`;
+  if(tracking) msg+=`\nPuedes rastrearlo aquí: ${tracking}`;
   const total=totalOrden(o);
   const pendiente=o.metodoPago==='mitad' ? (o.estadoPago==='pagado'?0:montoEfectivoACobrar(o)) : (o.estadoPago==='pagado'?0:total);
-  if(pendiente>0){
-    msg+=`\n\nPAGO PENDIENTE: ${kpMoneda()} ${Number(pendiente).toLocaleString('en-US',{minimumFractionDigits:2})}`;
-    msg+=`\nEl pago pendiente se realiza en efectivo al recibir el pedido.`;
-  }
-  if(tracking) msg+=`\n\nPuedes rastrearlo aquí:\n${tracking}`;
-  msg+=`\n\nGracias por tu compra.`;
-  return `https://wa.me/${areaCode}${numeroCliente}?text=${encodeURIComponent(msg)}`;
+  if(pendiente>0) msg+=`\n\nPago pendiente: ${kpMoneda()} ${Number(pendiente).toLocaleString('en-US',{minimumFractionDigits:2})}. Se realiza en efectivo al recibir el pedido.`;
+  msg+=`\n\nEstaremos pendientes de cualquier llamada o mensaje 📲\nY cualquier otra duda, estamos a la orden 🙌🏼`;
+  let pdf='';
+  try{ const sh=o.boxfulShipment||{}; const lk=(typeof boxfulShipmentLinks==='function')?boxfulShipmentLinks(sh):{}; pdf=o.boxfulGuideUrl||lk.guideUrl||sh.guideUrl||sh.labelUrl||sh.pdfUrl||''; }catch(e){}
+  return `https://wa.me/${window.kpWaFull(o,o.numero)}?text=${encodeURIComponent(msg)}${pdf?'#kpdf='+encodeURIComponent(pdf):''}`;
 }
 function boxfulOrderData(o){
   const {direccion,referencia}=splitDireccionReferencia(o.direccion||'');
@@ -8720,7 +8721,7 @@ function branchOptions(selected, all=true){
   const arr=KP.branches.length?KP.branches:KP.defaults;
   return (all?'<option value="">Todas las sucursales</option>':'')+arr.map(b=>`<option value="${esc(b.id)}" ${b.id===selected?'selected':''}>${esc(b.nombre)}</option>`).join('');
 }
-function roleOf(v){return v?.esAdmin?'Administrador':v?.esEncargadoEnvios?'Administrador de envíos':v?.esRepartidor?'Repartidor':'Vendedor';}
+function roleOf(v){return (v?.soloOrdenes&&!v?.esAdmin&&!v?.esEncargadoEnvios&&!v?.esRepartidor)?'Solo órdenes':v?.esAdmin?'Administrador':v?.esEncargadoEnvios?'Administrador de envíos':v?.esRepartidor?'Repartidor':'Vendedor';}
 function isAdmin(){return !!CURRENT_USER?.esAdmin;}
 function isShipAdmin(){return !!CURRENT_USER?.esEncargadoEnvios||!!CURRENT_USER?.esAdmin;}
 function sameBranch(a,b){return userBranch(a)===userBranch(b);}
@@ -8788,7 +8789,7 @@ KP.filterUsers=function(branch){
  el.querySelectorAll('.kp-active').forEach(x=>x.addEventListener('click',()=>KP.toggleUserActive(Number(x.dataset.index))));
 };
 KP.setUserBranch=async function(i,id){const u=VENDEDORES[i];if(!u)return;const b=KP.branches.find(x=>x.id===id)||KP.defaults[0];u.sucursalId=b.id;u.sucursalNombre=b.nombre;await db.collection('config').doc('vendedores').set({lista:VENDEDORES});KP.Channels?.syncUser?.(u);toast(`${u.nombre} asignado a ${b.nombre}`);KP.renderEnterpriseAdmin();};
-KP.setUserRole=async function(i,r){const u=VENDEDORES[i];if(!u)return;u.esAdmin=r==='admin';u.esEncargadoEnvios=r==='envios';u.esRepartidor=r==='repartidor';u.cargo=roleOf(u);await db.collection('config').doc('vendedores').set({lista:VENDEDORES});toast(`Rol actualizado: ${roleOf(u)}`);KP.renderEnterpriseAdmin();};
+KP.setUserRole=async function(i,r){const u=VENDEDORES[i];if(!u)return;u.soloOrdenes=false;u.esAdmin=r==='admin';u.esEncargadoEnvios=r==='envios';u.esRepartidor=r==='repartidor';u.cargo=roleOf(u);await db.collection('config').doc('vendedores').set({lista:VENDEDORES});toast(`Rol actualizado: ${roleOf(u)}`);KP.renderEnterpriseAdmin();};
 KP.toggleUserActive=async function(i){const u=VENDEDORES[i];if(!u)return;u.activo=u.activo===false;await db.collection('config').doc('vendedores').set({lista:VENDEDORES});toast(`${u.nombre}: ${u.activo?'Activo':'Inactivo'}`);KP.renderEnterpriseAdmin();};
 KP.addBranch=async function(){
  const box=window.modal(`<div class="kp-pro-modal-head"><div><div class="kp-kicker">NUEVA SUCURSAL</div><h2>Crear sucursal</h2><p>Agregá una sucursal para separar inventario, usuarios y operaciones.</p></div><button type="button" class="kp-pro-close" data-action="close">×</button></div>
@@ -9084,16 +9085,17 @@ KP.openEnterpriseOrder=async function(o={}){
  sh.innerHTML=`<h2>${editingOrderId?'Editar orden':'Nueva orden'}</h2>
  <label>Tipo de orden</label><div class="pill-select" id="kpOrderType"><div class="pill ${(!o.tipoOrden||o.tipoOrden==='normal')?'sel':''}" data-v="normal">Normal</div><div class="pill ${o.tipoOrden==='frecuente'?'sel':''}" data-v="frecuente">Punto frecuente</div><div class="pill ${o.tipoOrden==='recoleccion'?'sel':''}" data-v="recoleccion">Punto de recolección</div></div>
  <div class="grid2 ${showBranch?'':'kp-single-field-grid'}"><div><label>Vendedor</label><select id="f_vendedor">${VENDEDORES.filter(v=>v.activo!==false&&(!v.sucursalId||userBranch(v)===userBranch(CURRENT_USER))).map(v=>`<option value="${esc(v.nombre)}" ${v.nombre===(o.vendedor||CURRENT_USER?.nombre)?'selected':''}>${esc(v.nombre)}</option>`).join('')}</select></div>${branchField}</div>
- <div class="kp-order-section" id="kpPickupSection" style="display:none"><div class="kp-section-title">Punto de recolección</div><div class="kp-point-picker show"><select id="kpPickupSelect"><option value="">Seleccionar punto de recolección…</option></select><div class="kp-point-actions"><button type="button" class="btn" onclick="KP.addPointFromOrder('recoleccion')">＋ Agregar punto</button><button type="button" class="btn red" onclick="KP.deleteSelectedPickupPoint()">Eliminar punto</button></div></div><div class="grid2"><div><label>Nombre</label><input id="f_pickupNombre" value="${esc(o.puntoRecoleccion?.nombre||'')}"></div><div><label>Número</label><input id="f_pickupNumero" value="${esc(o.puntoRecoleccion?.numero||'')}"></div></div><label>Dirección</label><textarea id="f_pickupDireccion">${esc(o.puntoRecoleccion?.direccion||'')}</textarea></div>
+ <div class="kp-order-section" id="kpPickupSection" style="display:none"><div class="kp-section-title">Punto de recolección</div><div class="kp-point-picker show"><select id="kpPickupSelect"><option value="">Seleccionar punto de recolección…</option></select><div class="kp-point-actions"><button type="button" class="btn" onclick="KP.addPointFromOrder('recoleccion')">＋ Agregar punto</button><button type="button" class="btn red" onclick="KP.deleteSelectedPickupPoint()">Eliminar punto</button></div></div><div class="grid2"><div><label>Nombre</label><input id="f_pickupNombre" value="${esc(o.puntoRecoleccion?.nombre||'')}"></div><div><label>Número</label><input id="f_pickupNumero" value="${esc(o.puntoRecoleccion?.numero||'')}"></div></div><label>Dirección</label><textarea id="f_pickupDireccion" maxlength="200">${esc(o.puntoRecoleccion?.direccion||'')}</textarea></div>
  <div class="kp-order-section"><div class="kp-section-title">Datos del cliente / destino</div><div class="kp-point-picker" id="kpFreqPicker" style="display:none"><select id="kpFreqSelect2"><option value="">Seleccionar punto frecuente…</option></select><div class="kp-point-actions"><button type="button" class="btn" onclick="KP.addPointFromOrder('frecuente')">＋ Agregar punto</button><button type="button" class="btn red" onclick="KP.deleteSelectedFreqPoint()">Eliminar punto</button></div></div>
  <label>🪄 Pega aquí el mensaje del cliente (nombre, número, dirección)</label>
  <textarea id="f_pegado" placeholder="Pega el texto completo que te mandó el cliente y presiona Extraer datos"></textarea>
  <div class="btnrow" style="margin-top:6px;"><button type="button" class="btn sm" onclick="KP.extraerDatosOrden()">🪄 Extraer nombre, número y dirección</button></div>
  <div class="grid2" style="margin-top:10px;"><div><label>Nombre</label><input id="f_cliente" value="${esc(o.cliente||'')}"></div><div><label>Número</label><input id="f_numero" value="${esc(o.numero||'')}" oninput="KP.checkFrecuenteOrden()"></div></div>
+ <div class="grid2" style="margin-top:6px;"><div><label>Código de país</label><select id="f_codigoArea" onchange="KP.areaChange()">${KP.AREA_OPTS(o.codigoArea)}</select></div><div id="f_codigoOtroWrap" class="${KP.AREA_ES_OTRO(o.codigoArea)?'':'hide'}"><label>Escribe el código</label><input id="f_codigoOtro" inputmode="numeric" maxlength="4" placeholder="Ej. 593" value="${KP.AREA_ES_OTRO(o.codigoArea)?esc(String(o.codigoArea).replace(/\D/g,'')):''}"></div></div>
  <div id="f_numero2Wrap" class="${o.numero2?'':'hide'}"><label>Número adicional</label><input id="f_numero2" value="${esc(o.numero2||'')}" oninput="KP.checkFrecuenteOrden()"></div>
  <div class="btnrow" id="f_addNumero2Btn" style="${o.numero2?'display:none;':''} margin-top:4px;"><button type="button" class="btn sm" onclick="mostrarNumero2()">+ Agregar otro número</button></div>
  <div id="f_frecuenteFlag" class="small" style="color:var(--wine); font-weight:700; margin-top:4px;"></div>
- <label>Dirección</label><textarea id="f_direccion">${esc(o.direccion||'')}</textarea></div>
+ <label>Dirección</label><textarea id="f_direccion" maxlength="200" oninput="KP.dirCount()">${esc(o.direccion||'')}</textarea><div id="f_direccionCount" class="small" style="text-align:right;opacity:.7">${(o.direccion||'').length}/200</div></div>
  <div class="kp-order-section"><div class="kp-section-title">Entrega</div><div class="pill-select" id="f_tipoEntrega">${[['tegucigalpa','Tegucigalpa'],['nacional','Nivel Nacional'],['roatan','Roatán'],['programada','Programada']].map(([id,l])=>`<div class="pill ${((o.tipoEntrega||'tegucigalpa')===id)?'sel':''}" data-v="${id}">${l}</div>`).join('')}</div></div>
  <div class="kp-order-section"><div class="kp-section-title">Productos</div><div id="prodList">${prodHtml}</div><button class="btn sm" onclick="addProductRow()">＋ Agregar producto</button><div class="small" style="margin-top:8px;color:#8b95a7;">¿Necesitas otro campo aquí (Color, Talla, Lote, etc.)? Se activa desde <a href="#" onclick="setTab('configNegocio');return false;" style="color:#7c9cff;">Configuración del negocio</a>, no se agrega desde la orden.</div></div>
  <div class="kp-order-section"><div class="kp-section-title">Inventario</div><div class="grid2"><div><label>Descontar inventario</label><select id="kpInvMode"><option value="no" ${o.descontarInventario===false?'selected':''}>No descontar</option><option value="si" ${o.descontarInventario===true?'selected':''}>Sí, descontar</option></select></div><div><label>Bodega / tienda</label><select id="kpInvLocation"><option value="">Seleccionar ubicación…</option>${(typeof UBICACIONES!=='undefined'?UBICACIONES:[]).map(u=>`<option value="${esc(u.id)}" ${u.id===o.inventarioUbicacionId?'selected':''}>${esc(u.nombre)}</option>`).join('')}</select></div></div><div class="small">Si no elegís descontar, el inventario no se mueve. Esto permite crear una orden solo como consulta.</div></div>
@@ -9205,7 +9207,7 @@ KP.extraerDatosOrden=function(){
   if(nombre && document.getElementById('f_cliente')) document.getElementById('f_cliente').value=nombre;
   if(numero && document.getElementById('f_numero')) document.getElementById('f_numero').value=numero;
   if(numero2){ mostrarNumero2(); const n2=document.getElementById('f_numero2'); if(n2) n2.value=numero2; }
-  if(direccion && document.getElementById('f_direccion')) document.getElementById('f_direccion').value=direccion;
+  if(direccion && document.getElementById('f_direccion')) document.getElementById('f_direccion').value=String(direccion).slice(0,200);
   // Método y estado de pago: aquí son <select>, no pills.
   if(metodoTxt){
     const t=normTxt(metodoTxt);
@@ -9247,6 +9249,8 @@ KP.extraerDatosOrden=function(){
 window.saveOrder=async function(){
  try{
   const cliente=document.getElementById('f_cliente')?.value.trim();const numero=document.getElementById('f_numero')?.value.trim();const numero2=document.getElementById('f_numero2')?.value.trim()||'';const direccion=document.getElementById('f_direccion')?.value.trim();
+  if(window.KP&&KP.areaInvalida&&KP.areaInvalida()){toast('Escribe el código de país (solo números)');return;}
+  if((direccion||'').length>200){toast('La dirección pasa de 200 caracteres ('+direccion.length+'). Acórtala.');return;}
   if(!cliente){toast('Ingresá el nombre del cliente');return;}
   const total=Math.max(0,Number(document.getElementById('f_totalPedido')?.value||0));const tipo=getPillVal('f_tipoEntrega')||document.querySelector('#f_tipoEntrega .pill.sel')?.dataset.v||'tegucigalpa';
   const orderType=document.querySelector('#kpOrderType .pill.sel')?.dataset.v||'normal';const branchId=document.getElementById('kpOrderBranch')?.value||userBranch(CURRENT_USER);const branch=KP.branches.find(b=>b.id===branchId)||KP.defaults[0];
@@ -9254,7 +9258,7 @@ window.saveOrder=async function(){
   const products=(draftProducts||[]).filter(p=>p.categoria||p.colorEn||p.modelo).map(p=>({...p,cantidad:Number(p.cantidad||1)}));
   const impuestoActivoChk = document.getElementById('f_impuestoActivo');
   const impuestoData = impuestoActivoChk ? {activo:impuestoActivoChk.checked, tipo:document.getElementById('f_impuestoTipo')?.value||'porcentaje', valor:Number(document.getElementById('f_impuestoValor')?.value||0), monto:calcularImpuestoOrden(sumaProductosArr(products))} : null;
-  const companyCtx=window.KPLACE_ACTIVE_CONTEXT||{}; const data={cliente,numero,numero2,direccion,vendedor:document.getElementById('f_vendedor')?.value||null,companyId:companyCtx.companyId||CURRENT_USER?.companyId||'',companyName:companyCtx.companyName||CURRENT_USER?.companyName||'',sucursalId:branch.id,sucursalNombre:branch.nombre,tipoOrden:orderType,tipoEntrega:tipo,productos:products,totalPedido:total,subtotal:total,metodoPago:method,estadoPago:pay,descontarInventario:invMode,inventarioUbicacionId:invLoc,notas:document.getElementById('f_notas')?.value.trim()||'',canalVenta:'KPlace',...(impuestoData?{impuesto:impuestoData}:{})};
+  const companyCtx=window.KPLACE_ACTIVE_CONTEXT||{}; const data={cliente,numero,numero2,codigoArea:(window.KP&&KP.getAreaCode?KP.getAreaCode():'504'),direccion,vendedor:document.getElementById('f_vendedor')?.value||null,companyId:companyCtx.companyId||CURRENT_USER?.companyId||'',companyName:companyCtx.companyName||CURRENT_USER?.companyName||'',sucursalId:branch.id,sucursalNombre:branch.nombre,tipoOrden:orderType,tipoEntrega:tipo,productos:products,totalPedido:total,subtotal:total,metodoPago:method,estadoPago:pay,descontarInventario:invMode,inventarioUbicacionId:invLoc,notas:document.getElementById('f_notas')?.value.trim()||'',canalVenta:'KPlace',...(impuestoData?{impuesto:impuestoData}:{})};
   if(method==='mitad'){
    const m1=document.getElementById('f_metodoMitad1')?.value||'efectivo',m2=document.getElementById('f_metodoMitad2')?.value||'transferencia';
    const v1=Math.max(0,Number(document.getElementById('f_montoMitad1')?.value||0)),v2=Math.max(0,Number(document.getElementById('f_montoMitad2')?.value||0));
@@ -9268,7 +9272,7 @@ window.saveOrder=async function(){
    if(bkm&&kpBancoFalta('f_banco'))return;
    data.banco=bkm?kpBancoValor('f_banco'):'';data.bancoMitad1='';data.bancoMitad2='';
   }
-  if(orderType==='recoleccion'){const pn=document.getElementById('f_pickupNombre')?.value.trim(),pnum=document.getElementById('f_pickupNumero')?.value.trim(),pdir=document.getElementById('f_pickupDireccion')?.value.trim();if(!pn||!pdir){toast('Completá el punto de recolección (nombre y dirección)');return;}data.puntoRecoleccion={nombre:pn,numero:pnum,direccion:pdir};}
+  if(orderType==='recoleccion'){const pn=document.getElementById('f_pickupNombre')?.value.trim(),pnum=document.getElementById('f_pickupNumero')?.value.trim(),pdir=document.getElementById('f_pickupDireccion')?.value.trim();if(pdir&&pdir.length>200){toast('La dirección del punto de recolección pasa de 200 caracteres');return;}if(!pn||!pdir){toast('Completá el punto de recolección (nombre y dirección)');return;}data.puntoRecoleccion={nombre:pn,numero:pnum,direccion:pdir};}
   if(!products.length && total===0){};
   let ref;
   if(editingOrderId){
@@ -9408,7 +9412,10 @@ const oldBuild=window.buildTabs;
 window.buildTabs=function(){
  if(!CURRENT_USER||!document.getElementById('tabs'))return;
  let tabs=[];
- if(CURRENT_USER.esRepartidor)tabs=[{id:'repartidor',label:'Órdenes'},{id:'principal',label:'Canales',badge:KP.Channels?._mentionBadge||null}];
+ const __solo=!!(CURRENT_USER.soloOrdenes&&!CURRENT_USER.esAdmin&&!CURRENT_USER.esRepartidor&&!CURRENT_USER.esEncargadoEnvios);
+ document.body.classList.toggle('kp-role-solo',__solo);
+ if(__solo)tabs=[{id:'hoy',label:'Órdenes',badge:(ORDERS.filter(o=>o.fecha===selectedDate).length)||null}];
+ else if(CURRENT_USER.esRepartidor)tabs=[{id:'repartidor',label:'Órdenes'},{id:'principal',label:'Canales',badge:KP.Channels?._mentionBadge||null}];
  else if(CURRENT_USER.esEncargadoEnvios&&!CURRENT_USER.esAdmin){
    const nt=ORDERS.filter(o=>kpIsTegusShip(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
    const nn=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
@@ -9427,7 +9434,7 @@ window.buildTabs=function(){
  document.getElementById('tabs').innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
  document.querySelectorAll('#tabs .tab').forEach(x=>x.onclick=()=>window.setTab(x.dataset.tab));
 };
-window.setTab=function(id){if(!CURRENT_USER)return;document.querySelectorAll('.kpMsgCtxOverlay,.kpMsgCtxWrap').forEach(n=>n.remove());if(id==='ayuda'){activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);return;}if(CURRENT_USER.esRepartidor&&!['repartidor','principal'].includes(id))return;if(CURRENT_USER.esEncargadoEnvios&&!CURRENT_USER.esAdmin&&!['adminEnviosTegus','adminEnviosNacional','rastreosNacionales','adminOrdersInventory','gps'].includes(id))return;activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);};
+window.setTab=function(id){if(!CURRENT_USER)return;document.querySelectorAll('.kpMsgCtxOverlay,.kpMsgCtxWrap').forEach(n=>n.remove());if(id==='ayuda'){activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);return;}if(CURRENT_USER.soloOrdenes&&!CURRENT_USER.esAdmin&&!CURRENT_USER.esRepartidor&&!CURRENT_USER.esEncargadoEnvios&&id!=='hoy')return;if(CURRENT_USER.esRepartidor&&!['repartidor','principal'].includes(id))return;if(CURRENT_USER.esEncargadoEnvios&&!CURRENT_USER.esAdmin&&!['adminEnviosTegus','adminEnviosNacional','rastreosNacionales','adminOrdersInventory','gps'].includes(id))return;activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);};
 window.kpSafeSetTab=window.setTab;
 const oldRender=window.render;
 window.render=function(){
@@ -12930,13 +12937,15 @@ const acceso=()=>db.collection('config').doc('acceso'),save=()=>db.collection('c
 const msg=t=>{const e=$('loginError');if(e)e.textContent=t;};
 const wait=()=>new Promise(r=>{let n=0;const t=setInterval(()=>{if(loaded||++n>40){clearInterval(t);r();}},250);});
 window.kpAfterUsers=function(cache){if(!cache)loaded=true;};
-const nuevo=(u,adm)=>{const e=norm(u.email);return {nombre:u.displayName||e.split('@')[0],usuario:e.split('@')[0],email:e,activo:true,aprobado:true,esAdmin:adm,esRepartidor:false,esEncargadoEnvios:false,esEmpacador:false,fotoPerfil:''};};
-function enter(v){finishLogin({nombre:v.nombre,usuario:v.usuario||v.nombre,esAdmin:!!v.esAdmin,esRepartidor:!!v.esRepartidor,esEncargadoEnvios:!!v.esEncargadoEnvios,esEmpacador:!!v.esEmpacador,cargo:cargoLabel(v)});msg('');if(v.esAdmin)setTimeout(solicitudes,1500);}
+const nuevo=(u,adm)=>{const e=norm(u.email);return {nombre:u.displayName||e.split('@')[0],usuario:e.split('@')[0],email:e,activo:true,aprobado:true,esAdmin:adm,esRepartidor:false,esEncargadoEnvios:false,esEmpacador:false,soloOrdenes:!adm,fotoPerfil:''};};
+function enter(v){finishLogin({nombre:v.nombre,usuario:v.usuario||v.nombre,email:norm(v.email),soloOrdenes:!!v.soloOrdenes,esAdmin:!!v.esAdmin,esRepartidor:!!v.esRepartidor,esEncargadoEnvios:!!v.esEncargadoEnvios,esEmpacador:!!v.esEmpacador,fotoPerfil:v.fotoPerfil||'',numeroUsuario:v.numeroUsuario||'',cargo:cargoLabel(v)});msg('');if(v.esAdmin)setTimeout(solicitudes,1500);}
 async function onUser(u){
   if(busy)return;busy=true;
   try{
     if(!u){if(window.CURRENT_USER){localStorage.removeItem('eunoia_current_user');location.reload();}return;}
-    const email=norm(u.email);msg('Verificando…');
+    const email=norm(u.email);
+    if(window.CURRENT_USER&&norm(CURRENT_USER.email)===email)return; /* sesión ya abierta: sin verificar de nuevo ni parpadear */
+    msg('Verificando…');
     const a=await acceso().get();
     if(!a.exists){
       if(OWNER_EMAIL&&norm(OWNER_EMAIL)!==email){msg('Esta app aún no tiene dueño y solo '+OWNER_EMAIL+' puede iniciarla.');await firebase.auth().signOut();return;}
@@ -12948,9 +12957,9 @@ async function onUser(u){
       msg('Tu acceso está pendiente. Pide al administrador que apruebe: '+email);$('kpOut').style.display='';return;}
     await wait();
     let v=VENDEDORES.find(x=>norm(x.email)===email);
-    if(!v){v=nuevo(u,(d.admins||[]).includes(email));VENDEDORES.push(v);await save();}
+    if(!v){v=nuevo(u,(d.admins||[]).includes(email));VENDEDORES.push(v);await db.collection('config').doc('vendedores').set({lista:firebase.firestore.FieldValue.arrayUnion(v)},{merge:true});}
     if(v.activo===false){msg('Tu cuenta está desactivada.');await firebase.auth().signOut();return;}
-    if(window.CURRENT_USER&&CURRENT_USER.nombre===v.nombre)return;
+    if(window.CURRENT_USER&&CURRENT_USER.nombre===v.nombre){CURRENT_USER.email=email;if(v.fotoPerfil)CURRENT_USER.fotoPerfil=v.fotoPerfil;try{localStorage.setItem('eunoia_current_user',JSON.stringify(CURRENT_USER));}catch(e){}return;}
     enter(v);
   }catch(e){msg('No se pudo entrar: '+(e.code||e.message));$('kpOut')&&($('kpOut').style.display='');}
   finally{busy=false;}
@@ -12975,7 +12984,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   ['loginMode','registroPanel','inviteAcceptPanel'].forEach(i=>$(i)&&$(i).remove());
   lp.classList.remove('hide');
   lp.innerHTML='<button type="button" class="'+bc+'" style="width:100%" onclick="kpGoogleLogin()">Continuar con Google</button><div id="loginError" style="margin-top:12px;font-size:13px;color:#c0392b;text-align:center"></div><div id="kpOut" style="display:none;text-align:center;margin-top:10px"><a href="#" onclick="kpSalirGoogle();return false" style="font-size:13px">Usar otra cuenta</a></div>';
-  const cs=window.cerrarSesion;window.cerrarSesion=function(){try{firebase.auth().signOut();}catch(e){}return cs&&cs.apply(this,arguments);};
   if(firebase.auth)firebase.auth().onAuthStateChanged(onUser);
 });
 })();
@@ -13079,7 +13087,7 @@ const $=id=>document.getElementById(id),norm=x=>String(x||'').trim().toLowerCase
 const sinAc=s=>norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const acc=()=>db.collection('config').doc('acceso'),save=()=>db.collection('config').doc('vendedores').set({lista:VENDEDORES});
 const ROLES={vendedor:'Vendedor',admin:'Administrador',envios:'Administrador de envíos',repartidor:'Repartidor'};
-const flags=r=>({esAdmin:r==='admin',esEncargadoEnvios:r==='envios',esRepartidor:r==='repartidor',esEmpacador:false});
+const flags=r=>({soloOrdenes:false,esAdmin:r==='admin',esEncargadoEnvios:r==='envios',esRepartidor:r==='repartidor',esEmpacador:false});
 const IN='width:100%;padding:12px;border:1px solid #cfd4da;border-radius:10px;font-size:15px;margin:6px 0 12px;box-sizing:border-box;color:#1c1e21;background:#fff';
 function overlay(html){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';o.innerHTML='<div style="background:#fff;color:#1c1e21;border-radius:16px;width:100%;max-width:420px;padding:18px;max-height:90vh;overflow:auto">'+html+'</div>';document.body.appendChild(o);return o;}
 window.kpInvitar=function(){
@@ -13218,6 +13226,13 @@ window.marcarEntrega=function(id,ent){
     db.collection('orders').doc(id).update({entregadoFecha:(typeof today==='function'?today():new Date().toISOString().slice(0,10))}).catch(()=>{});}
   return me.apply(this,arguments);
 };
+window.desmarcarEntrega=function(id){
+  const o=find(id)||{};
+  if(!confirm('¿Quitar el estado Entregado de esta orden? Volverá a Pendiente.'))return;
+  const d={entregado:null,motivoNoEntrega:'',entregadoFecha:firebase.firestore.FieldValue.delete()};
+  if(o.estadoEntrega==='entregada'){d.estadoEntrega='pendiente';d.estadoEntregaTexto='Pendiente';}
+  db.collection('orders').doc(id).update(d).then(()=>toast('Orden desmarcada: vuelve a Pendiente')).catch(e=>toast('No se pudo desmarcar'));
+};
 const OA=window.orderActions;
 window.orderActions=function(o){
   let h=OA.apply(this,arguments);
@@ -13230,6 +13245,8 @@ window.orderActions=function(o){
         +(ok?'':'<small style="display:block;margin-top:8px;opacity:.8">Para poder marcar <b>Entregado</b>: elige cómo pagó el cliente y la tarifa.</small>')+'</div>';
     }else if(!u.esRepartidor&&o.entregado!==true&&(u.esAdmin||norm(o.vendedor)===norm(u.nombre))){
       h+='<div class="btnrow"><button class="btn green sm" onclick="marcarEntrega(\''+o.id+'\',true)">✅ Marcar entregado</button></div>';
+    }else if(!u.esRepartidor&&o.entregado===true&&(u.esAdmin||u.esEncargadoEnvios||norm(o.vendedor)===norm(u.nombre))){
+      h+='<div class="btnrow"><button class="btn sm" onclick="desmarcarEntrega(\''+o.id+'\')">↩️ Desmarcar entregado</button></div>';
     }}catch(e){}
   return h;
 };
@@ -16201,6 +16218,38 @@ document.addEventListener('DOMContentLoaded',function(){
   /* se instala después del envoltorio de Google que ya existía */
   window.cerrarSesion=window.cerrarSesion;
 });
+})();
+</script>
+<script id="kp-phone-addr-guide">
+(function(){
+var K=window.KP||(typeof KP!=='undefined'?KP:null); if(!K){console.warn('KP no disponible');return;}
+var AREAS=[['504','Honduras +504'],['503','El Salvador +503'],['502','Guatemala +502'],['505','Nicaragua +505'],['506','Costa Rica +506'],['507','Panamá +507'],['52','México +52'],['1','Estados Unidos / Canadá +1'],['34','España +34'],['57','Colombia +57']];
+var norm=function(v){return String(v||'504').replace(/\D/g,'')||'504';};
+var known=function(v){return AREAS.some(function(a){return a[0]===norm(v);});};
+K.AREA_ES_OTRO=function(v){return !!v&&!known(v);};
+K.AREA_OPTS=function(sel){var c=norm(sel),otro=!known(c);return AREAS.map(function(a){return '<option value="'+a[0]+'"'+(!otro&&a[0]===c?' selected':'')+'>'+a[1]+'</option>';}).join('')+'<option value="otro"'+(otro?' selected':'')+'>Otro (escribir código)</option>';};
+K.areaChange=function(){var s=document.getElementById('f_codigoArea'),w=document.getElementById('f_codigoOtroWrap');if(!s||!w)return;w.classList.toggle('hide',s.value!=='otro');if(s.value==='otro'){var i=document.getElementById('f_codigoOtro');if(i)i.focus();}};
+K.getAreaCode=function(){var s=document.getElementById('f_codigoArea');if(!s)return '504';if(s.value!=='otro')return s.value||'504';var d=String((document.getElementById('f_codigoOtro')||{}).value||'').replace(/\D/g,'');return d||'';};
+K.areaInvalida=function(){var s=document.getElementById('f_codigoArea');return !!s&&s.value==='otro'&&!K.getAreaCode();};
+K.dirCount=function(){var d=document.getElementById('f_direccion'),c=document.getElementById('f_direccionCount');if(d&&c)c.textContent=d.value.length+'/200';};
+var oe=K.extraerDatosOrden;
+if(typeof oe==='function')K.extraerDatosOrden=function(){var r=oe.apply(this,arguments);var d=document.getElementById('f_direccion');if(d&&d.value.length>200){d.value=d.value.slice(0,200);toast('La dirección se recortó a 200 caracteres, revísala');}K.dirCount();return r;};
+window.kpWaFull=function(o,n){var area=norm(o&&(o.codigoArea||o.areaCode)),d=String(n||'').replace(/\D/g,'');if(d.indexOf(area)===0&&d.length>area.length+7)d=d.slice(area.length);return area+d;};
+window.kpTelFull=function(o,n){return '+'+window.kpWaFull(o,n);};
+/* Guía por WhatsApp: mensaje + PDF adjunto (si el celular permite compartir archivos); si no, abre el chat con el mensaje y el PDF aparte */
+document.addEventListener('click',async function(ev){
+  var a=ev.target&&ev.target.closest&&ev.target.closest('a[href*="wa.me/"][href*="#kpdf="]'); if(!a)return;
+  ev.preventDefault();ev.stopPropagation();
+  var href=a.getAttribute('href'),i=href.indexOf('#kpdf='),wa=href.slice(0,i),pdf=decodeURIComponent(href.slice(i+6)),text='';
+  try{text=decodeURIComponent((wa.split('?text=')[1]||''));}catch(e){}
+  try{
+    toast('Preparando la guía…');
+    var r=await fetch(pdf); if(!r.ok)throw new Error('pdf');
+    var blob=await r.blob(),file=new File([blob],'Guia.pdf',{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:text});return;}
+  }catch(e){ if(e&&e.name==='AbortError')return; }
+  window.open(wa+encodeURIComponent('\n\nGuía en PDF: '+pdf),'_blank','noopener');
+},true);
 })();
 </script>
 </body>
