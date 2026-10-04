@@ -1877,9 +1877,21 @@ function renderDashboard(){
   updateKPlaceNav();
 }
 
+function kpEstadoEs(st){
+  const t=String(st||'').trim();
+  if(!t||/^(success|ok|true|created|creado|creada|pending|pendiente|new|nuevo|ready|label_created)$/i.test(t)) return 'Guía creada';
+  if(/deliver(ed)?$|entregad/i.test(t)&&!/out|ruta|reparto/i.test(t)) return 'Entregado';
+  if(/out[ _-]?for|en ruta|ruta de entrega|en reparto|last[ _-]?mile|on[ _-]?route/i.test(t)) return 'En ruta de entrega';
+  if(/devuel|return/i.test(t)) return 'Devuelto';
+  if(/cancel/i.test(t)) return 'Cancelado';
+  if(/fallid|failed|incidenc|incident|novedad|rechaz|reject|ausente|undeliver|excepci|exception|retenid|extrav|lost|da[nñ]ad|damage/i.test(t)) return 'Problema con la entrega';
+  if(/pick|recolec|collected|recogid/i.test(t)) return 'Recolectado';
+  if(/transit|tr[aá]nsito|shipped|enviad|dispatch|camino|sorting|hub|bodega/i.test(t)) return 'En tránsito';
+  return t;
+}
 function boxfulStatusText(o){
   const shipment=o.boxfulShipment||{};
-  return o.boxfulTrackingStatus||shipment.status||shipment.trackingStatus||shipment.state||'En tránsito / consultar';
+  return kpEstadoEs(o.boxfulTrackingStatus||shipment.trackingStatus||shipment.state||'');
 }
 function kpDiaCreacion(o){
   const t=o.boxfulCreatedAt; if(!t) return o.fecha;
@@ -4549,6 +4561,7 @@ async function boxfulCrearGuiasEnLote(){
   const ids=[...boxfulGuiaSeleccion].filter(id=>boxfulGuiaSeleccionables().some(o=>o.id===id));
   if(!ids.length){toast('Marcá al menos una orden con paquetería ya elegida.');return;}
   const resultados=[]; // {id, cliente, ok, mensaje}
+  window.__kpBatch=true;
   document.body.classList.add('kp-busy');
   const bar=document.createElement('div'); bar.id='kpProgreso'; bar.className='kpProgreso'; document.body.appendChild(bar);
   let idx=0;
@@ -4566,9 +4579,10 @@ async function boxfulCrearGuiasEnLote(){
     await new Promise(r=>setTimeout(r,600));
   }
   boxfulGuiaSeleccion.clear();
-  document.body.classList.remove('kp-busy'); bar.remove();
+  document.body.classList.remove('kp-busy'); bar.remove(); window.__kpBatch=false;
   render();
   const exitosas=resultados.filter(r=>r.ok).length;
+  if(exitosas){try{db.collection('push_eventos').add({titulo:'📦 '+exitosas+' guía'+(exitosas===1?'':'s')+' creada'+(exitosas===1?'':'s'),cuerpo:'Envíos nacionales',tipo:'guia',link:'ordenes:',autorEmail:'',enviado:false,ts:firebase.firestore.FieldValue.serverTimestamp()});}catch(e){}}
   const fallidas=resultados.filter(r=>!r.ok);
   toast(`📦 ${exitosas} guía${exitosas===1?'':'s'} creada${exitosas===1?'':'s'}${fallidas.length?' · '+fallidas.length+' con error':' ✅'}`);
   if(fallidas.length){
@@ -6328,7 +6342,7 @@ function renderRastreosNacionales(){
     return `<div class="kp-panel" style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
         <div><label style="display:flex;gap:6px;align-items:center;font-size:11px;font-weight:800"><input type="checkbox" ${kpSel.has(o.id)?'checked':''} onchange="kpSelToggle('${o.id}')"> Orden ${escapeHtml(String(o.id).slice(-8))}</label><h3 style="margin:3px 0 5px;">${escapeHtml(o.cliente||'Cliente')}</h3><div class="small">${escapeHtml(kpDiaCreacion(o)||'')} · ${escapeHtml(o.municipio||o.departamento||'Envío nacional')}</div></div>
-        <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip ${cod?'pendiente':'pagado'}">${cod?'COD':'Pagada'}</span>${o.waEnviadoCliente?'<span class="chip pagado">Enviada al cliente</span>':''}<span class="chip boxful">${escapeHtml(status==='success'?'Guía creada ✅':status)}</span></span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip ${cod?'pendiente':'pagado'}">${cod?'COD':'Pagada'}</span>${o.waEnviadoCliente?'<span class="chip pagado">Enviada al cliente</span>':''}<span class="chip boxful">${escapeHtml(status==='Guía creada'?'Guía creada ✅':status)}</span></span>
       </div>
       <div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.5fr);gap:8px 14px;margin-top:13px;font-size:12px;">
         <div><span class="small">Número de guía</span><br><b>${escapeHtml(numero)}</b></div>
@@ -11655,7 +11669,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
       if(Array.isArray(x)){for(var i=x.length-1;i>=0&&!found;i--)walk(x[i],depth+1);return;}
       if(typeof x==='object'){
         ['status','trackingStatus','currentStatus','statusName','state','estado'].some(function(k){
-          var v=x[k]; if(typeof v==='string'&&v){found=v;return true;}
+          var v=x[k]; if(typeof v==='string'&&v&&!/^(success|ok)$/i.test(v)){found=v;return true;}
           if(v&&typeof v==='object'){var n=v.name||v.label||v.description;if(typeof n==='string'&&n){found=n;return true;}}
           return false;
         });
@@ -13179,7 +13193,7 @@ const VAPID='BLHn6hQrTAwWRRcZ5Fuz6HZpoRlSMk6sALcgqqd_Sp9Bz_RCTGow_sboVxroJeGv9cK
 const $=id=>document.getElementById(id);
 const E=firebase.firestore,A=E.CollectionReference.prototype.add,S=E.DocumentReference.prototype.set,U=E.DocumentReference.prototype.update;
 const skip=/^(config|solicitudes|kp_archivos|push_|companyStatus|drivers|canalAuditoria|orders)/,seen={};
-function emit(d){try{if(!window.CURRENT_USER)return;const k=d.tipo+d.link;if(seen[k]&&Date.now()-seen[k]<30000)return;seen[k]=Date.now();
+function emit(d){try{if(!window.CURRENT_USER)return;if(window.__kpBatch&&d.tipo==='guia')return;const k=d.tipo+d.link;if(seen[k]&&Date.now()-seen[k]<30000)return;seen[k]=Date.now();
   A.call(db.collection('push_eventos'),{titulo:d.t,cuerpo:d.b,tipo:d.tipo,link:d.link,autorEmail:((firebase.auth&&firebase.auth().currentUser)||{}).email||'',enviado:false,ts:E.FieldValue.serverTimestamp()});}catch(e){}}
 function ordEv(id,d){const o=(typeof ORDERS!=='undefined'&&ORDERS.find(x=>x.id===id))||{},c=d.cliente||o.cliente||'Cliente';
   const EE={en_ruta:'🛵 Repartidor en ruta',llego:'📍 El repartidor llegó',entregada:'✅ Paquete entregado',no_entregada:'⚠️ No se pudo entregar'};
