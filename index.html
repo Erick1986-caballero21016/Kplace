@@ -1909,6 +1909,34 @@ async function kpDescargarUnido(){
     const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([await out.save()],{type:'application/pdf'})); a.download='guias.pdf'; a.click();
   }catch(e){ toast('No se pudieron unir (Boxful bloquea la lectura). Abriendo una por una…'); sel.forEach((o,i)=>setTimeout(()=>window.open(kpPdfDe(o),'_blank'),i*700)); }
 }
+function kpOrd(id){return ORDERS.find(x=>x.id===id);}
+function kpTrackingDe(o){const sh=o.boxfulShipment||{};return o.boxfulTrackingUrl||boxfulShipmentLinks(sh).trackingUrl||sh.trackingUrl||'';}
+function kpCopiarTexto(t){
+  if(navigator.clipboard&&window.isSecureContext) return navigator.clipboard.writeText(t);
+  return new Promise((ok,no)=>{try{const x=document.createElement('textarea');x.value=t;x.style.cssText='position:fixed;opacity:0';document.body.appendChild(x);x.select();const r=document.execCommand('copy');x.remove();r?ok():no();}catch(e){no(e);}});
+}
+function kpCopiarLinkOrden(id){
+  const o=kpOrd(id); const u=o&&kpTrackingDe(o);
+  if(!u){toast('Esta guía no tiene link de rastreo guardado');return;}
+  kpCopiarTexto(u).then(()=>toast('Link de rastreo copiado')).catch(()=>toast(u));
+}
+function kpAbrirPdf(id){
+  const o=kpOrd(id); const u=o&&kpPdfDe(o);
+  if(!u){toast('Boxful no devolvió el PDF de esta guía');return;}
+  window.open(u,'_blank','noopener');
+}
+async function kpCompartirPdf(id){
+  const o=kpOrd(id); const u=o&&kpPdfDe(o);
+  if(!u){toast('Boxful no devolvió el PDF de esta guía');return;}
+  const titulo='Guía '+(o.boxfulShipmentNumber||o.boxfulGuideNumber||'');
+  try{
+    if(navigator.share){
+      try{ const r=await fetch(u); if(r.ok){const f=new File([await r.blob()],'Guia.pdf',{type:'application/pdf'}); if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:titulo});return;}} }catch(e){ if(e&&e.name==='AbortError')return; }
+      await navigator.share({title:titulo,url:u}); return;
+    }
+  }catch(e){ if(e&&e.name==='AbortError')return; }
+  kpCopiarTexto(u).then(()=>toast('Este navegador no comparte: copié el link del PDF')).catch(()=>toast(u));
+}
 function kpToggleTodas(){window.kpRastreoTodas=!window.kpRastreoTodas; renderRastreosNacionales();}
 function kpCopiarLink(u){ if(navigator.clipboard) navigator.clipboard.writeText(u).then(()=>toast('Link copiado')).catch(()=>toast(u)); else toast(u); }
 function kpMarcarEnviada(id){ try{db.collection('orders').doc(id).update({waEnviadoCliente:true,waEnviadoFecha:new Date().toISOString()});}catch(e){} }
@@ -1935,7 +1963,7 @@ function renderRastreosNacionales(){
     return `<div class="kp-panel" style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
         <div>
-          <label style="display:flex;gap:6px;align-items:center;font-size:11px;font-weight:800"><input type="checkbox" ${kpSel.has(o.id)?'checked':''} onchange="kpSelToggle('${o.id}')"> Orden ${escapeHtml(String(o.id).slice(-8))}</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:11px;font-weight:800"><input type="checkbox" style="width:18px;height:18px;margin:0" ${kpSel.has(o.id)?'checked':''} onchange="kpSelToggle('${o.id}')"> Orden ${escapeHtml(String(o.id).slice(-8))}</label>
           <h3 style="margin:3px 0 5px;">${escapeHtml(o.cliente||'Cliente')}</h3>
           <div class="small">${escapeHtml(o.fecha||'')} · ${escapeHtml(o.municipio||o.departamento||'Envío nacional')}</div>
         </div>
@@ -1949,7 +1977,7 @@ function renderRastreosNacionales(){
        <div class="btnrow" style="margin-top:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
         ${tracking?`<a class="btn primary sm" href="${escapeHtml(tracking)}" target="_blank" rel="noopener">🔎 Abrir rastreo</a>`:'<span class="small">Sin link de rastreo</span>'}
         ${pdf?`<a class="btn green sm" href="${escapeHtml(pdf)}" target="_blank" rel="noopener">📄 PDF</a>`:'<span class="small">PDF no devuelto</span>'}
-        ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 WhatsApp cliente</a>`:'<span class="small">Sin teléfono</span>'}
+        ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 Enviar Guía al Cliente</a>`:'<span class="small">Sin teléfono</span>'}
         ${pdf&&navigator.share?`<button class="btn sm" onclick="navigator.share({title:'Guía',url:'${escapeHtml(pdf)}'}).catch(()=>{})">📤 Compartir PDF</button>`:''}
         ${!o.retrasado&&!o.boxfulCancelled?`<button class="btn gold sm" onclick="marcarRetraso('${o.id}')">🚩 Marcar retraso</button>`:''}
         ${tracking?`<button class="btn sm" onclick="kpCopiarLink('${escapeHtml(tracking)}')">📋 Copiar link</button>`:''}
@@ -2433,7 +2461,7 @@ function orderActions(o){
     ${enviada ? `<div class="boxfulQuote"><b>Guía Boxful:</b> ${escapeHtml(o.boxfulShipmentNumber||o.boxfulGuideNumber)} ${o.boxfulCancelled?'<span class="chip pendiente">Guía cancelada</span>':''}
       ${o.boxfulTrackingUrl?` · <a href="${escapeHtml(o.boxfulTrackingUrl)}" target="_blank" rel="noopener">Rastrear envío</a>`:''}
       ${o.boxfulGuideUrl?` · <a href="${escapeHtml(o.boxfulGuideUrl)}" target="_blank" rel="noopener">Descargar guía PDF</a>`:''}
-      ${(()=>{const wa=boxfulTrackingWhatsAppUrl(o,o.boxfulShipmentNumber||o.boxfulGuideNumber,o.boxfulTrackingUrl);return wa?`<div class="btnrow" style="margin-top:8px"><a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener">💬 WhatsApp</a>${!o.boxfulCancelled?`<button class="btn red sm" onclick="cancelarGuia('${o.id}')">✕ Cancelar guía</button>`:''}</div>`:(!o.boxfulCancelled?`<div class="btnrow" style="margin-top:8px"><button class="btn red sm" onclick="cancelarGuia('${o.id}')">✕ Cancelar guía</button></div>`:'');})()}
+      ${(()=>{const wa=boxfulTrackingWhatsAppUrl(o,o.boxfulShipmentNumber||o.boxfulGuideNumber,o.boxfulTrackingUrl);return wa?`<div class="btnrow" style="margin-top:8px"><a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener">💬 Enviar Guía al Cliente</a>${!o.boxfulCancelled?`<button class="btn red sm" onclick="cancelarGuia('${o.id}')">✕ Cancelar guía</button>`:''}</div>`:(!o.boxfulCancelled?`<div class="btnrow" style="margin-top:8px"><button class="btn red sm" onclick="cancelarGuia('${o.id}')">✕ Cancelar guía</button></div>`:'');})()}
     </div>`:''}
     ${cotizada ? boxfulQuoteSummaryHtml(o) : ''}`;
   }
@@ -5100,21 +5128,41 @@ async function resolveBoxfulDestination(d,c){
 // Link de WhatsApp con mensaje pre-armado para mandarle al cliente el número de guía y el
 // link de rastreo, directo al teléfono guardado en la orden (mismo areaCode que usa Boxful,
 // para que funcione igual de bien si el negocio opera en Honduras, El Salvador o Guatemala).
+function kpCourierName(o){
+  const found=(n,d)=>{ if(!n||typeof n!=='object'||d>5) return '';
+    if(Array.isArray(n)){for(const x of n){const r=found(x,d+1);if(r)return r;}return '';}
+    for(const [k,v] of Object.entries(n)){
+      if(/courier|carrier|paqueter|provider/i.test(k)){
+        if(typeof v==='string'&&v.trim()&&!/^[0-9a-f-]{16,}$/i.test(v)) return v.trim();
+        if(v&&typeof v==='object'){const nm=v.name||v.courierName||v.fullName; if(typeof nm==='string'&&nm.trim()) return nm.trim();}
+      }
+    }
+    for(const v of Object.values(n)){const r=found(v,d+1);if(r)return r;}
+    return ''; };
+  return o.boxfulCourierName||found(o.boxfulSelectedQuote,0)||found(o.boxfulShipment,0)||'';
+}
 function kpCapNombre(n){return String(n||'').trim().toLowerCase().replace(/(^|[\s\-'])(\S)/g,(m,p,c)=>p+c.toUpperCase());}
 function kpGuiaCobro(o){
   const total=totalOrden(o);
   return o.metodoPago==='mitad' ? (o.estadoPago==='pagado'?0:montoEfectivoACobrar(o)) : (o.estadoPago==='pagado'?0:total);
 }
+function kpWaClienteBtn(o){
+  const sh=o.boxfulShipment||{}; const lk=boxfulShipmentLinks(sh);
+  const num=o.boxfulShipmentNumber||o.boxfulGuideNumber||'';
+  const wa=boxfulTrackingWhatsAppUrl(o,num,o.boxfulTrackingUrl||lk.trackingUrl||sh.trackingUrl||'');
+  return wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 Enviar Guía al Cliente</a>`:`<span class="small">Sin teléfono del cliente</span>`;
+}
 function boxfulTrackingWhatsAppUrl(o,numero,tracking){
+  o=Object.assign({},o,{numero:o.numero||o.numero2||''});
   const numeroCliente=(o.numero||'').replace(/\D/g,'');
   if(!numeroCliente) return '';
   const nombre=kpCapNombre(o.cliente);
   const empresa=(typeof window.kpNombreEmpresa==='function'?window.kpNombreEmpresa():'')||'AURE COLLECTIVE HN';
-  const paq=boxfulQuoteName(o.boxfulSelectedQuote||{},0);
+  const paq=kpCourierName(o);
   const destino=o.municipio||o.departamento||'';
   const cobrar=kpGuiaCobro(o);
   const L='━━━━━━━━━━━━━━';
-  let msg=`Hola${nombre?' '+nombre:''} 👋✨\n\nTu pedido de ${empresa} ya fue enviado 📦🚚\n\n${L}\n🚛 Paquetería: ${paq}\n`;
+  let msg=`Hola${nombre?' '+nombre:''} 👋✨\n\nTu pedido de ${empresa} ya fue enviado 📦🚚\n\n${L}\n${paq?'🚛 Paquetería: '+paq+'\n':''}`;
   if(destino) msg+=`📍 Destino: ${destino}\n`;
   msg+=`🔢 Número de guía: ${numero||'—'}\n`;
   if(tracking) msg+=`🔎 Rastrea tu envío aquí:\n${tracking}\n`;
@@ -5123,7 +5171,7 @@ function boxfulTrackingWhatsAppUrl(o,numero,tracking){
   msg+=`📲 Por favor mantente pendiente de llamadas o mensajes de la paquetería para recibir tu pedido.\n\n¡Gracias por tu compra! 💜`;
   let pdf='';
   try{ const sh=o.boxfulShipment||{}; const lk=(typeof boxfulShipmentLinks==='function')?boxfulShipmentLinks(sh):{}; pdf=o.boxfulGuideUrl||lk.guideUrl||sh.guideUrl||sh.labelUrl||sh.pdfUrl||''; }catch(e){}
-  return `https://wa.me/${window.kpWaFull(o,o.numero)}?text=${encodeURIComponent(msg)}${pdf?'#kpdf='+encodeURIComponent(pdf):''}`;
+  return `https://wa.me/${window.kpWaFull(o,o.numero)}?text=${encodeURIComponent(msg)}`;
 }
 function boxfulOrderData(o){
   const {direccion,referencia}=splitDireccionReferencia(o.direccion||'');
@@ -6212,6 +6260,7 @@ function renderAdminEnviosTab(tipo){
           <button class="btn primary sm" onclick="boxfulQuoteOrder('${o.id}')">💰 ${quote?'Actualizar cotización':'Cotizar envío'}</button>
           ${quote&&o.boxfulSelectedQuote&&!guide?`<button class="btn green sm" onclick="boxfulCreateShipment('${o.id}')">🚚 Crear guía</button>`:''}
           ${guide?`<button class="btn sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Rastrear</button>`:''}
+          ${guide?kpWaClienteBtn(o):''}
         `:''}
       </div>
     </div>`;
@@ -6283,15 +6332,15 @@ function renderRastreosNacionales(){
       </div>
       <div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.5fr);gap:8px 14px;margin-top:13px;font-size:12px;">
         <div><span class="small">Número de guía</span><br><b>${escapeHtml(numero)}</b></div>
-        <div><span class="small">Paquetería</span><br><b>${escapeHtml(boxfulQuoteName(o.boxfulSelectedQuote||{},0))}</b></div>
+        <div><span class="small">Paquetería</span><br><b>${escapeHtml(kpCourierName(o)||'Boxful')}</b></div>
       </div>
       <div class="btnrow" style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
-        ${tracking?`<button class="btn primary sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Abrir rastreo</button>`:'<span class="small">Link de seguimiento no guardado</span>'}
-        ${pdf?`<a class="btn green sm" href="${escapeHtml(pdf)}" target="_blank" rel="noopener">📄 PDF</a>`:''}
-        ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 WhatsApp cliente</a>`:'<span class="small">Sin teléfono</span>'}
-        ${pdf&&navigator.share?`<button class="btn sm" onclick="navigator.share({title:'Guía',url:'${escapeHtml(pdf)}'}).catch(()=>{})">📤 Compartir PDF</button>`:''}
-        ${!o.retrasado&&!o.boxfulCancelled?`<button class="btn gold sm" onclick="marcarRetraso('${o.id}')">🚩 Marcar retraso</button>`:''}
-        ${tracking?`<button class="btn sm" onclick="kpCopiarLink('${escapeHtml(tracking)}')">📋 Copiar link</button>`:''}
+        <button class="btn primary sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Abrir rastreo</button>
+        <button class="btn sm" onclick="kpAbrirPdf('${o.id}')">📄 PDF</button>
+        ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 Enviar Guía al Cliente</a>`:`<button class="btn sm" onclick="toast('Esta orden no tiene teléfono del cliente')">💬 Enviar Guía al Cliente</button>`}
+        <button class="btn sm" onclick="kpCompartirPdf('${o.id}')">📤 Compartir PDF</button>
+        <button class="btn gold sm" onclick="marcarRetraso('${o.id}')">🚩 Marcar retraso</button>
+        <button class="btn sm" onclick="kpCopiarLinkOrden('${o.id}')">📋 Copiar link</button>
       </div>
     </div>`;
   }).join('');
