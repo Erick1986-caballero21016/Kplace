@@ -150,7 +150,7 @@ textarea{min-height:64px; resize:vertical;}
 .small{font-size:11.5px; color:var(--muted);}
 .divider{height:1px; background:var(--line); margin:14px 0;}
 .hide{display:none !important;}
-.toast{position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(14px); background:#1c1e21; color:#fff; padding:12px 18px 12px 14px; border-radius:14px; font-size:13.5px; font-weight:600; z-index:60; opacity:0; transition:opacity .25s ease, transform .25s ease; box-shadow:0 8px 24px rgba(0,0,0,.28); display:flex; align-items:center; gap:8px; max-width:88vw;}
+.toast{display:none !important; position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(14px); background:#1c1e21; color:#fff; padding:12px 18px 12px 14px; border-radius:14px; font-size:13.5px; font-weight:600; z-index:60; opacity:0; transition:opacity .25s ease, transform .25s ease; box-shadow:0 8px 24px rgba(0,0,0,.28); display:flex; align-items:center; gap:8px; max-width:88vw;}
 .toast::before{content:'✓'; display:flex; align-items:center; justify-content:center; width:20px; height:20px; min-width:20px; border-radius:50%; background:linear-gradient(135deg,#3fc373,#31a24c); font-size:12px; font-weight:900;}
 .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 .notifdot{position:fixed; top:64px; right:14px; background:var(--gold); color:#3a2c0e; font-size:12px; padding:6px 12px; border-radius:20px; z-index:22; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.15);}
@@ -1080,6 +1080,24 @@ body.kp-dark .btn{border-color:rgba(167,139,250,.28)}
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"></div>
 
+<script id="kp-early-guard">
+/* formatUserNumber disponible globalmente desde el inicio */
+window.formatUserNumber=window.formatUserNumber||function(n){return String(n||'10001').replace(/\D/g,'').slice(-5).padStart(5,'0')};
+/* Captura de errores: van a Notificaciones con el detalle de qué pasó y dónde */
+window.__kpErrQ=[];
+window.kpReportError=function(msg,where){var b=String(msg||'Error desconocido')+(where?' · '+where:'');
+  if(typeof window.kpInboxAdd==='function')window.kpInboxAdd('⚠️ Aviso del sistema',b,{tipo:'sistema'});else window.__kpErrQ.push(b);};
+window.addEventListener('error',function(e){
+  if(!e||!e.message||/ResizeObserver loop/i.test(e.message))return;
+  var f=String(e.filename||'').split('/').pop()||'index.html';
+  window.kpReportError(e.message,f+(e.lineno?' línea '+e.lineno+(e.colno?':'+e.colno:''):''));
+});
+window.addEventListener('unhandledrejection',function(e){
+  var r=e&&e.reason,m=(r&&(r.message||r.code))||String(r);
+  if(/boxful/i.test(m)){return}
+  window.kpReportError('Promesa rechazada: '+m,r&&r.stack?String(r.stack).split('\n')[1].trim().slice(0,110):'');
+});
+</script>
 <script>
 /* ======================= FIREBASE CONFIG =======================
    Reemplaza esto con la config de TU proyecto Firebase
@@ -2085,7 +2103,7 @@ function render(){
   } else if(activeTab==='admin'){
     renderAdmin(); return;
   }
-  document.getElementById('notifBar').innerHTML = activeTab==='programadas' ? document.getElementById('notifBar').innerHTML : '';
+  {const _nb=document.getElementById('notifBar'); if(_nb) _nb.innerHTML = activeTab==='programadas' ? _nb.innerHTML : '';}
 
   let extraHtml = '';
   if(activeTab==='boxful' && !CURRENT_USER.esRepartidor){
@@ -9033,7 +9051,8 @@ KP.openEnterpriseOrder=async function(o={}){
  <div class="kp-order-section"><div class="kp-section-title">Entrega</div><div class="pill-select" id="f_tipoEntrega">${[['tegucigalpa','Tegucigalpa'],['nacional','Nivel Nacional'],['roatan','Roatán'],['programada','Programada']].map(([id,l])=>`<div class="pill ${((o.tipoEntrega||'tegucigalpa')===id)?'sel':''}" data-v="${id}">${l}</div>`).join('')}</div></div>
  <div class="kp-order-section"><div class="kp-section-title">Productos</div><div id="prodList">${prodHtml}</div><button class="btn sm" onclick="addProductRow()">＋ Agregar producto</button><div class="small" style="margin-top:8px;color:#8b95a7;">¿Necesitas otro campo aquí (Color, Talla, Lote, etc.)? Se activa desde <a href="#" onclick="setTab('configNegocio');return false;" style="color:#7c9cff;">Configuración del negocio</a>, no se agrega desde la orden.</div></div>
  <div class="kp-order-section"><div class="kp-section-title">Inventario</div><div class="grid2"><div><label>Descontar inventario</label><select id="kpInvMode"><option value="no" ${o.descontarInventario===false?'selected':''}>No descontar</option><option value="si" ${o.descontarInventario===true?'selected':''}>Sí, descontar</option></select></div><div><label>Bodega / tienda</label><select id="kpInvLocation"><option value="">Seleccionar ubicación…</option>${(typeof UBICACIONES!=='undefined'?UBICACIONES:[]).map(u=>`<option value="${esc(u.id)}" ${u.id===o.inventarioUbicacionId?'selected':''}>${esc(u.nombre)}</option>`).join('')}</select></div></div><div class="small">Si no elegís descontar, el inventario no se mueve. Esto permite crear una orden solo como consulta.</div></div>
- <div class="kp-order-section"><div class="kp-section-title">Pago</div><div class="grid2"><div><label>Total a pagar</label><input type="number" id="f_totalPedido" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" value="${o.totalPedido!=null?o.totalPedido:''}" oninput="onTotalPedidoManualInput()"></div><div><label>Método de pago</label><select id="f_metodoPago"><option value="efectivo" ${(!o.metodoPago||o.metodoPago==='efectivo')?'selected':''}>Efectivo</option><option value="transferencia" ${o.metodoPago==='transferencia'?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPago==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPago==='pos'?'selected':''}>POS (tarjeta)</option><option value="mitad" ${o.metodoPago==='mitad'?'selected':''}>Pago dividido</option></select></div></div>
+ <div class="kp-order-section"><div class="kp-section-title">Pago</div><div class="grid2"><div><label>Total a pagar</label><input type="number" id="f_totalPedido" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" value="${o.totalPedido!=null?o.totalPedido:''}" oninput="onTotalPedidoManualInput()"></div><div><label>Método de pago</label><select id="f_metodoPago" onchange="kpBancoRefresh()"><option value="efectivo" ${(!o.metodoPago||o.metodoPago==='efectivo')?'selected':''}>Efectivo</option><option value="transferencia" ${o.metodoPago==='transferencia'?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPago==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPago==='pos'?'selected':''}>POS (tarjeta)</option><option value="mitad" ${o.metodoPago==='mitad'?'selected':''}>Pago dividido</option></select></div></div>
+ ${kpBancoHtml('f_banco',o.banco,'Banco')}
  ${(typeof KP!=='undefined'&&KP._camposConfig?.impuesto?.activo) ? `
  <div style="margin-top:10px;border:1px solid #303743;border-radius:12px;padding:10px 12px;">
    <label style="display:flex;align-items:center;gap:8px;">
@@ -9049,9 +9068,11 @@ KP.openEnterpriseOrder=async function(o={}){
  <label style="margin-top:10px;display:block;">Estado de pago</label><select id="f_estadoPago"><option value="pendiente" ${(!o.estadoPago||o.estadoPago==='pendiente')?'selected':''}>Pendiente</option><option value="pagado" ${o.estadoPago==='pagado'?'selected':''}>Pagado</option></select>
  <div id="kpMitadBox" style="display:${o.metodoPago==='mitad'?'block':'none'};margin-top:12px">
   <div class="kp-section-title" style="font-size:13px">Detalle del pago dividido</div>
-  <div class="grid2"><div><label>Monto 1</label><input type="number" id="f_montoMitad1" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" min="0" value="${o.montoMitad1!=null?o.montoMitad1:''}" oninput="actualizarRestanteMitad()"></div><div><label>Método 1</label><select id="f_metodoMitad1"><option value="efectivo" ${(!o.metodoPagoMitad1||o.metodoPagoMitad1==='efectivo')?'selected':''}>Efectivo</option><option value="transferencia" ${o.metodoPagoMitad1==='transferencia'?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPagoMitad1==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPagoMitad1==='pos'?'selected':''}>POS</option></select></div></div>
+  <div class="grid2"><div><label>Monto 1</label><input type="number" id="f_montoMitad1" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" min="0" value="${o.montoMitad1!=null?o.montoMitad1:''}" oninput="actualizarRestanteMitad()"></div><div><label>Método 1</label><select id="f_metodoMitad1" onchange="kpBancoRefresh()"><option value="efectivo" ${(!o.metodoPagoMitad1||o.metodoPagoMitad1==='efectivo')?'selected':''}>Efectivo</option><option value="transferencia" ${o.metodoPagoMitad1==='transferencia'?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPagoMitad1==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPagoMitad1==='pos'?'selected':''}>POS</option></select></div></div>
+  ${kpBancoHtml('f_bancoMitad1',o.bancoMitad1,'Banco (método 1)')}
   <div id="mitadTotalInfo" class="small" style="margin-top:6px;"></div>
-  <div class="grid2"><div><label>Monto 2</label><input type="number" id="f_montoMitad2" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" min="0" value="${o.montoMitad2!=null?o.montoMitad2:''}" oninput="actualizarRestanteMitad()"></div><div><label>Método 2</label><select id="f_metodoMitad2"><option value="efectivo" ${o.metodoPagoMitad2==='efectivo'?'selected':''}>Efectivo</option><option value="transferencia" ${(!o.metodoPagoMitad2||o.metodoPagoMitad2==='transferencia')?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPagoMitad2==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPagoMitad2==='pos'?'selected':''}>POS</option></select></div></div>
+  <div class="grid2"><div><label>Monto 2</label><input type="number" id="f_montoMitad2" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" min="0" value="${o.montoMitad2!=null?o.montoMitad2:''}" oninput="actualizarRestanteMitad()"></div><div><label>Método 2</label><select id="f_metodoMitad2" onchange="kpBancoRefresh()"><option value="efectivo" ${o.metodoPagoMitad2==='efectivo'?'selected':''}>Efectivo</option><option value="transferencia" ${(!o.metodoPagoMitad2||o.metodoPagoMitad2==='transferencia')?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPagoMitad2==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPagoMitad2==='pos'?'selected':''}>POS</option></select></div></div>
+  ${kpBancoHtml('f_bancoMitad2',o.bancoMitad2,'Banco (método 2)')}
   <div class="small">La suma de los dos montos debe ser igual al total a pagar.</div>
  </div></div>
  <div class="kp-order-section"><div class="kp-section-title">Notas</div><textarea id="f_notas" placeholder="Ej. Solo llamadas normales, no enviar mensajes…">${esc(o.notas||'')}</textarea><div class="small">Información especial que el cliente haya indicado para esta orden.</div></div>
@@ -9059,6 +9080,7 @@ KP.openEnterpriseOrder=async function(o={}){
  sh.querySelectorAll('#kpOrderType .pill').forEach(p=>p.onclick=()=>{sh.querySelectorAll('#kpOrderType .pill').forEach(x=>x.classList.remove('sel'));p.classList.add('sel');KP.refreshPointPickers(p.dataset.v);});
  sh.querySelectorAll('#f_tipoEntrega .pill').forEach(p=>p.onclick=()=>{sh.querySelectorAll('#f_tipoEntrega .pill').forEach(x=>x.classList.remove('sel'));p.classList.add('sel');}); document.getElementById('kpOrderBranch')?.addEventListener('change',e=>{KP.setBranchTheme(e.target.value);KP.refreshPointPickers(document.querySelector('#kpOrderType .pill.sel')?.dataset.v||'normal');}); KP.setBranchTheme(o.sucursalId||userBranch(CURRENT_USER));
  document.getElementById('f_metodoPago')?.addEventListener('change',e=>{const box=document.getElementById('kpMitadBox');if(box)box.style.display=e.target.value==='mitad'?'block':'none';actualizarRestanteMitad();recalcularTotalDesdeProductos();});
+ kpBancoRefresh();
  document.getElementById('sheetBg')?.classList.add('show');sh.classList.add('show');window._renderProdList=()=>{document.getElementById('prodList').innerHTML=draftProducts.map((p,i)=>typeof productRowHtml==='function'?productRowHtml(p,i):'').join('');};KP.refreshPointPickers(document.querySelector('#kpOrderType .pill.sel')?.dataset.v||'normal');
  }catch(e){ console.error('Error al armar el formulario de orden',e); toast('No se pudo mostrar el formulario de orden: '+(e?.message||'error desconocido')); }
 };
@@ -9191,7 +9213,14 @@ window.saveOrder=async function(){
    const m1=document.getElementById('f_metodoMitad1')?.value||'efectivo',m2=document.getElementById('f_metodoMitad2')?.value||'transferencia';
    const v1=Math.max(0,Number(document.getElementById('f_montoMitad1')?.value||0)),v2=Math.max(0,Number(document.getElementById('f_montoMitad2')?.value||0));
    if(v1<=0&&v2<=0){toast('Completá los montos del pago dividido');return;}
+   const bk=x=>x==='transferencia'||x==='link de pago';
+   if(bk(m1)&&kpBancoFalta('f_bancoMitad1'))return; if(bk(m2)&&kpBancoFalta('f_bancoMitad2'))return;
    data.metodoPagoMitad1=m1;data.montoMitad1=v1;data.metodoPagoMitad2=m2;data.montoMitad2=v2;
+   data.bancoMitad1=bk(m1)?kpBancoValor('f_bancoMitad1'):'';data.bancoMitad2=bk(m2)?kpBancoValor('f_bancoMitad2'):'';data.banco='';
+  }else{
+   const bkm=(method==='transferencia'||method==='link de pago');
+   if(bkm&&kpBancoFalta('f_banco'))return;
+   data.banco=bkm?kpBancoValor('f_banco'):'';data.bancoMitad1='';data.bancoMitad2='';
   }
   if(orderType==='recoleccion'){const pn=document.getElementById('f_pickupNombre')?.value.trim(),pnum=document.getElementById('f_pickupNumero')?.value.trim(),pdir=document.getElementById('f_pickupDireccion')?.value.trim();if(!pn||!pdir){toast('Completá el punto de recolección (nombre y dirección)');return;}data.puntoRecoleccion={nombre:pn,numero:pnum,direccion:pdir};}
   if(!products.length && total===0){};
@@ -10931,8 +10960,8 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
   }
   /* Cualquier error de JavaScript se muestra en pantalla para poder diagnosticarlo */
   var lastErr=0;
-  window.addEventListener('error',function(e){if(Date.now()-lastErr<3000)return;lastErr=Date.now();try{toast('⚠️ Error: '+(e.message||'desconocido'))}catch(x){}});
-  window.addEventListener('unhandledrejection',function(e){if(Date.now()-lastErr<3000)return;lastErr=Date.now();var m=e.reason&&(e.reason.code||e.reason.message)||String(e.reason);if(/boxful|permission-denied|not-found|unavailable|timeout|offline/i.test(m))return;try{toast('⚠️ '+m)}catch(x){}});
+  /* (errores ahora van a Notificaciones) */
+  /* (rechazos ahora van a Notificaciones) */
 
   /* ---------- 1. Texto completo de la orden para WhatsApp ---------- */
   function comprobantesDe(o){
@@ -11182,8 +11211,8 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
   }
   /* Cualquier error de JavaScript se muestra en pantalla para poder diagnosticarlo */
   var lastErr=0;
-  window.addEventListener('error',function(e){if(Date.now()-lastErr<3000)return;lastErr=Date.now();try{toast('⚠️ Error: '+(e.message||'desconocido'))}catch(x){}});
-  window.addEventListener('unhandledrejection',function(e){if(Date.now()-lastErr<3000)return;lastErr=Date.now();var m=e.reason&&(e.reason.code||e.reason.message)||String(e.reason);if(/boxful|permission-denied|not-found|unavailable|timeout|offline/i.test(m))return;try{toast('⚠️ '+m)}catch(x){}});
+  /* (errores ahora van a Notificaciones) */
+  /* (rechazos ahora van a Notificaciones) */
 
   /* ---------- 1. Texto completo de la orden para WhatsApp ---------- */
   function comprobantesDe(o){
@@ -12950,7 +12979,7 @@ const VAPID='BLHn6hQrTAwWRRcZ5Fuz6HZpoRlSMk6sALcgqqd_Sp9Bz_RCTGow_sboVxroJeGv9cK
 const $=id=>document.getElementById(id);
 const E=firebase.firestore,A=E.CollectionReference.prototype.add,S=E.DocumentReference.prototype.set,U=E.DocumentReference.prototype.update;
 const skip=/^(config|solicitudes|kp_archivos|push_|companyStatus|drivers|canalAuditoria|orders)/,seen={};
-function emit(d){try{if(!window.CURRENT_USER)return;const k=d.tipo+d.link;if(seen[k]&&Date.now()-seen[k]<3000)return;seen[k]=Date.now();
+function emit(d){try{if(!window.CURRENT_USER)return;const k=d.tipo+d.link;if(seen[k]&&Date.now()-seen[k]<30000)return;seen[k]=Date.now();
   A.call(db.collection('push_eventos'),{titulo:d.t,cuerpo:d.b,tipo:d.tipo,link:d.link,autorEmail:((firebase.auth&&firebase.auth().currentUser)||{}).email||'',enviado:false,ts:E.FieldValue.serverTimestamp()});}catch(e){}}
 function ordEv(id,d){const o=(typeof ORDERS!=='undefined'&&ORDERS.find(x=>x.id===id))||{},c=d.cliente||o.cliente||'Cliente';
   const EE={en_ruta:'🛵 Repartidor en ruta',llego:'📍 El repartidor llegó',entregada:'✅ Paquete entregado',no_entregada:'⚠️ No se pudo entregar'};
@@ -12959,7 +12988,7 @@ function ordEv(id,d){const o=(typeof ORDERS!=='undefined'&&ORDERS.find(x=>x.id==
   if('estadoNacional' in d)return {tipo:'nacional',t:d.estadoNacional==='empacado'?'📦 Orden empacada':'📦 Cambió el proceso nacional',b:'Cliente: '+c+(d.estadoNacional&&d.estadoNacional!=='empacado'?' → '+d.estadoNacional:'')};
   if(d.trackingUrl||d.guideUrl||d.boxfulCreatedAt)return {tipo:'guia',t:'🧾 Guía creada',b:'Cliente: '+c};
   if('comprobantes' in d||'comprobantesMitad1' in d||'comprobantesMitad2' in d)return {tipo:'comprobante',t:'🧾 Comprobante subido',b:'Cliente: '+c};
-  if('metodoPago' in d)return {tipo:'pago',t:'💳 Cambió el método de pago',b:'Cliente: '+c+(d.metodoPago?' → '+d.metodoPago:'')};
+  if('metodoPago' in d&&d.metodoPago!==o.metodoPago)return {tipo:'pago',t:'💳 Cambió el método de pago',b:'Cliente: '+c+(d.metodoPago?' → '+d.metodoPago:'')};
   return {tipo:'orden',t:'✏️ Cambio en una orden',b:'Cliente: '+c};}
   function onWrite(p,d){try{if(!d||typeof d!=='object')return;const m=p.match(/^orders\/([^/]+)$/);if(m)emit({...ordEv(m[1],d),link:'orden:'+m[1]});}catch(e){}}
 E.DocumentReference.prototype.set=function(d){onWrite(this.path,d);return S.apply(this,arguments);};
@@ -15785,8 +15814,8 @@ function grupo(x){
 }
 window.kpInboxAdd=function(t,b,o){
   o=o||{};var a=rd(),now=Date.now();
-  var win=(o.tipo==='sistema'||o.tipo==='boxful'||/boxful/i.test(t||''))?21600000:120000;
-  var dup=a.find(function(x){return x.t===(t||'Aviso')&&x.b===(b||'')&&Math.abs(now-x.ts)<win});
+  var win=(o.tipo==='sistema'||o.tipo==='boxful'||/boxful/i.test(t||''))?21600000:600000;
+  var dup=a.find(function(x){return x.t===(t||'Aviso')&&x.b===(b||'')&&Math.abs((o.ts||now)-x.ts)<win});
   if(dup){var ch=false;if(o.link&&!dup.link){dup.link=o.link;ch=true}if(o.tipo&&dup.tipo==='otros'){dup.tipo=o.tipo;ch=true}if(ch)wr(a);return}
   a.unshift({id:o.id||('l'+now+Math.random().toString(36).slice(2,6)),t:t||'Aviso',b:b||'',ts:o.ts||now,r:0,tipo:o.tipo||(/boxful/i.test(t||'')?'boxful':'otros'),link:o.link||''});
   wr(a);
@@ -16040,5 +16069,53 @@ window.kpCopyOrderWhatsApp=function(id){return window.kpEnviarOrdenWhatsApp(id)}
 })();
 </script>
 
+
+<script id="kp-oct3-final">
+(function(){
+'use strict';
+/* ---- Avisos flotantes: eliminados. Los errores y validaciones van a Notificaciones ---- */
+var PROBLEMA=/(no se pudo|error|fall[oó]|rechaz|sin permiso|no hay conexi|failed|⚠️|complet[aá]|elige|eleg[ií]|selecciona|seleccion[aá]|agrega|escribe|pega el|permite|solo un admin|no se encontr|obligatori|ya existe|problema|no est[aá] listo)/i;
+var BOX=/boxful/i;
+window.toast=function(m){
+  var s=String(m==null?'':m).trim();if(!s)return;
+  if(!PROBLEMA.test(s)&&!(BOX.test(s)&&/(rechaz|401|\b[45]\d\d\b|no devolvi|unavailable|no est[aá] disponible)/i.test(s)))return;
+  s=s.replace(/^\s*⚠️?\s*/,'').replace(/^Error:\s*/i,'');
+  if(BOX.test(s)&&window.kpInboxAdd){window.kpInboxAdd('Boxful',s.replace(/^\s*Boxful:\s*/i,''),{tipo:'boxful'});return}
+  window.kpReportError?window.kpReportError(s,''):(window.kpInboxAdd&&window.kpInboxAdd('⚠️ Aviso del sistema',s,{tipo:'sistema'}));
+};
+var tb=document.getElementById('toast');if(tb){tb.style.setProperty('display','none','important');}
+/* errores que ocurrieron antes de que existiera la bandeja */
+function flush(){if(window.kpInboxAdd&&window.__kpErrQ&&window.__kpErrQ.length){window.__kpErrQ.splice(0).forEach(function(b){window.kpInboxAdd('⚠️ Aviso del sistema',b,{tipo:'sistema'})})}}
+flush();setInterval(flush,2000);
+
+/* ---- Banco para transferencia / link de pago (también en pago dividido) ---- */
+var BANCOS=['BAC','FICOHSA','ATLÁNTIDA','DAVIVIENDA','BANPAIS','OCCIDENTE','CUSCATLAN','LAFISE'];
+window.KP_BANCOS=BANCOS;
+function e(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
+window.kpBancoHtml=function(id,val,label){
+  val=String(val||'').trim();
+  var known=BANCOS.indexOf(val.toUpperCase())>=0,otra=!!val&&!known;
+  var opts='<option value="">Seleccionar banco…</option>'+BANCOS.map(function(b){return '<option value="'+b+'"'+(known&&val.toUpperCase()===b?' selected':'')+'>'+b+'</option>'}).join('')+'<option value="OTRA"'+(otra?' selected':'')+'>OTRA (escribir el nombre del banco)</option>';
+  return '<div id="'+id+'Wrap" style="display:none;margin-top:10px"><label>'+e(label||'Banco')+'</label><select id="'+id+'" onchange="kpBancoRefresh()">'+opts+'</select>'
+   +'<input id="'+id+'Otro" placeholder="Nombre del banco" value="'+e(otra?val:'')+'" style="display:'+(otra?'block':'none')+';margin-top:6px"></div>';
+};
+window.kpBancoValor=function(id){var s=document.getElementById(id);if(!s)return '';
+  if(s.value==='OTRA'){var o=document.getElementById(id+'Otro');return o?o.value.trim().toUpperCase():''}
+  return s.value||'';};
+window.kpBancoFalta=function(id){var s=document.getElementById(id);if(!s)return false;
+  if(s.value==='OTRA'){var o=document.getElementById(id+'Otro');if(o&&!o.value.trim()){o.style.outline='2px solid #ff5c5c';o.focus();return true}}
+  return false;};
+window.kpBancoRefresh=function(){
+  var m=(document.getElementById('f_metodoPago')||{}).value;
+  var bk=function(x){return x==='transferencia'||x==='link de pago'};
+  function show(id,on){var w=document.getElementById(id+'Wrap');if(w)w.style.display=on?'block':'none';
+    var s=document.getElementById(id),o=document.getElementById(id+'Otro');
+    if(o){o.style.display=(on&&s&&s.value==='OTRA')?'block':'none';if(o.style.display==='block')o.style.outline=''}}
+  show('f_banco',bk(m));
+  show('f_bancoMitad1',m==='mitad'&&bk((document.getElementById('f_metodoMitad1')||{}).value));
+  show('f_bancoMitad2',m==='mitad'&&bk((document.getElementById('f_metodoMitad2')||{}).value));
+};
+})();
+</script>
 </body>
 </html>
