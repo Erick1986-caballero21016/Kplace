@@ -1976,7 +1976,7 @@ function renderRastreosNacionales(){
   // a otra fecha con las flechas o el calendario de arriba). Si hay una búsqueda activa,
   // esta sí busca en todas las fechas.
   const envios=ORDERS
-    .filter(o=>(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan') && (o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment) &&
+    .filter(o=>(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan'))) && (o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment) &&
       (globalSearchTerm ? (orderMatchesSearch(o)||kpGuiaMatch(o,globalSearchTerm)) : (window.kpRastreoTodas || kpDiaCreacion(o)===selectedDate)))
     .slice()
     .sort((a,b)=>(b.boxfulCreatedAt||b.fecha||'').localeCompare(a.boxfulCreatedAt||a.fecha||''));
@@ -6138,6 +6138,7 @@ function kpCanManageShipping(){
 function kpIsHazabPickup(o){ return o?.tipoOrden==='hazab_listo'; }
 function kpIsHazabCustom(o){ return o?.tipoOrden==='hazab_envio'; }
 function kpIsNational(o){ return o?.tipoEntrega==='nacional' || o?.tipoEntrega==='roatan'; }
+function kpProgNac(o){return !!o&&o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan');}
 function kpIsTegusShip(o){ return o?.tipoEntrega==='tegucigalpa' || kpIsHazabCustom(o); }
 function kpOrdersForDate(){
   return ORDERS.filter(o=>globalSearchTerm ? orderMatchesSearch(o) : o.fecha===selectedDate);
@@ -6370,7 +6371,7 @@ function abrirRastreoConfirmado(id){
 }
 function renderRastreosNacionales(){
   const view=document.getElementById('view');
-  const envios=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&(o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment)&&
+  const envios=ORDERS.filter(o=>(kpIsNational(o)||kpProgNac(o))&&!kpIsHazabPickup(o)&&(o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment)&&
     (globalSearchTerm?(orderMatchesSearch(o)||kpGuiaMatch(o,globalSearchTerm)):(window.kpRastreoTodas||kpDiaCreacion(o)===selectedDate))).slice().sort((a,b)=>(b.boxfulCreatedAt||b.fecha||'').localeCompare(a.boxfulCreatedAt||a.fecha||''));
   const rows=envios.map(o=>{
     const shipment=o.boxfulShipment||{};
@@ -11739,7 +11740,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
     var u=window.CURRENT_USER;
     if(!u||!(u.esAdmin||u.esEncargadoEnvios)||typeof boxfulFetch!=='function')return;
     var lista=(window.ORDERS||[]).filter(function(o){
-      return (o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan')&&(o.boxfulShipmentNumber||o.boxfulGuideNumber)&&o.boxfulAlert!=='entregado'&&o.entregado!==true;
+      return (o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan')))&&(o.boxfulShipmentNumber||o.boxfulGuideNumber)&&o.boxfulAlert!=='entregado'&&o.entregado!==true;
     }).slice(0,15);
     for(var i=0;i<lista.length;i++){
       var o=lista[i], guia=o.boxfulShipmentNumber||o.boxfulGuideNumber;
