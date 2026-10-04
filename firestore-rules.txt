@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function accPath() { return /databases/$(database)/documents/config/acceso; }
+    function sinDueno() { return !exists(accPath()); }
+    function aprobado() { return signedIn() && exists(accPath()) && request.auth.token.email in get(accPath()).data.emails; }
+    function admin() { return aprobado() && request.auth.token.email in get(accPath()).data.admins; }
+
+    match /config/acceso {
+      allow read: if signedIn();
+      allow create: if signedIn() && sinDueno()
+        && request.resource.data.emails == [request.auth.token.email]
+        && request.resource.data.admins == [request.auth.token.email];
+      allow update: if admin();
+    }
+    match /solicitudes/{id} {
+      allow create: if signedIn() && request.resource.data.email == request.auth.token.email;
+      allow read, delete: if admin();
+    }
+    match /fotos_publicas/{id} {
+      allow get: if true;
+      allow write: if aprobado();
+    }
+    match /{document=**} {
+      allow read: if aprobado() || (signedIn() && sinDueno());
+      allow write: if (aprobado() || (signedIn() && sinDueno()))
+        && /databases/$(database)/documents/$(document) != accPath();
+    }
+  }
+}
