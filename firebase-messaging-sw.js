@@ -14,7 +14,7 @@ messaging.onBackgroundMessage(function(p){
   return self.registration.showNotification(d.title||d.titulo||'KPlace',{
     body:d.body||d.cuerpo||'',
     icon:'icon-192.png',
-    badge:'icon-192.png',
+    badge:'badge-96.png',
     data:{link:d.link||d.url||''}
   });
 });
