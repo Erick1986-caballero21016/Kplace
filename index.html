@@ -13052,8 +13052,9 @@ async function registrar(){
   try{const reg=await navigator.serviceWorker.register('firebase-messaging-sw.js');
     const tok=await firebase.messaging().getToken({vapidKey:VAPID,serviceWorkerRegistration:reg});if(!tok)return;
     localStorage.setItem('kp_fcm_tok',tok);await S.call(db.collection('push_tokens').doc(tok),{prefs:JSON.parse(localStorage.getItem('kp_prefs')||'{}'),email:((firebase.auth().currentUser)||{}).email||'',usuario:cu.usuario||cu.nombre,esAdmin:!!cu.esAdmin,ts:E.FieldValue.serverTimestamp()});
-    firebase.messaging().onMessage(p=>{const n=p.notification||{},lk=((p.fcmOptions||{}).link)||'';window.kpInboxAdd&&kpInboxAdd(n.title,n.body);
-      try{if(Notification.permission==='granted')reg.showNotification(n.title||'KPlace',{body:n.body||'',icon:'icon-192.png',badge:'badge-96.png',tag:'kp-'+Date.now(),data:{link:lk}});}catch(e){toast((n.title||'')+' '+(n.body||''));}});
+    if(!window.__kpOnMsg){window.__kpOnMsg=1;firebase.messaging().onMessage(p=>{const n=p.notification||{},lk=((p.fcmOptions||{}).link)||'',t=n.title||'KPlace';window.kpInboxAdd&&kpInboxAdd(n.title,n.body);
+      const opts={body:n.body||'',icon:'icon-192.png',badge:'badge-96.png',tag:'kp-'+Date.now(),renotify:true,vibrate:[200,100,200],data:{link:lk}};
+      navigator.serviceWorker.ready.then(r=>r.showNotification(t,opts)).catch(e=>{console.warn('showNotification',e);toast(t+' '+(n.body||''));});});}
   }catch(e){console.warn('push',e);}
 }
 window.kpActivarAvisos=async function(){const r=await Notification.requestPermission();$('kpBell')&&$('kpBell').remove();if(r==='granted')registrar();else toast('Sin permiso no llegan avisos');};
