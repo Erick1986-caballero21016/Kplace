@@ -1130,6 +1130,8 @@ new MutationObserver(function(){var e=document.getElementById('loginError');if(!
 /* formatUserNumber disponible globalmente desde el inicio */
 window.formatUserNumber=window.formatUserNumber||function(n){return String(n||'10001').replace(/\D/g,'').slice(-5).padStart(5,'0')};
 /* Captura de errores: van a Notificaciones con el detalle de qué pasó y dónde */
+/* Dirección donde se ven las fotos de producto que se mandan por WhatsApp (vacío = usa la dirección de la app) */
+window.KP_LINK_BASE='https://kplace-hn.github.io/';
 window.__kpErrQ=[];
 window.kpReportError=function(msg,where){var b=String(msg||'Error desconocido')+(where?' · '+where:'');
   try{var l=JSON.parse(localStorage.getItem('kp_errlog')||'[]');l.unshift({ts:Date.now(),m:b});localStorage.setItem('kp_errlog',JSON.stringify(l.slice(0,30)))}catch(e){}
@@ -12528,7 +12530,7 @@ window.kpTO=function(p,ms){return Promise.race([Promise.resolve(p),new Promise((
         pub[r.key]=id; persistPub();
         await TO(db.collection('config').doc('fotoprod_'+r.key).set({pub:id},{merge:true}),8000);
       }
-      return location.origin+location.pathname+'?f='+id;
+      return (window.KP_LINK_BASE||(location.origin+location.pathname))+'?f='+id;
     }catch(e){return null;}
   };
   /* Administrador de fotos dentro de Inventario */
