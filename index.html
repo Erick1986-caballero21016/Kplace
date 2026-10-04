@@ -16428,5 +16428,89 @@ document.addEventListener('click',async function(ev){
   wrap(); window.addEventListener('load',function(){wrap();setTimeout(wrap,1200);setTimeout(wrap,3500);});
 })();
 </script>
+<style id="kp-oct5-css">
+.kpnw-reg{margin:0 12px 8px;padding:12px 14px;border-radius:14px;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.30);color:#e5dcff;font-size:13.5px;line-height:1.35}
+.kpnw-reg b{display:block;margin-bottom:2px;color:#f3edff}
+.kpnw-reg button{margin-top:8px;border:0;border-radius:11px;padding:10px 14px;background:#7c3aed;color:#fff;font-weight:700;font-size:14px}
+.kpnw-reg button[disabled]{opacity:.55}
+.kpnw-reg.ok{background:rgba(34,197,94,.10);border-color:rgba(34,197,94,.28);color:#c9f1d6;padding:8px 14px;font-size:12.5px}
+</style>
+<script id="kp-oct5-js">
+(function(){
+'use strict';
+var VAPID='BLHn6hQrTAwWRRcZ5Fuz6HZpoRlSMk6sALcgqqd_Sp9Bz_RCTGow_sboVxroJeGv9cKzANjvYrSYjeWx0h1iEDw';
+var busy=false;
+function soporta(){return ('serviceWorker' in navigator)&&('Notification' in window)&&window.firebase&&firebase.messaging}
+/* Registra este celular y devuelve {ok,msg}: el mensaje dice exactamente qué falló */
+window.kpRegistrarCelular=async function(){
+  if(busy)return {ok:false,msg:'Ya se está registrando…'};busy=true;
+  try{
+    if(!soporta())return {ok:false,msg:'Este navegador no permite avisos. En iPhone hay que agregar la app a la pantalla de inicio.'};
+    if(!window.CURRENT_USER)return {ok:false,msg:'Primero inicia sesión.'};
+    var perm=Notification.permission;
+    if(perm==='default')perm=await Notification.requestPermission();
+    if(perm!=='granted')return {ok:false,msg:'Los avisos están bloqueados. Actívalos en Ajustes del navegador → Notificaciones de este sitio.',block:true};
+    var reg=await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+    var tok=await firebase.messaging().getToken({vapidKey:VAPID,serviceWorkerRegistration:reg});
+    if(!tok)return {ok:false,msg:'El celular no entregó su identificador de avisos. Cierra la app y vuelve a abrirla.'};
+    var cu=window.CURRENT_USER,em='';try{em=(firebase.auth().currentUser||{}).email||''}catch(e){}
+    var pr={};try{pr=JSON.parse(localStorage.getItem('kp_prefs')||'{}')}catch(e){}
+    await db.collection('push_tokens').doc(tok).set({prefs:pr,email:em,usuario:cu.usuario||cu.nombre||'',esAdmin:!!cu.esAdmin,ts:firebase.firestore.FieldValue.serverTimestamp()});
+    var d=await db.collection('push_tokens').doc(tok).get({source:'server'});
+    if(!d.exists)return {ok:false,msg:'No se pudo guardar este celular en la base de datos.'};
+    localStorage.setItem('kp_fcm_tok',tok);
+    return {ok:true,msg:'Este celular quedó registrado ✅'};
+  }catch(e){
+    var c=(e&&e.code)||'',m=(e&&e.message)||String(e);
+    if(/permission-denied/.test(c+m))m='Tu cuenta no tiene permiso para registrar el celular (revisa que tu correo esté aprobado).';
+    else if(/unavailable|network|offline/i.test(c+m))m='Sin conexión con el servidor. Revisa tu internet.';
+    else if(/token-subscribe|messaging\//.test(c+m))m='Firebase rechazó el registro ('+c+'). Borra los datos del sitio y vuelve a entrar.';
+    return {ok:false,msg:m};
+  }finally{busy=false}
+};
+window.kpActivarAvisos=async function(){return window.kpRegistrarCelular()};
+
+async function estado(){
+  if(!('Notification' in window))return {ok:false,msg:'Este navegador no permite avisos.',nobtn:true};
+  if(Notification.permission==='denied')return {ok:false,msg:'Los avisos están bloqueados en este navegador. Actívalos en Ajustes del navegador → Notificaciones de este sitio.',nobtn:true};
+  var t=localStorage.getItem('kp_fcm_tok');
+  if(Notification.permission==='granted'&&t&&window.db){
+    try{var d=await db.collection('push_tokens').doc(t).get({source:'server'});if(d.exists)return {ok:true}}catch(e){}
+  }
+  return {ok:false,msg:'Este celular no está registrado para recibir avisos.'};
+}
+async function pinta(box,reintentar){
+  var e=await estado();
+  if(e.ok){box.className='kpnw-reg ok';box.innerHTML='✅ Avisos activos en este celular';return}
+  if(reintentar&&!e.nobtn&&Notification.permission==='granted'){
+    box.className='kpnw-reg';box.innerHTML='Registrando este celular…';
+    var r=await window.kpRegistrarCelular();
+    if(r.ok){box.className='kpnw-reg ok';box.innerHTML='✅ '+r.msg.replace(' ✅','');return}
+    e={ok:false,msg:r.msg};
+  }
+  box.className='kpnw-reg';
+  box.innerHTML='<b>Avisos del celular</b>'+e.msg+(e.nobtn?'':'<br><button id="kpRegBtn">Registrar este celular</button>');
+  var b=box.querySelector('#kpRegBtn');
+  if(b)b.onclick=async function(){b.disabled=true;b.textContent='Registrando…';var r=await window.kpRegistrarCelular();
+    if(r.ok){box.className='kpnw-reg ok';box.innerHTML='✅ '+r.msg.replace(' ✅','')}
+    else{box.className='kpnw-reg';box.innerHTML='<b>No se pudo registrar</b>'+r.msg+(r.block?'':'<br><button id="kpRegBtn">Reintentar</button>');var nb=box.querySelector('#kpRegBtn');if(nb)nb.onclick=function(){pinta(box,false)}}};
+}
+/* Al abrir Notificaciones se muestra el estado (y se intenta arreglar solo) */
+new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(function(n){
+  if(n.nodeType===1&&n.id==='kpNW'&&!n.querySelector('.kpnw-reg')){
+    var box=document.createElement('div');box.className='kpnw-reg ok';box.textContent='Revisando avisos…';
+    var f=n.querySelector('.kpnw-filters');if(f)f.parentNode.insertBefore(box,f);
+    pinta(box,true);
+  }})})}).observe(document.body,{childList:true});
+/* Auto-reparación: si el permiso ya está dado pero el celular no está en la base, se registra solo */
+var tries=0,iv=setInterval(async function(){
+  if(++tries>12){clearInterval(iv);return}
+  if(!window.CURRENT_USER||!window.db||!('Notification' in window)||Notification.permission!=='granted')return;
+  clearInterval(iv);
+  var e=await estado();if(!e.ok)window.kpRegistrarCelular();
+},5000);
+})();
+</script>
 </body>
 </html>
