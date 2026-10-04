@@ -16570,12 +16570,15 @@ var tries=0,iv=setInterval(async function(){
 /* ---- Mensaje de WhatsApp: compacto, con comas en los montos y un solo total ---- */
 function miles(l){return l.replace(/(^|[^\d.,])(\d{4,})\.(\d{2})(?!\d)/g,function(m,a,n,d){return a+n.replace(/\B(?=(\d{3})+(?!\d))/g,',')+'.'+d})}
 function fmt(t){
-  var L=String(t==null?'':t).split('\n').map(function(x){return x.replace(/\s+$/,'')}).filter(function(x){return x.trim()!==''});
+  var L=String(t==null?'':t).split('\n').map(function(x){return x.replace(/\s+$/,'')});
   L=L.map(miles);
   /* Solo el total (sin "cobrar al entregar" ni "falta por pagar") */
   L=L.filter(function(x){return !/^(Cobrar al entregar|Falta por pagar):/.test(x)});
   /* Estado: solo la primera letra en mayúscula */
   L=L.map(function(x){return x.replace(/^(Estado:\s*\*?)PENDIENTE DE PAGO/,'$1Pendiente de pago').replace(/^(Estado:\s*\*?)PAGADO/,'$1Pagado')});
+  /* Conserva el espacio entre secciones: máximo 1 línea en blanco seguida, ninguna al inicio/final */
+  L=L.filter(function(x,i){return !(x.trim()===''&&(i===0||L[i-1].trim()===''))});
+  while(L.length&&L[L.length-1].trim()==='')L.pop();
   return L.join('\n');
 }
 var prev=window.kpTextoOrdenWhatsApp;
