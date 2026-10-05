@@ -8908,6 +8908,7 @@ function branchOptions(selected, all=true){
   return (all?'<option value="">Todas las sucursales</option>':'')+arr.map(b=>`<option value="${esc(b.id)}" ${b.id===selected?'selected':''}>${esc(b.nombre)}</option>`).join('');
 }
 function roleOf(v){return (v?.soloOrdenes&&!v?.esAdmin&&!v?.esEncargadoEnvios&&!v?.esRepartidor)?'Solo órdenes':v?.esAdmin?'Administrador':v?.esEncargadoEnvios?'Administrador de envíos':v?.esRepartidor?'Repartidor':'Vendedor';}
+try{window.roleOf=roleOf;}catch(e){}
 function isAdmin(){return !!CURRENT_USER?.esAdmin;}
 function isShipAdmin(){return !!CURRENT_USER?.esEncargadoEnvios||!!CURRENT_USER?.esAdmin;}
 function sameBranch(a,b){return userBranch(a)===userBranch(b);}
@@ -11331,7 +11332,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
     var __n0=L.length;
     if(o.notas)L.push('Notas: '+clean(o.notas));
     var guia=o.boxfulShipmentNumber||o.boxfulGuideNumber;
-    if(guia){L.push('Guía Boxful: '+guia);}
+    
     if(L.length>__n0)L.splice(__n0,0,'');
     return L.join('\n');
   };
@@ -11582,7 +11583,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
     var __n0=L.length;
     if(o.notas)L.push('Notas: '+clean(o.notas));
     var guia=o.boxfulShipmentNumber||o.boxfulGuideNumber;
-    if(guia){L.push('Guía Boxful: '+guia);}
+    
     if(L.length>__n0)L.splice(__n0,0,'');
     return L.join('\n');
   };
@@ -16678,7 +16679,7 @@ function fmt(t){
   /* Solo el total (sin "cobrar al entregar" ni "falta por pagar") */
   L=L.filter(function(x){return !/^(Cobrar al entregar|Falta por pagar):/.test(x)});
   /* Estado: solo la primera letra en mayúscula */
-  L=L.filter(function(x){return !/^\s*(Comprobante[^:]*|Rastreo)\s*:/i.test(x)});
+  L=L.filter(function(x){return !/^\s*(Comprobante[^:]*|Rastreo|Gu[ií]a(\s+Boxful)?)\s*:/i.test(x)});
   L=L.map(function(x){return x.replace(/^(Estado:\s*\*?)PENDIENTE DE PAGO/,'$1Pendiente de pago').replace(/^(Estado:\s*\*?)PAGADO/,'$1Pagado')});
   /* Conserva el espacio entre secciones: máximo 1 línea en blanco seguida, ninguna al inicio/final */
   L=L.filter(function(x,i){return !(x.trim()===''&&(i===0||L[i-1].trim()===''))});
@@ -17268,7 +17269,7 @@ KP.chatSendImage=async function(input,path){
     try{
       var f=await compress(files[i]);
       var url=await subirArchivoStorage('chat_kp',f);
-      var msg={autor:CURRENT_USER.nombre||'',autorUsuario:CURRENT_USER.usuario||CURRENT_USER.nombre||'',rol:roleOf(CURRENT_USER),sucursalId:userBranch(CURRENT_USER),tipo:'imagen',url:url,ts:FV().serverTimestamp()};
+      var msg={autor:CURRENT_USER.nombre||'',autorUsuario:CURRENT_USER.usuario||CURRENT_USER.nombre||'',rol:(window.roleOf?window.roleOf(CURRENT_USER):''),sucursalId:userBranch(CURRENT_USER),tipo:'imagen',url:url,ts:FV().serverTimestamp()};
       if(isCanal){msg.reacciones={};msg.leidoPor=[me()];}
       if(albumId){msg.albumId=albumId;msg.albumIdx=i;msg.albumN=files.length;}
       if(rp&&ok===0)msg.replyTo=rp;
@@ -17301,7 +17302,7 @@ C.send=async function(path,canalId){
   var inp=$('kpChatText'),txt=inp&&inp.value.trim();if(!txt)return;
   var c=(C.list||[]).find(function(x){return x.id===canalId;});
   if(c&&c.soloLectura&&!C._isModerator(c,me())){toast('Este canal es de solo lectura');return;}
-  var msg={autor:CURRENT_USER.nombre,autorUsuario:me(),rol:roleOf(CURRENT_USER),tipo:'texto',texto:txt,menciones:C._parseMentions(txt,c),reacciones:{},leidoPor:[me()],ts:FV().serverTimestamp()};
+  var msg={autor:CURRENT_USER.nombre,autorUsuario:me(),rol:(window.roleOf?window.roleOf(CURRENT_USER):''),tipo:'texto',texto:txt,menciones:C._parseMentions(txt,c),reacciones:{},leidoPor:[me()],ts:FV().serverTimestamp()};
   var rp=(C._reply&&C._reply.canalId===canalId)?C._reply.data:null;if(rp)msg.replyTo=rp;
   inp.value='';C._reply=null;renderReplyBar();
   try{await db.collection(path).add(msg);}catch(e){inp.value=txt;toast('No se pudo enviar el mensaje');return;}
@@ -17677,6 +17678,40 @@ setInterval(paintMenuBadge,1500);
 window.addEventListener('storage',paintMenuBadge);
 document.addEventListener('click',function(){setTimeout(paintMenuBadge,60)},true);
 paintMenuBadge();
+})();
+/* ---------- Vaciar chat (solo para quien lo vacía; los demás siguen viendo todo) ---------- */
+(function(){
+  var C=window.KP&&KP.Channels;if(!C||C.__clr)return;C.__clr=1;
+  var uid=function(){var u=window.CURRENT_USER||{};return String(u.usuario||u.nombre||'anon')};
+  var key=function(p){return 'kp_chatclr_'+uid()+'_'+p};
+  var cleared=function(p){try{return Number(localStorage.getItem(key(p))||0)}catch(e){return 0}};
+  var B=C.bubble;
+  if(typeof B==='function')C.bubble=function(x,path){
+    var t=cleared(path);
+    if(t){var ms=(x&&x.ts&&x.ts.toMillis)?x.ts.toMillis():Date.now();if(ms<=t)return '';}
+    return B.apply(this,arguments);
+  };
+  var O=C.open;
+  C.open=function(id){
+    var r=O.apply(this,arguments);
+    try{
+      var head=document.querySelector('.kpw-head');
+      if(head&&!head.querySelector('#kpwClr')){
+        var b=document.createElement('button');b.id='kpwClr';b.className='kpw-ic';b.setAttribute('aria-label','Vaciar chat');b.title='Vaciar chat';
+        b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg>';
+        b.onclick=function(){
+          if(!confirm('¿Vaciar este chat?\n\nSolo se borrará para ti. Los demás usuarios seguirán viendo todos los mensajes.'))return;
+          var path='canalMensajes_'+id,t=Date.now(),cache=(C._msgCache&&C._msgCache[id])||{};
+          Object.keys(cache).forEach(function(k){var m=cache[k];var ms=m&&m.ts&&m.ts.toMillis?m.ts.toMillis():0;if(ms>t)t=ms;});
+          try{localStorage.setItem(key(path),String(t))}catch(e){}
+          var box=document.getElementById('kpChatMsgs');if(box)box.innerHTML='<div class="kp-empty">Chat vaciado. Los mensajes nuevos aparecerán aquí.</div>';
+          if(window.toast)toast('Chat vaciado (solo para ti)');
+        };
+        var s=head.querySelector('#kpwS');if(s)head.insertBefore(b,s);else head.appendChild(b);
+      }
+    }catch(e){console.warn(e)}
+    return r;
+  };
 })();
 </script>
 </body>
