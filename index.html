@@ -2402,6 +2402,9 @@ function verFoto(url){
   lb.className='lightbox';
   lb.onclick=()=>lb.remove();
   lb.innerHTML = `<img src="${url}">`;
+  const dl=document.createElement('button'); dl.type='button'; dl.className='kp-lb-dl'; dl.textContent='⬇ Descargar';
+  dl.onclick=e=>{e.stopPropagation(); window.kpDescargarImagen(url,'foto-kplace');};
+  lb.appendChild(dl);
   document.body.appendChild(lb);
 }
 
@@ -2565,7 +2568,7 @@ function gestionarComprobantes(id, field, titulo){
   overlay.addEventListener('click',e=>{if(e.target===overlay) cerrar();});
   const render=()=>{
     const fotosNow=(ORDERS.find(x=>x.id===id)?.[field])||[];
-    modal.innerHTML=`<div class="kp-modal-head"><div><h2>${titulo||'Comprobantes de pago'}</h2><p>${fotosNow.length} ${fotosNow.length===1?'foto guardada':'fotos guardadas'}</p></div><button class="kp-modal-close" id="kpCompClose">×</button></div>${fotosNow.length?`<div class="kp-photo-grid">${fotosNow.map((url,i)=>`<div class="kp-photo-item"><img src="${url}" onclick="verFoto('${url.replace(/'/g,"\'")}')"><button class="kp-photo-remove" onclick="eliminarComprobante('${id}','${field}',${i})">×</button></div>`).join('')}</div>`:`<div style="padding:26px 10px;text-align:center;color:#7b8493;font-size:12px;background:#f7f8fa;border-radius:14px;margin-bottom:14px;">Todavía no hay comprobantes para esta orden.</div>`}<div class="kp-modal-actions"><button class="btn primary full" id="kpAddComp">＋ Agregar comprobante</button><button class="btn" id="kpCloseComp">Listo</button></div>`;
+    modal.innerHTML=`<div class="kp-modal-head"><div><h2>${titulo||'Comprobantes de pago'}</h2><p>${fotosNow.length} ${fotosNow.length===1?'foto guardada':'fotos guardadas'}</p></div><button class="kp-modal-close" id="kpCompClose">×</button></div>${fotosNow.length?`<div class="kp-photo-grid">${fotosNow.map((url,i)=>`<div class="kp-photo-item"><img src="${url}" onclick="verFoto('${url.replace(/'/g,"\'")}')"><button class="kp-photo-dl" aria-label="Descargar" onclick="descargarComprobante('${id}','${field}',${i})">⬇</button><button class="kp-photo-remove" onclick="eliminarComprobante('${id}','${field}',${i})">×</button></div>`).join('')}</div>${fotosNow.length>1?`<button class="btn sm kp-dl-all" onclick="descargarComprobante('${id}','${field}',-1)">⬇ Descargar todas (${fotosNow.length})</button>`:''}`:`<div style="padding:26px 10px;text-align:center;color:#7b8493;font-size:12px;background:#f7f8fa;border-radius:14px;margin-bottom:14px;">Todavía no hay comprobantes para esta orden.</div>`}<div class="kp-modal-actions"><button class="btn primary full" id="kpAddComp">＋ Agregar comprobante</button><button class="btn" id="kpCloseComp">Listo</button></div>`;
     modal.querySelector('#kpCompClose').onclick=cerrar; modal.querySelector('#kpCloseComp').onclick=cerrar;
     modal.querySelector('#kpAddComp').onclick=()=>mostrarOpcionesFoto(file=>{ if(!file) return; comprimirImagen(file,1400,.85).then(dataUrl=>db.collection('orders').doc(id).update({[field]:firebase.firestore.FieldValue.arrayUnion(dataUrl)})).then(()=>{toast('Comprobante agregado');render();}).catch(()=>toast('No se pudo guardar el comprobante.')); });
   };
@@ -17079,7 +17082,7 @@ function emojiPanel(){
     var e=ev.target.closest('.kp-e');if(!e)return;ev.stopPropagation();
     var em=e.dataset.e,st=input.selectionStart==null?input.value.length:input.selectionStart,en=input.selectionEnd==null?st:input.selectionEnd;
     input.value=input.value.slice(0,st)+em+input.value.slice(en);var pos=st+em.length;
-    try{input.focus({preventScroll:true});input.setSelectionRange(pos,pos);}catch(x){}
+    try{input.setSelectionRange(pos,pos);}catch(x){}
     input.dispatchEvent(new Event('input',{bubbles:true}));
     try{C._addRecentEmoji(em);}catch(x){}
   });
@@ -17206,21 +17209,29 @@ KP.chatPickImage=function(path){KP._chatImgPath=path;var i=$('kpChatFileInput');
 KP.chatSendImage=async function(input,path){
   var files=Array.from((input&&input.files)||[]);if(!files.length)return;input.value='';
   var isCanal=/^canalMensajes_/.test(path||''),canalId=isCanal?path.replace(/^canalMensajes_/,''):'';
-  try{
-    var prepared=await mapLimit(files,3,compress);
-    var urls=await mapLimit(prepared,3,function(f){return subirArchivoStorage('chat_kp',f);});
-    var albumId=urls.length>1?('a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)):null;
-    var rp=(isCanal&&C._reply&&C._reply.canalId===canalId)?C._reply.data:null;
-    for(var i=0;i<urls.length;i++){
-      var msg={autor:CURRENT_USER.nombre,autorUsuario:CURRENT_USER.usuario||CURRENT_USER.nombre,rol:roleOf(CURRENT_USER),sucursalId:userBranch(CURRENT_USER),tipo:'imagen',url:urls[i],ts:FV().serverTimestamp()};
+  var albumId=files.length>1?('a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)):null;
+  var rp=(isCanal&&C._reply&&C._reply.canalId===canalId)?C._reply.data:null;
+  var ok=0,fail=0,lastErr=null;
+  if(files.length>1&&window.toast)toast('Enviando '+files.length+' fotos…');
+  for(var i=0;i<files.length;i++){
+    try{
+      var f=await compress(files[i]);
+      var url=await subirArchivoStorage('chat_kp',f);
+      var msg={autor:CURRENT_USER.nombre||'',autorUsuario:CURRENT_USER.usuario||CURRENT_USER.nombre||'',rol:roleOf(CURRENT_USER),sucursalId:userBranch(CURRENT_USER),tipo:'imagen',url:url,ts:FV().serverTimestamp()};
       if(isCanal){msg.reacciones={};msg.leidoPor=[me()];}
-      if(albumId){msg.albumId=albumId;msg.albumIdx=i;msg.albumN=urls.length;}
-      if(rp&&i===0)msg.replyTo=rp;
+      if(albumId){msg.albumId=albumId;msg.albumIdx=i;msg.albumN=files.length;}
+      if(rp&&ok===0)msg.replyTo=rp;
+      Object.keys(msg).forEach(function(k){if(msg[k]===undefined)delete msg[k];});   /* Firestore no acepta undefined */
       await db.collection(path).add(msg);
-    }
-    if(rp){C._reply=null;renderReplyBar();}
-    if(isCanal&&isDM(canalId))dmTouch(canalId,urls.length>1?'📷 '+urls.length+' fotos':'📷 Foto');
-  }catch(e){console.error(e);toast('No se pudo enviar la imagen');}
+      ok++;
+    }catch(e){fail++;lastErr=e;console.error('chatSendImage',e);}
+  }
+  if(ok&&rp){C._reply=null;renderReplyBar();}
+  if(ok&&isCanal&&isDM(canalId))dmTouch(canalId,ok>1?'📷 '+ok+' fotos':'📷 Foto');
+  if(fail){
+    var why=lastErr&&(lastErr.code||lastErr.message)?String(lastErr.code||lastErr.message).slice(0,70):'error desconocido';
+    toast(files.length===1?'No se pudo enviar la imagen ('+why+')':'No se pudieron enviar '+fail+' de '+files.length+' fotos ('+why+')');
+  }
 };
 C.deleteMessage=function(path,canalId,msgId){
   askKPlace({title:'Eliminar mensaje',message:isDM(canalId)?'Se eliminará para los dos.':'Esta acción quedará registrada en el historial del canal.',confirmText:'Eliminar',danger:true,onConfirm:async function(){
@@ -17400,6 +17411,8 @@ document.addEventListener('click',function(e){
   var row=b.closest('.kpmem-row');if(!row)return;e.stopPropagation();
   var w=b.closest('.kpmem');if(w)w.remove();C.openDM(row.dataset.id,row.dataset.nm);
 });
+var V0=C.visibleFor;
+C.visibleFor=function(){return V0.apply(this,arguments).filter(function(c){return c.tipo!=='dm';});};
 var O0=C.open;
 C.open=function(id){
   C._reply=null;var ep=$('kpEmojiPanel');if(ep)ep.remove();
@@ -17418,6 +17431,78 @@ C.open=function(id){
 };
 })();
 
+</script>
+<style id="kp-dl-map-fix">
+/* descargar */
+.kp-photo-item{position:relative}
+.kp-photo-dl{position:absolute;right:6px;bottom:6px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(17,24,39,.82);color:#fff;font-size:17px;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.kp-photo-dl:active{transform:scale(.92)}
+.kp-dl-all{width:100%;margin:10px 0 4px}
+.lightbox .kp-lb-dl{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);border:0;border-radius:99px;padding:13px 22px;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(135deg,#8b5cf6,#6d28d9);box-shadow:0 10px 26px rgba(109,40,217,.5);z-index:3;cursor:pointer}
+/* mapa: no se sale de su caja ni tapa el menú */
+#kpGpsMap,.leaflet-container{position:relative;z-index:0;isolation:isolate;contain:layout paint;touch-action:pan-x pan-y}
+#kpGpsMap{height:min(62vh,520px);min-height:300px}
+.leaflet-container .leaflet-pane,.leaflet-container .leaflet-control{z-index:auto}
+.leaflet-container .leaflet-top,.leaflet-container .leaflet-bottom{z-index:5}
+.kp-moto-pin{animation:none!important}
+</style>
+<script id="kp-dl-map-fix-js">
+(function(){
+  'use strict';
+  /* ---------- descargar imágenes / comprobantes ---------- */
+  function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+  function slug(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()||'comprobante';}
+  window.kpDescargarImagen=async function(url,name){
+    try{
+      var r=await fetch(url),b=await r.blob();
+      var ext=((b.type||'image/jpeg').split('/')[1]||'jpg').replace('jpeg','jpg').split('+')[0];
+      var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(name||'imagen')+'.'+ext;
+      document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},5000);
+      return true;
+    }catch(e){
+      try{var w=window.open(url,'_blank');if(w)return true;}catch(x){}
+      if(window.toast)toast('No se pudo descargar la imagen');
+      return false;
+    }
+  };
+  window.descargarComprobante=async function(id,field,i){
+    var o=(typeof ORDERS!=='undefined'?ORDERS:[]).find(function(x){return x.id===id;});
+    var arr=(o&&o[field])||[];if(!arr.length)return;
+    var num='';try{num=typeof kpNumeroOrden==='function'?kpNumeroOrden(o):'';}catch(e){}
+    var base='comprobante-'+(num?'orden-'+num+'-':'')+slug(o.cliente);
+    var idx=i<0?arr.map(function(_,k){return k;}):[i];
+    for(var k=0;k<idx.length;k++){
+      await window.kpDescargarImagen(arr[idx[k]],base+(arr.length>1?'-'+(idx[k]+1):''));
+      if(k<idx.length-1)await sleep(350);
+    }
+    if(window.toast)toast(idx.length>1?idx.length+' comprobantes descargados':'Comprobante descargado');
+  };
+
+  /* ---------- mapa de repartidores: sin reconstruirse en cada cambio ---------- */
+  if(window.KP&&typeof KP.gpsPanelAdmin==='function'){
+    var G0=KP.gpsPanelAdmin,last=0,busy=false;
+    KP.gpsPanelAdmin=async function(){
+      var now=Date.now(),m=KP._gpsMap,alive=!!(m&&m._container&&m._container.isConnected&&document.getElementById('kpGpsMap'));
+      if(alive&&!KP._gpsForce&&now-last<20000)return;           /* el mapa sigue vivo: no lo destruyas */
+      if(busy)return;busy=true;KP._gpsForce=false;
+      var keep=null;
+      try{ if(alive&&m._kpTouched){keep={c:m.getCenter(),z:m.getZoom()};} }catch(e){}
+      try{
+        await G0.apply(this,arguments);
+        last=Date.now();
+        var nm=KP._gpsMap;
+        if(nm){
+          var c=nm._container;
+          ['touchstart','mousedown','wheel'].forEach(function(ev){c.addEventListener(ev,function(){nm._kpTouched=true;},{passive:true});});
+          if(keep){nm._kpTouched=true;try{nm.setView(keep.c,keep.z,{animate:false});}catch(e){}}
+          setTimeout(function(){try{nm.invalidateSize();}catch(e){}},120);
+        }
+      }finally{busy=false;}
+    };
+  }
+  /* "Reintentar" fuerza la recarga */
+  document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[onclick*="gpsPanelAdmin"]');if(a)KP._gpsForce=true;},true);
+})();
 </script>
 </body>
 </html>
