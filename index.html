@@ -18088,7 +18088,7 @@ function installFastChannels(){
   var oldRender=C.render;
   C.render=async function(){
     var v=$('view');if(!v)return;
-    var cache=[];try{cache=JSON.parse(localStorage.getItem('kp_canales_cache_v1')||'[]')||[];}catch(e){}
+    var cached=[];try{cached=JSON.parse(localStorage.getItem('kp_canales_cache_v1')||'[]')||[];}catch(e){}
     var admin=!!(window.CURRENT_USER&&CURRENT_USER.esAdmin);
     v.innerHTML='<div class="kp-chat-enterprise kpc-wrap">'
       +'<div class="kpc-head"><div><div class="kp-kicker">EQUIPO · COMUNICACIÓN</div><h2>Canales</h2><p class="small" style="margin:4px 0 0">Comunicación interna de la empresa</p></div>'
@@ -18096,27 +18096,60 @@ function installFastChannels(){
       +'<div class="kpc-search">🔎<input id="kpCanalesBuscar" placeholder="Buscar canal o conversación…" autocomplete="off"></div>'
       +'<div class="kpc-sec"><span>Canales de la empresa</span></div><div class="kpc-panel" id="kpcList"></div>'
       +'<div class="kpc-sec"><span>Mensajes directos</span><button class="kpc-new" id="kpcNew" type="button">＋ Nuevo chat</button></div><div class="kpc-panel" id="kpcDM"></div></div>';
-    var paint=function(){try{if(typeof C._filterCanales==='function')C._filterCanales(($('kpCanalesBuscar')||{}).value||'');}catch(e){}};
-    if(cache.length){C.list=cache;try{if(typeof window.paintChannels==='function')window.paintChannels(false);else if($('kpcList'))$('kpcList').innerHTML='<div class="kpc-row"><div class="kpc-main"><b>Canales listos</b></div></div>';}catch(e){} }
-    else if($('kpcList'))$('kpcList').innerHTML='<div class="kpc-row"><div class="kpc-main"><b>Cargando canales…</b><div class="small">Podés entrar mientras terminamos de sincronizar.</div></div></div>';
+
+    var list=$('kpcList');
+    if(list)list.innerHTML='<div class="kpc-row"><div class="kpc-av"><span class="kpc-sk" style="width:52px;height:52px;border-radius:18px"></span></div><div class="kpc-main"><span class="kpc-sk"></span></div></div>';
     var search=$('kpCanalesBuscar');if(search)search.oninput=function(){if(typeof C._filterCanales==='function')C._filterCanales(this.value);};
-    var list=$('kpcList');if(list)list.onclick=function(e){var row=e.target.closest('.kpc-row[data-id]');if(row&&typeof C.open==='function')C.open(row.dataset.id);};
+    if(list)list.onclick=function(e){var row=e.target.closest('.kpc-row[data-id]');if(row&&typeof C.open==='function')C.open(row.dataset.id);};
     var nw=$('kpcNew');if(nw)nw.onclick=function(){if(C.openDMPicker)C.openDMPicker();};
-    /* Sin bloquear la vista: una sola carga y después pintar. */
-    Promise.resolve().then(async function(){
-      try{await C.load();}catch(e){}
-      try{if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(false);}catch(e){}
-      try{if(typeof C.loadDMs==='function')await C.loadDMs();}catch(e){}
-      try{if(typeof window.paintDMs==='function')window.paintDMs(false);}catch(e){}
-      /* Metadatos solo para los primeros canales; el resto se carga al abrir. */
-      try{
-        var vis=(C.visibleFor?C.visibleFor(CURRENT_USER):C.list||[]).slice(0,5);
-        vis.forEach(function(c){if(typeof window.refreshMeta==='function')window.refreshMeta(c).catch(function(){});});
-      }catch(e){}
-    });
+
+    /* Firestore es la fuente de verdad. La caché jamás reemplaza una lista remota. */
+    var loaded=false;
+    try{
+      await C.load();
+      loaded=Array.isArray(C.list);
+      if(loaded && C.list.length){
+        try{localStorage.setItem('kp_canales_cache_v1',JSON.stringify(C.list));}catch(e){}
+      }
+      if(loaded && !C.list.length){
+        /* Solo crear defaults si realmente Firestore confirma que no existe ningún canal. */
+        await C.ensureDefaults();
+      }
+    }catch(e){
+      console.warn('Canales: no se pudo leer Firestore, usando respaldo local',e);
+      if(cached.length)C.list=cached;
+    }
+
+    if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(true);
+    try{if(typeof C.loadDMs==='function')await C.loadDMs();}catch(e){}
+    try{if(typeof window.paintDMs==='function')window.paintDMs(false);}catch(e){}
+    /* Los metadatos de mensajes se cargan solo para los primeros 5; la lista aparece sin esperarlos. */
+    try{
+      var vis=(C.visibleFor?C.visibleFor(CURRENT_USER):C.list||[]).slice(0,5);
+      vis.forEach(function(c){if(typeof window.refreshMeta==='function')window.refreshMeta(c).catch(function(){});});
+    }catch(e){}
   };
 }
+
 installFastChannels();
+
+/* ---- Canales: compatibilidad con usuarios guardados por nombre/usuario ---- */
+(function(){
+  var C=window.KP&&KP.Channels;if(!C||C.__kpVisibleCompat)return;C.__kpVisibleCompat=true;
+  C.visibleFor=function(u){
+    u=u||window.CURRENT_USER||{};
+    var ids=new Set([
+      String(u.usuario||'').trim(),
+      String(u.nombre||'').trim(),
+      String(u.email||'').trim()
+    ].filter(Boolean).map(function(x){return x.toLowerCase();}));
+    return (C.list||[]).filter(function(c){
+      if(u.esAdmin)return true;
+      if(c.tipo==='general')return true;
+      return (c.miembros||[]).some(function(m){return ids.has(String(m||'').trim().toLowerCase());});
+    });
+  };
+})();
 
 /* ---- Vaciar chat: garantiza que el menú tenga SOLO esta acción para el usuario actual ---- */
 function ensureClearMenu(){
