@@ -11805,7 +11805,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
       if(found||!x||depth>5)return;
       if(Array.isArray(x)){for(var i=x.length-1;i>=0&&!found;i--)walk(x[i],depth+1);return;}
       if(typeof x==='object'){
-        ['status','trackingStatus','currentStatus','statusName','state','estado'].some(function(k){
+        ['statusDescription','trackingStatus','currentStatus','statusName','status','state','estado'].some(function(k){
           var v=x[k]; if(typeof v==='string'&&v&&!/^(success|ok)$/i.test(v)){found=v;return true;}
           if(v&&typeof v==='object'){var n=v.name||v.label||v.description;if(typeof n==='string'&&n){found=n;return true;}}
           return false;
@@ -11827,7 +11827,7 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
     for(var i=0;i<lista.length;i++){
       var o=lista[i], guia=o.boxfulShipmentNumber||o.boxfulGuideNumber;
       try{
-        var data=await boxfulFetch('/shipment/'+encodeURIComponent(guia));
+        var data=await boxfulFetch('/tracking/'+encodeURIComponent(guia));
         var st=pickStatus(data&&(data.shipment||data.data||data));
         if(!st)continue;
         var tipo=RX_OK.test(st)?'entregado':(RX_BAD.test(st)?'problema':'');
@@ -17912,7 +17912,7 @@ function pickStatus(d){
     if(found||!x||depth>5)return;
     if(Array.isArray(x)){for(var i=x.length-1;i>=0&&!found;i--)walk(x[i],depth+1);return;}
     if(typeof x==='object'){
-      ['status','trackingStatus','currentStatus','statusName','state','estado'].some(function(k){
+      ['statusDescription','trackingStatus','currentStatus','statusName','status','state','estado'].some(function(k){
         var v=x[k];
         if(typeof v==='string'&&v&&!/^(success|ok)$/i.test(v)){found=v;return true;}
         if(v&&typeof v==='object'){var n=v.name||v.label||v.description;if(typeof n==='string'&&n){found=n;return true;}}
@@ -17923,34 +17923,34 @@ function pickStatus(d){
   })(d,0);
   return found;
 }
+window.kpPickBoxfulStatus=pickStatus;
 var lastRun=0,running=false;
 function setRefreshBtn(txt){var b=document.querySelector('.kpx-refresh');if(b){b.disabled=!!txt;b.textContent=txt||'🔄 Actualizar estados';}}
 window.kpRefreshBoxful=async function(manual){
   var u=window.CURRENT_USER;
   if(running||!u||!(u.esAdmin||u.esEncargadoEnvios)||typeof boxfulFetch!=='function')return;
-  var list=(window.ORDERS||[]).filter(function(o){return isNac(o)&&guiaDe(o)&&o.boxfulAlert!=='entregado'&&o.entregado!==true&&!o.boxfulCancelledAt&&!o.eliminadoTs&&!o.cancelado;}).slice(0,30);
+  var list=(window.ORDERS||[]).filter(function(o){return isNac(o)&&guiaDe(o)&&o.entregado!==true&&!o.boxfulCancelledAt&&!o.eliminadoTs&&!o.cancelado;});
   if(!list.length){if(manual&&window.toast)toast('No hay guías pendientes por revisar');return;}
-  running=true;lastRun=Date.now();var changed=0;
+  running=true;lastRun=Date.now();var changed=0,failed=0;
   for(var i=0;i<list.length;i++){
     var o=list[i];
     if(manual)setRefreshBtn('Revisando '+(i+1)+' de '+list.length+'…');
     try{
-      var data=await boxfulFetch('/shipment/'+encodeURIComponent(guiaDe(o)));
-      var st=pickStatus(data&&(data.shipment||data.data||data));if(!st)continue;
+      var data=await boxfulFetch('/tracking/'+encodeURIComponent(guiaDe(o)));
+      var st=window.kpPickBoxfulStatus(data);if(!st)throw new Error('Boxful no devolvió una descripción de estado');
       var est=estadoEs(st),tipo=est==='Entregado'?'entregado':(/Problema|Devuelto|Cancelado/.test(est)?'problema':'');
-      if(st!==o.boxfulTrackingStatus||tipo!==(o.boxfulAlert||'')){
-        await db.collection('orders').doc(String(o.id)).update({boxfulTrackingStatus:st,boxfulAlert:tipo,boxfulStatusCheckedAt:new Date().toISOString()});changed++;
+      var update={boxfulTrackingStatus:st,boxfulAlert:tipo,boxfulStatusCheckedAt:new Date().toISOString()};
+      var markDelivered=tipo==='entregado'&&o.entregado!==true;
+      if(markDelivered){update.entregado=true;update.motivoNoEntrega='';}
+      if(st!==o.boxfulTrackingStatus||tipo!==(o.boxfulAlert||'')||markDelivered){
+        await db.collection('orders').doc(String(o.id)).update(update);changed++;
       }
-    }catch(e){}
+    }catch(e){failed++;console.warn('Boxful: no se pudo actualizar la guía',guiaDe(o),e);}
     await sleep(200);
   }
   running=false;setRefreshBtn(null);
-  if(window.toast&&(manual||changed))toast(changed?(changed+(changed===1?' guía cambió de estado':' guías cambiaron de estado')):'Todos los estados están al día');
+  if(window.toast&&(manual||changed))toast(changed?(changed+(changed===1?' guía cambió de estado':' guías cambiaron de estado')):(failed?('No se pudieron consultar '+failed+' guía'+(failed===1?'':'s')+'; revisá la conexión con Boxful'):'Todos los estados están al día'));
 };
-setInterval(function(){
-  var t=window.activeTab;
-  if((t==='boxful'||t==='rastreosNacionales')&&Date.now()-lastRun>180000)window.kpRefreshBoxful(false);
-},5000);
 
 /* ---- unir guías en un solo PDF ---- */
 var SELECTED=new Set();
@@ -18256,29 +18256,7 @@ setTimeout(dedupeSeller,500);
 /* ---- Boxful: sincronización automática para las órdenes nacionales ---- */
 var boxRunning=false;
 async function syncBoxfulAll(){
-  var u=window.CURRENT_USER;if(boxRunning||!u||!(u.esAdmin||u.esEncargadoEnvios)||typeof window.boxfulFetch!=='function'||typeof window.db==='undefined')return;
-  var list=(window.ORDERS||[]).filter(function(o){return (o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan'))) && (o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment) && !o.boxfulCancelledAt&&!o.eliminadoTs&&!o.cancelado && o.entregado!==true && o.boxfulAlert!=='entregado';}).slice(0,50);
-  if(!list.length)return;boxRunning=true;
-  for(var i=0;i<list.length;i++){
-    var o=list[i];
-    try{
-      var ref=o.boxfulShipmentNumber||o.boxfulGuideNumber;
-      if(!ref){var sh=o.boxfulShipment||{};ref=sh.shipmentNumber||sh.guideNumber||sh.trackingNumber||'';}
-      if(!ref)continue;
-      var data=await window.boxfulFetch('/shipment/'+encodeURIComponent(ref));
-      var raw=(data&&(data.shipment||data.data||data))||{};
-      var st=(typeof window.pickStatus==='function'?window.pickStatus(raw):null)||raw.status||raw.trackingStatus||raw.state||'';
-      if(!st)continue;
-      var pretty=typeof window.kpEstadoEs==='function'?window.kpEstadoEs(st):String(st);
-      var type=/entregado|delivered|entrega realizada|completado/i.test(String(pretty)+' '+String(st))?'entregado':/problema|devuelto|cancelado|failed|return/i.test(String(pretty)+' '+String(st))?'problema':'';
-      if(st!==o.boxfulTrackingStatus||type!==(o.boxfulAlert||''))await db.collection('orders').doc(String(o.id)).update({boxfulTrackingStatus:st,boxfulAlert:type,boxfulStatusCheckedAt:new Date().toISOString()});
-    }catch(e){}
-    await new Promise(function(r){setTimeout(r,120);});
-  }
-  boxRunning=false;
-  try{
-    if(['boxful','rastreosNacionales','hoy','adminEnviosNacional'].indexOf(window.activeTab)>=0&&typeof window.render==='function')window.render();
-  }catch(e){}
+  if(typeof window.kpRefreshBoxful==='function')return window.kpRefreshBoxful(false);
 }
 setTimeout(syncBoxfulAll,4000);setInterval(syncBoxfulAll,120000);
 
