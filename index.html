@@ -17748,6 +17748,11 @@ function paintDMs(fetchNow){
   if(fetchNow)vis.forEach(refreshMeta);
   filter(($('kpCanalesBuscar')||{}).value);
 }
+/* El render final de canales corre en otro IIFE y necesita estos pintores.
+   Sin exponerlos, la pantalla se queda para siempre en los esqueletos de carga. */
+window.paintChannels=paintChannels;
+window.paintDMs=paintDMs;
+window.refreshMeta=refreshMeta;
 var SEARCH='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
 var GEAR='<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 C.render=async function(){
@@ -18189,9 +18194,17 @@ installFastChannels();
       String(u.nombre||'').trim(),
       String(u.email||'').trim()
     ].filter(Boolean).map(function(x){return x.toLowerCase();}));
+    try{if(typeof C._memberId==='function'){var mid=C._memberId(u);if(mid)ids.add(String(mid).trim().toLowerCase());}}catch(e){}
+    var branch='';
+    try{branch=typeof userBranch==='function'?String(userBranch(u)||'').trim().toLowerCase():String(u.sucursalId||'').trim().toLowerCase();}catch(e){branch=String(u.sucursalId||'').trim().toLowerCase();}
     return (C.list||[]).filter(function(c){
       if(u.esAdmin)return true;
       if(c.tipo==='general')return true;
+      var channelBranch=String(c.sucursalId||'').trim().toLowerCase();
+      if(branch&&channelBranch===branch){
+        if(c.tipo==='sucursal'&&!u.esRepartidor)return true;
+        if(c.tipo==='repartidores'&&u.esRepartidor)return true;
+      }
       return (c.miembros||[]).some(function(m){return ids.has(String(m||'').trim().toLowerCase());});
     });
   };
