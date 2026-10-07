@@ -6349,7 +6349,7 @@ function kpDashStats(day){
   const estaEntregada=o=>o?.entregado===true || (typeof boxfulStatusText==='function' && boxfulStatusText(o)==='Entregado');
   const pendientesNacionales=L.filter(o=>esEnvioNacional(o)&&!estaEntregada(o));
   const hoyReal=(typeof todayStr==='function'?todayStr():day);
-  const pendientesTegusHoy=L.filter(o=>esEntregaTegus(o)&&o.fecha===hoyReal&&!estaEntregada(o));
+  const pendientesTegusHoy=L.filter(o=>kpIsTegusShip(o)&&o.fecha===hoyReal&&!estaEntregada(o));
 
   const cod=L.filter(o=>kpIsNational(o)&&o.entregado!==true);
   const codTotal=cod.reduce((t,o)=>t+(kpFinancial(o).cashPending||0),0);
