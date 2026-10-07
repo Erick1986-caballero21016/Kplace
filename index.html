@@ -9752,9 +9752,55 @@ KP.Channels._allIds = () => (VENDEDORES||[]).filter(v=>v.aprobado!==false && !v.
 KP.Channels._expectedReaders = c => (c && (c.miembros||[]).length) ? c.miembros.slice() : KP.Channels._allIds();
 KP.Channels._isModerator = (c, id) => CURRENT_USER.esAdmin || (c && (c.moderadores||[]).includes(id));
 
+KP.Channels._recoveryTried = false;
+KP.Channels.recoverFromAudit = async function(){
+  /* Recupera canales que siguen teniendo actividad registrada pero que desaparecieron
+     accidentalmente del documento config/canales. No revive canales que tengan un
+     evento explícito de eliminación. Solo se ejecuta para administradores y una vez
+     por sesión, para no hacer consultas extra en cada navegación. */
+  if(KP.Channels._recoveryTried || !CURRENT_USER?.esAdmin) return false;
+  KP.Channels._recoveryTried = true;
+  try{
+    const snap = await db.collection('canalAuditoria').orderBy('ts','asc').limit(500).get();
+    const events = snap.docs.map(d=>d.data()||{}).filter(x=>x.canalId);
+    const state = {};
+    events.forEach(a=>{
+      const id=String(a.canalId);
+      if(!state[id]) state[id]={created:false,deleted:false,name:a.canalNombre||id,readOnly:false,members:new Set(),mods:new Set()};
+      const st=state[id];
+      if(a.tipo==='canal_creado'){st.created=true;if(a.canalNombre)st.name=a.canalNombre;st.readOnly=/solo lectura/i.test(a.detalle||'');}
+      else if(a.tipo==='canal_eliminado') st.deleted=true;
+      else if(a.tipo==='canal_renombrado'){const d=String(a.detalle||'');if(d.includes('→'))st.name=d.split('→').pop().trim();else if(a.canalNombre)st.name=a.canalNombre;}
+      else if(a.tipo==='canal_solo_lectura_activado') st.readOnly=true;
+      else if(a.tipo==='canal_solo_lectura_desactivado') st.readOnly=false;
+      else if(a.tipo==='miembro_agregado' || a.tipo==='miembro_quitado'){
+        const who=String(a.detalle||'').trim();
+        if(who){ if(a.tipo==='miembro_agregado')st.members.add(who); else st.members.delete(who); }
+      }
+    });
+    const existing=new Set((KP.Channels.list||[]).map(c=>String(c.id)));
+    const recovered=[];
+    Object.keys(state).forEach(id=>{
+      const st=state[id];
+      if(!st.created || st.deleted || existing.has(id) || id==='general') return;
+      const memberIds=[...st.members].map(name=>{
+        const u=(VENDEDORES||[]).find(x=>String(x.nombre||'').toLowerCase()===String(name).toLowerCase() || String(x.usuario||'').toLowerCase()===String(name).toLowerCase());
+        return u ? KP.Channels._memberId(u) : name;
+      });
+      recovered.push({id,nombre:st.name,tipo:'custom',miembros:memberIds,soloLectura:!!st.readOnly,moderadores:[]});
+    });
+    if(!recovered.length) return false;
+    KP.Channels.list=[...(KP.Channels.list||[]),...recovered];
+    await db.collection('config').doc('canales').set({items:KP.Channels.list},{merge:true});
+    console.warn('[KPlace] Canales recuperados desde auditoría:',recovered.map(c=>c.nombre));
+    return true;
+  }catch(e){ console.warn('[KPlace] No se pudo recuperar canales desde auditoría',e); return false; }
+};
+
 KP.Channels.load = async function(){
   const snap = await db.collection('config').doc('canales').get();
   KP.Channels.list = (snap.exists && Array.isArray(snap.data().items)) ? snap.data().items : [];
+  await KP.Channels.recoverFromAudit();
   return KP.Channels.list;
 };
 KP.Channels.save = async function(){
