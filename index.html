@@ -1909,7 +1909,9 @@ function kpEstadoEs(st){
 }
 function boxfulStatusText(o){
   const shipment=o.boxfulShipment||{};
-  return kpEstadoEs(o.boxfulTrackingStatus||shipment.trackingStatus||shipment.state||'');
+  const history=Array.isArray(shipment.statusHistory)?shipment.statusHistory:[];
+  const last=history.slice().reverse().find(x=>x&&(x.statusDescription||x.description));
+  return kpEstadoEs(o.boxfulTrackingStatus||shipment.statusDescription||shipment.trackingStatus||shipment.state||(last&&(last.statusDescription||last.description))||'');
 }
 function kpDiaCreacion(o){
   const t=o.boxfulCreatedAt; if(!t) return o.fecha;
@@ -2351,7 +2353,7 @@ function orderCard(o){
   const isFrecuente = o.clienteFrecuente;
   const flagRed = o.stockInsuficiente;
   // Estados de entrega: entregado===true -> verde | entregado===false -> rojo (dejado para mañana) | sin definir -> amarillo (pendiente)
-  const _bxOn=(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan')&&(o.boxfulShipmentNumber||o.boxfulGuideNumber);
+  const _bxOn=(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan')))&&(o.boxfulShipmentNumber||o.boxfulGuideNumber||((o.boxfulShipment||{}).shipmentNumber||(o.boxfulShipment||{}).guideNumber||(o.boxfulShipment||{}).trackingNumber));
   const _bxE=_bxOn?kpEstadoEs(o.boxfulTrackingStatus||''):'';
   const _bx=!_bxOn?'':((o.boxfulAlert==='entregado'||_bxE==='Entregado')?'ok':((o.boxfulAlert==='problema'||/Problema|Devuelto|Cancelado/.test(_bxE))?'bad':''));
   const _bxk=_bx==='ok'?'ok':_bx==='bad'?'bad':(/ruta/i.test(_bxE)?'route':'info');
@@ -2361,7 +2363,7 @@ function orderCard(o){
   const pagoLabel = o.metodoPago==='mitad'
     ? `${kpMoneda()} ${(o.montoMitad1||0).toFixed(0)} ${o.metodoPagoMitad1||''}${o.bancoMitad1?' ('+o.bancoMitad1+')':''} + ${kpMoneda()} ${(o.montoMitad2||0).toFixed(0)} ${o.metodoPagoMitad2||''}${o.bancoMitad2?' ('+o.bancoMitad2+')':''}${o.estadoPago==='pagado'?' · pagado':' · pendiente'}`
     : `${o.metodoPago}${o.estadoPago==='pagado'?' pagado':' pendiente'}${o.banco?' · '+o.banco:''}`;
-  const esNacional = (o.tipoEntrega==='nacional' || o.tipoEntrega==='roatan');
+  const esNacional = (o.tipoEntrega==='nacional' || o.tipoEntrega==='roatan' || (o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan')));
   return `
   <div class="card ${flagRed?'flag-red':''} ${statusClass}">
     <div class="row">
@@ -2390,7 +2392,7 @@ function orderCard(o){
       ${o.entregado===false?'<span class="chip manana">🔁 Dejado para mañana'+(o.motivoNoEntrega?': '+o.motivoNoEntrega:'')+'</span>':''}
       ${o.entregado!==true && o.entregado!==false && !_bx ? (o.enviadoRepartidor ? '<span class="chip pendiente">🚚 En camino</span>' : '<span class="chip pendiente">🕓 Pendiente</span>') : ''}
       ${esNacional ? (o.estadoNacional==='empacado' ? '<span class="chip empacado">✔ Empacado</span>' : o.estadoNacional==='no_disponible' ? '<span class="chip" style="background:#fdecea;color:var(--red);">⚠️ Producto no disponible</span>' : '<span class="chip pendiente-empacar">🕓 Pendiente</span>') : ''}
-      ${esNacional && (o.boxfulShipmentNumber||o.boxfulGuideNumber) ? `<span class="chip boxful st-${_bxk}" title="Mismo estado que aparece en el link de rastreo">📦 ${escapeHtml(boxfulStatusText(o))}</span>` : ''}
+      ${esNacional && (o.boxfulShipmentNumber||o.boxfulGuideNumber||(o.boxfulShipment||{}).shipmentNumber||(o.boxfulShipment||{}).guideNumber||(o.boxfulShipment||{}).trackingNumber) ? `<span class="chip boxful st-${_bxk}" title="Mismo estado que aparece en el link de rastreo">📦 ${escapeHtml(boxfulStatusText(o))}</span>` : ''}
        ${o.retrasado?`<span class="chip" style="background:#fdecea;color:var(--red);">⏱ Retrasado${o.retrasoConfirmado?' · ya se le habló':''}</span>`:''}
       ${o.tipoEntrega==='roatan'?`<span class="chip kpRoatanTag ${o.envioClientePaga?'cobra':'paga'}">Tipo de orden Roatán: ${o.envioClientePaga?'Cliente Pagará el Envío al recibir':'Envío Pagado'}</span>`:''}
     </div>
@@ -11664,7 +11666,17 @@ body.kp-chat-open{overflow:hidden;overscroll-behavior:none}
   var oldCard=window.orderCard;
   if(typeof oldCard==='function'){
     window.orderCard=function(o){
-      var h=oldCard(o), chips='<span class="kp-tipo-chip '+(o.tipoEntrega||'')+'">'+({tegucigalpa:'🚚',nacional:'📦',roatan:'🏝️',programada:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em;flex:none"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/></svg>'}[o.tipoEntrega]||'🚚')+' '+tipoLabel(o.tipoEntrega)+'</span><span class="kp-pay-chip '+(o.estadoPago==='pagado'?'ok':'pend')+'">'+(o.estadoPago==='pagado'?'✅ Pagado':'⏳ Pendiente')+'</span>';
+      var h=oldCard(o),bx=o.boxfulShipment||{},guide=o.boxfulShipmentNumber||o.boxfulGuideNumber||bx.shipmentNumber||bx.guideNumber||bx.trackingNumber||'',isNac=o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan'));
+      var raw=o.boxfulTrackingStatus||bx.statusDescription||bx.trackingStatus||bx.state||'',delivery=raw&&typeof kpEstadoEs==='function'?kpEstadoEs(raw):raw;
+      var delivered=o.entregado===true||o.boxfulAlert==='entregado'||delivery==='Entregado';
+      var deliveryHtml='';
+      if(delivered)deliveryHtml='<span class="kp-pay-chip ok" title="Estado de entrega">✅ Entregada</span>';
+      else if(o.entregado===false)deliveryHtml='<span class="kp-pay-chip pend" title="Estado de entrega">🔁 No entregada</span>';
+      else if(isNac&&guide){
+        var shortState=/en ruta de entrega/i.test(String(delivery))?'En ruta':(delivery||'Guía creada');
+        deliveryHtml='<span class="kp-pay-chip pend" title="Estado de entrega de Boxful">📦 '+(typeof escapeHtml==='function'?escapeHtml(shortState):String(shortState))+'</span>';
+      }
+      var chips='<span class="kp-tipo-chip '+(o.tipoEntrega||'')+'">'+({tegucigalpa:'🚚',nacional:'📦',roatan:'🏝️',programada:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.2em;flex:none"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/></svg>'}[o.tipoEntrega]||'🚚')+' '+tipoLabel(o.tipoEntrega)+'</span>'+deliveryHtml+'<span class="kp-pay-chip '+(o.estadoPago==='pagado'?'ok':'pend')+'">'+(o.estadoPago==='pagado'?'✅ Pagado':'⏳ Pendiente')+'</span>';
       var r=h.replace(/(<div class="kp-order-number">[^<]*)(<\/div>)/,'$1'+chips+'$2');
       return r;
     };
@@ -17889,7 +17901,14 @@ window.kpNumeroOrdenSafe=function(o){
 
 /* ---- ayudas ---- */
 function isNac(o){return !!o&&(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan')));}
-function guiaDe(o){return o.boxfulShipmentNumber||o.boxfulGuideNumber||'';}
+function guiaDe(o){var b=o&&o.boxfulShipment||{};return o&&(o.boxfulShipmentNumber||o.boxfulGuideNumber||b.shipmentNumber||b.guideNumber||b.trackingNumber||b.orderNumber)||'';}
+async function fetchBoxfulTracking(guide){
+  var r=await fetch(BOXFUL_API_BASE+'/tracking/'+encodeURIComponent(guide),{method:'GET',headers:{'Accept':'application/json'}});
+  var data={};try{data=await r.json();}catch(e){}
+  if(!r.ok)throw new Error('Boxful '+r.status+': '+String(data.message||data.error||r.statusText||'respuesta no disponible').slice(0,500));
+  return data;
+}
+window.kpFetchBoxfulTracking=fetchBoxfulTracking;
 function pdfOf(o){try{return typeof kpPdfDe==='function'?kpPdfDe(o):(o.boxfulGuideUrl||'');}catch(e){return o.boxfulGuideUrl||'';}}
 function estadoEs(st){try{return typeof kpEstadoEs==='function'?kpEstadoEs(st):String(st||'');}catch(e){return String(st||'');}}
 function localDay(o){
@@ -17915,6 +17934,7 @@ function pickStatus(d){
       ['statusDescription','trackingStatus','currentStatus','statusName','status','state','estado'].some(function(k){
         var v=x[k];
         if(typeof v==='string'&&v&&!/^(success|ok)$/i.test(v)){found=v;return true;}
+        if(k==='status'&&typeof v==='number'){var numeric={1:'Registrado',2:'Recolectado',3:'En ruta a destino',4:'Entregado'};if(numeric[v]){found=numeric[v];return true;}}
         if(v&&typeof v==='object'){var n=v.name||v.label||v.description;if(typeof n==='string'&&n){found=n;return true;}}
         return false;
       });
@@ -17928,7 +17948,7 @@ var lastRun=0,running=false;
 function setRefreshBtn(txt){var b=document.querySelector('.kpx-refresh');if(b){b.disabled=!!txt;b.textContent=txt||'🔄 Actualizar estados';}}
 window.kpRefreshBoxful=async function(manual){
   var u=window.CURRENT_USER;
-  if(running||!u||!(u.esAdmin||u.esEncargadoEnvios)||typeof boxfulFetch!=='function')return;
+  if(running||!u||!(u.esAdmin||u.esEncargadoEnvios)||typeof fetchBoxfulTracking!=='function')return;
   var list=(window.ORDERS||[]).filter(function(o){return isNac(o)&&guiaDe(o)&&o.entregado!==true&&!o.boxfulCancelledAt&&!o.eliminadoTs&&!o.cancelado;});
   if(!list.length){if(manual&&window.toast)toast('No hay guías pendientes por revisar');return;}
   running=true;lastRun=Date.now();var changed=0,failed=0;
@@ -17936,7 +17956,7 @@ window.kpRefreshBoxful=async function(manual){
     var o=list[i];
     if(manual)setRefreshBtn('Revisando '+(i+1)+' de '+list.length+'…');
     try{
-      var data=await boxfulFetch('/tracking/'+encodeURIComponent(guiaDe(o)));
+      var data=await fetchBoxfulTracking(guiaDe(o));
       var st=window.kpPickBoxfulStatus(data);if(!st)throw new Error('Boxful no devolvió una descripción de estado');
       var est=estadoEs(st),tipo=est==='Entregado'?'entregado':(/Problema|Devuelto|Cancelado/.test(est)?'problema':'');
       var update={boxfulTrackingStatus:st,boxfulAlert:tipo,boxfulStatusCheckedAt:new Date().toISOString()};
