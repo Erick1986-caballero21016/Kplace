@@ -2285,7 +2285,7 @@ function render(){
         <button class="btn sm ${boxfulGuideMode?'activeAction':''}" onclick="toggleBoxfulGuideMode()">🚚 ${boxfulGuideMode?'Ocultar selección de guías':'Crear guías múltiples'}</button>
         <details class="boxfulAdvanced"><summary>Avanzado</summary><div class="btnrow" style="margin-top:8px;"><button class="btn sm" onclick="boxfulLoadAddresses()">📍 Actualizar dirección</button><button class="btn sm" onclick="boxfulRefreshCatalog()">🗺️ Actualizar ciudades</button><button class="btn sm" onclick="boxfulTestConnection()">✓ Probar conexión</button><button class="btn sm" onclick="boxfulDebugCatalog()">🔍 Buscar municipio</button></div></details>
       </div>
-      ${boxfulGuiaSeleccion.size?`<div class="btnrow" style="margin-top:8px;"><button class="btn green sm" onclick="boxfulCrearGuiasEnLote()">🚚 Crear ${boxfulGuiaSeleccion.size} guía${boxfulGuiaSeleccion.size===1?'':'s'} marcada${boxfulGuiaSeleccion.size===1?'':'s'}</button></div><div class="small" style="margin-top:6px;">Al tocar, aparecerá “Creando guías” y se bloqueará el botón para evitar duplicados.</div>`:''}
+      ${boxfulGuiaSeleccion.size?`<div class="btnrow" style="margin-top:8px;"><button class="btn green sm" onclick="boxfulCrearGuiasEnLote()">🚚 Crear ${boxfulGuiaSeleccion.size} guía${boxfulGuiaSeleccion.size===1?'':'s'} marcada${boxfulGuiaSeleccion.size===1?'':'s'}</button></div>`:''}
     </div>`;
   }
   if(activeTab==='repartidor'){
@@ -4593,7 +4593,7 @@ async function boxfulCrearGuiasEnLote(){
   const bar=document.createElement('div'); bar.id='kpProgreso'; bar.className='kpProgreso'; document.body.appendChild(bar);
   let idx=0;
   for(const id of ids){
-    idx++; bar.textContent=`⏳ Creando guías: ${idx} de ${ids.length} · No cierres esta pantalla`;
+    idx++; bar.textContent=`⏳ Creando guía ${idx} de ${ids.length}`;
     const o=ORDERS.find(x=>x.id===id);
     const nombre=o?.cliente||id;
     try{
@@ -5338,22 +5338,7 @@ function boxfulCandidateQuoteBodies(d,c,dest){
   return bodies;
 }
 
-// Wrapper visual para que Cotizar siempre muestre actividad inmediata y evite doble toque.
-window.__kpQuoteInProgress = window.__kpQuoteInProgress || new Set();
 async function boxfulQuoteOrder(id){
-  if(window.__kpQuoteInProgress.has(id)) return;
-  window.__kpQuoteInProgress.add(id);
-  document.body.classList.add('kp-busy');
-  let bar=document.getElementById('kpQuoteProgress');
-  if(!bar){ bar=document.createElement('div'); bar.id='kpQuoteProgress'; bar.className='kpProgreso'; document.body.appendChild(bar); }
-  bar.textContent='⏳ Cotizando envío…';
-  try { return await boxfulQuoteOrderCore(id); }
-  finally {
-    window.__kpQuoteInProgress.delete(id);
-    if(!window.__kpQuoteInProgress.size){ document.body.classList.remove('kp-busy'); document.getElementById('kpQuoteProgress')?.remove(); }
-  }
-}
-async function boxfulQuoteOrderCore(id){
   const o=ORDERS.find(x=>x.id===id);if(!o)return;
   try{
     const c=boxfulAuth();
@@ -18118,82 +18103,25 @@ function installFastChannels(){
     if(list)list.onclick=function(e){var row=e.target.closest('.kpc-row[data-id]');if(row&&typeof C.open==='function')C.open(row.dataset.id);};
     var nw=$('kpcNew');if(nw)nw.onclick=function(){if(C.openDMPicker)C.openDMPicker();};
 
-    /*
-     * Carga robusta de canales.
-     * Antes la pantalla podía quedarse indefinidamente en el skeleton si C.load()
-     * no resolvía a tiempo. Administración, en cambio, sí podía leer config/canales.
-     * Ahora usamos una cadena de respaldo:
-     *   1) lista ya cargada en memoria
-     *   2) caché local
-     *   3) C.load() con tiempo máximo
-     *   4) lectura directa de config/canales con tiempo máximo
-     * Nunca mostramos una pantalla vacía si ya tenemos una lista válida.
-     */
+    /* Firestore es la fuente de verdad. La caché jamás reemplaza una lista remota. */
     var loaded=false;
-    var initialList=Array.isArray(C.list)?C.list.slice():[];
-    if(initialList.length){
-      try{localStorage.setItem('kp_canales_cache_v1',JSON.stringify(initialList));}catch(e){}
-      loaded=true;
-      if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(false);
-    }else if(cached.length){
-      C.list=cached.slice();
-      loaded=true;
-      if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(false);
+    try{
+      await C.load();
+      loaded=Array.isArray(C.list);
+      if(loaded && C.list.length){
+        try{localStorage.setItem('kp_canales_cache_v1',JSON.stringify(C.list));}catch(e){}
+      }
+      if(loaded && !C.list.length){
+        /* Solo crear defaults si realmente Firestore confirma que no existe ningún canal. */
+        await C.ensureDefaults();
+      }
+    }catch(e){
+      console.warn('Canales: no se pudo leer Firestore, usando respaldo local',e);
+      if(cached.length)C.list=cached;
     }
 
-    function timeout(ms){return new Promise(function(resolve){setTimeout(function(){resolve(null)},ms);});}
-    async function loadRemote(){
-      try{
-        var result=await Promise.race([C.load(),timeout(3500)]);
-        if(Array.isArray(result) && result.length){
-          C.list=result.slice();
-          try{localStorage.setItem('kp_canales_cache_v1',JSON.stringify(C.list));}catch(e){}
-          return true;
-        }
-      }catch(e){console.warn('Canales: C.load falló',e);}
-      /* Respaldo directo: es la misma fuente que utiliza Administración. */
-      try{
-        var snap=await Promise.race([db.collection('config').doc('canales').get(),timeout(3500)]);
-        if(snap && snap.exists && Array.isArray(snap.data().items) && snap.data().items.length){
-          C.list=snap.data().items.slice();
-          try{localStorage.setItem('kp_canales_cache_v1',JSON.stringify(C.list));}catch(e){}
-          return true;
-        }
-      }catch(e){console.warn('Canales: lectura directa falló',e);}
-      return false;
-    }
-
-    if(await loadRemote()){
-      loaded=true;
-      if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(false);
-    }else if(!loaded){
-      /* Solo crear defaults cuando ambas lecturas confirman que no hay canales. */
-      try{
-        var emptySnap=await Promise.race([db.collection('config').doc('canales').get(),timeout(2500)]);
-        var remoteHasChannels=!!(emptySnap&&emptySnap.exists&&Array.isArray(emptySnap.data().items)&&emptySnap.data().items.length);
-        if(!remoteHasChannels){
-          await C.ensureDefaults();
-          loaded=Array.isArray(C.list)&&C.list.length>0;
-        }
-      }catch(e){console.warn('Canales: no se pudo confirmar estado remoto',e);}
-    }
-
-    if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(false);
+    if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(true);
     try{if(typeof C.loadDMs==='function')await C.loadDMs();}catch(e){}
-    /* Último refresco silencioso: si Firestore terminó después del primer render,
-       actualizamos la lista sin cambiar la pantalla ni reiniciar la búsqueda. */
-    setTimeout(function(){
-      try{
-        if(!C._currentOpenId && typeof C.load==='function'){
-          C.load().then(function(){
-            if(Array.isArray(C.list)&&C.list.length){
-              try{localStorage.setItem('kp_canales_cache_v1',JSON.stringify(C.list));}catch(e){}
-              if($('kpcList')&&typeof window.paintChannels==='function')window.paintChannels(false);
-            }
-          }).catch(function(){});
-        }
-      }catch(e){}
-    },1200);
     try{if(typeof window.paintDMs==='function')window.paintDMs(false);}catch(e){}
     /* Los metadatos de mensajes se cargan solo para los primeros 5; la lista aparece sin esperarlos. */
     try{
