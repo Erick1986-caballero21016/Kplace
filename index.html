@@ -18733,12 +18733,33 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
 #view .card.kpn .kpn-more .btn{display:flex!important;align-items:center;justify-content:center;min-height:42px!important;margin:0!important;padding:8px!important;border-radius:12px!important;font-size:12.5px!important;text-align:center;line-height:1.2}
 #view .card.kpn .kpn-more .btn:last-child:nth-child(odd){grid-column:1/-1}
 #view .card.kpn .kpn-more .btn.kpn-del{background:transparent!important;color:#ef4444!important;border:1px solid rgba(239,68,68,.4)!important}
+/* Ocultar de verdad: todo lo que venga después del botón se esconde mientras esté cerrado */
+.card[data-kpx]:not(.kpx-open) > .kpx-toggle ~ *{display:none!important}
 </style>
 <script id="kp-nacional-card-js">
 (function(){
 const LAB={empacado:'📦 Empacado',pendiente:'🕓 Pendiente',no_disponible:'⚠️ No disponible'};
 const txt=b=>b.textContent.replace(/\s+/g,' ').trim();
-function mk(cls,items){const d=document.createElement('div');d.className=cls;items.forEach(i=>d.append(i));return d;}
+const mk=(cls,items)=>{const d=document.createElement('div');d.className=cls;items.forEach(i=>d.append(i));return d;};
+function addSec(b,x){
+  let m=b.querySelector(':scope > .kpn-more');
+  if(!m){m=document.createElement('div');m.className='kpn-more';b.append(m);}
+  const t=txt(x);
+  if([...m.children].some(y=>txt(y)===t)){x.remove();return;}
+  if(/eliminarOrden/.test(x.getAttribute('onclick')||'')){x.classList.add('kpn-del');x.textContent='🗑️ Eliminar orden';m.append(x);return;}
+  const del=m.querySelector('.kpn-del');
+  del?m.insertBefore(x,del):m.append(x);
+}
+/* Mueve a la sección ordenada todo lo que otros scripts agreguen tarde */
+function sweep(c){
+  const b=c.querySelector(':scope > .kpn-body');if(!b)return;
+  const tog=c.querySelector(':scope > .kpx-toggle'),kids=[...c.children],idx=tog?kids.indexOf(tog):-1;
+  const stray=kids.filter((e,i)=>e!==b&&e!==tog&&(idx>=0?i>idx:e.classList.contains('btnrow')));
+  stray.forEach(e=>{
+    if(e.classList.contains('btnrow')){[...e.children].forEach(x=>addSec(b,x));e.remove();}
+    else b.insertBefore(e,b.querySelector(':scope > .kpn-more'));
+  });
+}
 function build(c){
   const est=[...c.querySelectorAll('button[onclick*="marcarEstadoNacional"]')];
   if(!est.length){c.dataset.kpn='no';return;}
@@ -18751,29 +18772,23 @@ function build(c){
   });
   const main=[...c.querySelectorAll('button[onclick*="boxfulQuoteOrder"],button[onclick*="boxfulCreateShipment"]')];
   const seg=mk('kpn-seg',est);seg.setAttribute('role','group');seg.setAttribute('aria-label','Estado de empaque');
-  const mainRow=main.length?mk('kpn-main',main):null;
-  const rows=[...c.querySelectorAll(':scope > .btnrow')],sec=[],seen=new Set();
-  rows.forEach(r=>[...r.children].forEach(b=>{
-    const t=txt(b);if(seen.has(t)){b.remove();return;}seen.add(t);
-    if(/eliminarOrden/.test(b.getAttribute('onclick')||'')){b.classList.add('kpn-del');b.textContent='🗑️ Eliminar orden';}
-    sec.push(b);
-  }));
-  sec.sort((a,b)=>a.classList.contains('kpn-del')-b.classList.contains('kpn-del'));
+  const parts=main.length?[seg,mk('kpn-main',main)]:[seg];
   const st=c.querySelector(':scope > .kp-order-statuses');
   if(st)[...st.children].forEach((ch,i)=>{if(i>0)ch.classList.add('kpn-dup');});
   const body=document.createElement('div');body.className='kpn-body'+(tog?' kpx-more':'');
-  const parts=mainRow?[seg,mainRow]:[seg];
   const more=[...c.children].filter(e=>e.classList.contains('kpx-more')&&!e.classList.contains('btnrow'));
   if(!st)body.append(...parts);
   more.forEach(e=>{body.append(e);if(e===st)body.append(...parts);});
-  if(sec.length)body.append(mk('kpn-more',sec));
-  rows.forEach(r=>r.remove());
   tog?tog.after(body):c.append(body);
+  sweep(c);
 }
+const pend=c=>c.dataset.kpn!=='no'&&(!c.dataset.kpn||(c.querySelector(':scope > .btnrow')||(c.querySelector(':scope > .kpx-toggle ~ :not(.kpn-body)'))));
 let t;
 new MutationObserver(()=>{clearTimeout(t);t=setTimeout(()=>{
-  document.querySelectorAll('#view .card[data-kpx]:not([data-kpn])').forEach(build);
-},300);}).observe(document.body,{childList:true,subtree:true});
+  document.querySelectorAll('#view .card[data-kpx]').forEach(c=>{
+    if(c.dataset.kpn==='1')sweep(c);else if(!c.dataset.kpn)build(c);
+  });
+},250);}).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 </body>
