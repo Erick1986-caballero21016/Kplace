@@ -18452,5 +18452,205 @@ setTimeout(hideLegacySidebar,500);
   [250,1000,3000,7000].forEach(function(ms){setTimeout(observe,ms);});
 })();
 </script>
+
+<script id="kp-rastreo-ux-fix-202610">
+/* KPLACE HOTFIX 2026-10: rastreo, filtros, cotización, selección y limpieza de guías */
+(function(){
+  const style=document.createElement('style');
+  style.id='kp-rastreo-ux-fix-202610';
+  style.textContent=`
+    #view .kp-filter-panel{background:var(--card,#111827);border:1px solid #303b51;border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 8px 24px rgba(0,0,0,.16)}
+    #view .kp-filter-title{font-weight:800;font-size:14px;margin-bottom:10px;color:var(--text,#e8edf7)}
+    #view .kp-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    #view .kp-filter-grid .btn{min-height:42px;white-space:normal}
+    #view .kp-filter-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+    #view .kp-filter-row select,#view .kp-filter-row input[type=date]{min-width:0;max-width:100%;background:#151c2b;color:#e8edf7;border:1px solid #354158;border-radius:11px;padding:10px;font:inherit}
+    #view .kp-guide-chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    #view .kp-guide-chip-row .chip{margin:0;padding:7px 11px;border-radius:999px;line-height:1.25}
+    #view .kp-rastreo-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px!important}
+    #view .kp-rastreo-actions .btn{min-width:0;min-height:46px;white-space:normal;line-height:1.25;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px}
+    #view .kp-panel{overflow:hidden}
+    #view .kp-filter-panel input[type=checkbox]{accent-color:#8b5cf6;width:18px;height:18px}
+    #view .kp-quote-status{margin-top:8px;padding:9px 11px;border:1px solid #33415a;border-radius:11px;background:#151e2e;color:#b8c6dc;font-size:13px}
+    body.kp-dark #view .kp-panel,body.kp-dark #view .kp-filter-panel{background:#111827!important;border-color:#2c374c!important}
+    body.kp-dark #view .btnrow{gap:9px!important}
+    body.kp-busy #view{opacity:.92;transition:opacity .15s ease}
+    #view{transition:opacity .15s ease,filter .15s ease}
+    @media(max-width:420px){#view .kp-filter-grid{grid-template-columns:1fr 1fr}#view .kp-rastreo-actions .btn{font-size:12px;padding:9px 6px}}
+  `;
+  document.head.appendChild(style);
+
+  const oldQuote=boxfulQuoteOrder;
+  if(typeof oldQuote==='function'){
+    boxfulQuoteOrder=async function(id){
+      const btns=[...document.querySelectorAll('#view button')].filter(b=>String(b.getAttribute('onclick')||'').includes(`boxfulQuoteOrder('${id}')`));
+      btns.forEach(b=>{b.dataset.kpQuoteLabel=b.textContent;b.disabled=true;b.textContent='⏳ Cotizando…'});
+      try{
+        const result=await oldQuote.apply(this,arguments);
+        const o=(ORDERS||[]).find(x=>String(x.id)===String(id));
+        const ok=!!(o&&o.boxfulQuote);
+        if(ok) window.toast?.('✓ Cotización de guía actualizada. Revisá las empresas y elegí la tarifa.');
+        return result;
+      }catch(e){window.toast?.('No se pudo actualizar la cotización: '+(e.message||'error'));throw e;}
+      finally{btns.forEach(b=>{b.disabled=false;b.textContent=b.dataset.kpQuoteLabel||'💰 Cotizar envío';delete b.dataset.kpQuoteLabel;});}
+    };
+  }
+
+  // Permitir marcar órdenes sin cotización para cotizarlas en conjunto.
+  if(typeof boxfulGuiaSeleccionables==='function'){
+    boxfulGuiaSeleccionables=function(){
+      const supervisor=!!(CURRENT_USER&&(CURRENT_USER.esAdmin||CURRENT_USER.esEncargadoEnvios));
+      const backlog=supervisor&&selectedDate===window.todayStr?.();
+      return (ORDERS||[]).filter(o=>(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan')&&
+        (backlog?o.entregado!==true:o.fecha===selectedDate)&&
+        !(o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment));
+    };
+  }
+  const oldToolbar=renderBoxfulSelectionToolbar;
+  if(typeof oldToolbar==='function'){
+    renderBoxfulSelectionToolbar=function(){
+      let html=oldToolbar.apply(this,arguments);
+      if(boxfulGuideMode&&boxfulGuiaSeleccion&&boxfulGuiaSeleccion.size){
+        const ids=[...boxfulGuiaSeleccion];
+        const selected=ids.map(id=>ORDERS.find(o=>String(o.id)===String(id))).filter(Boolean);
+        const allQuoted=selected.length>0&&selected.every(o=>o.boxfulQuote);
+        const names=new Map();
+        if(allQuoted) selected.forEach(o=>boxfulGetQuoteOptions(o.boxfulQuote).forEach((q,i)=>{const name=boxfulQuoteName(q,i);if(name&&name!=='Paquetería')names.set(name,name);}));
+        const quoteBtn=`<button class="btn primary sm" onclick="kpCotizarSeleccionadas()">💰 Cotizar seleccionadas (${ids.length})</button>`;
+        const courierControl=allQuoted&&names.size?`<div class="kp-filter-panel" style="margin-top:10px"><div class="kp-filter-title">🚚 Elegí la paquetería para las órdenes seleccionadas</div><div class="kp-filter-row"><select id="kpBulkCourierSelect" style="flex:1"><option value="">Seleccionar empresa…</option>${[...names.keys()].sort().map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}</select><button class="btn green sm" onclick="kpAplicarPaqueteriaSeleccionada()">Aplicar donde haya cobertura</button></div><div class="small" style="margin-top:8px">Las órdenes sin cobertura para esa empresa quedarán sin asignar y se mostrarán sus alternativas disponibles.</div></div>`:'';
+        html+=`<div class="btnrow" style="margin-top:8px">${quoteBtn}</div>${courierControl}`;
+      }
+      return html;
+    };
+  }
+  window.kpAplicarPaqueteriaSeleccionada=async function(){
+    const name=document.getElementById('kpBulkCourierSelect')?.value;if(!name){toast('Elegí primero una empresa de envíos.');return;}
+    const ids=[...boxfulGuiaSeleccion];const noCobertura=[];let asignadas=0;
+    document.body.classList.add('kp-busy');
+    try{
+      for(const id of ids){
+        const o=ORDERS.find(x=>String(x.id)===String(id));if(!o)continue;
+        const opts=o.boxfulQuote?boxfulGetQuoteOptions(o.boxfulQuote):[];
+        const index=opts.findIndex((q,i)=>String(boxfulQuoteName(q,i)).toLowerCase()===String(name).toLowerCase());
+        if(index<0){noCobertura.push(`${o.cliente||id}: ${opts.length?opts.map((q,i)=>boxfulQuoteName(q,i)).join(', '):'sin cobertura o sin tarifas'}`);continue;}
+        try{await boxfulSelectQuote(id,index);asignadas++;}catch(e){noCobertura.push(`${o.cliente||id}: no se pudo guardar ${name}`);}
+      }
+    }finally{document.body.classList.remove('kp-busy');}
+    render();toast(`Paquetería ${name}: asignada a ${asignadas} orden(es); sin cobertura/pendientes: ${noCobertura.length}.`);
+    if(noCobertura.length)boxfulShowErrorModal('Órdenes que necesitan otra paquetería',noCobertura.join('\n'),null);
+  };
+  window.kpCotizarSeleccionadas=async function(){
+    const ids=[...(boxfulGuiaSeleccion||[])];
+    if(!ids.length){toast('Marcá las órdenes que querés cotizar.');return;}
+    if(!confirm(`Se actualizará la cotización de ${ids.length} órdenes. Después podrás elegir la paquetería para cada una. ¿Continuar?`))return;
+    document.body.classList.add('kp-busy');
+    let ok=0;const fail=[];
+    try{
+      for(let i=0;i<ids.length;i++){
+        const o=(ORDERS||[]).find(x=>String(x.id)===String(ids[i]));
+        if(!o)continue;
+        const bar=document.getElementById('kpProgreso')||document.createElement('div');bar.id='kpProgreso';bar.className='kpProgreso';bar.textContent=`⏳ Cotizando ${i+1} de ${ids.length}`;if(!bar.isConnected)document.body.appendChild(bar);
+        try{await boxfulQuoteOrder(ids[i]);const fresh=(ORDERS||[]).find(x=>String(x.id)===String(ids[i]));if(fresh&&fresh.boxfulQuote)ok++;else fail.push((o.cliente||ids[i])+': sin tarifas disponibles');}
+        catch(e){fail.push((o.cliente||ids[i])+': '+(e.message||'sin cobertura o error'));}
+        await new Promise(r=>setTimeout(r,350));
+      }
+    }finally{document.body.classList.remove('kp-busy');document.getElementById('kpProgreso')?.remove();}
+    render();
+    toast(`Cotizaciones listas: ${ok} · revisar: ${fail.length}`);
+    if(fail.length) boxfulShowErrorModal('Órdenes sin cotización disponible',fail.join('\n'),null);
+  };
+
+  // Filtros independientes de fecha y forma de pago; selección de guías sigue disponible.
+  window.kpRastreoFilter=window.kpRastreoFilter||{period:'today',from:(window.todayStr?todayStr():new Date().toISOString().slice(0,10)),to:(window.todayStr?todayStr():new Date().toISOString().slice(0,10)),pay:'all'};
+  window.kpRastreoSetFilter=function(key,value){window.kpRastreoFilter[key]=value;renderRastreosNacionales();};
+  window.kpSelTodas=function(ids){const all=(ids||[]).every(id=>kpSel.has(id));if(all)(ids||[]).forEach(id=>kpSel.delete(id));else (ids||[]).forEach(id=>kpSel.add(id));renderRastreosNacionales();};
+  window.kpRastreoSetPeriod=function(period){
+    const f=window.kpRastreoFilter;f.period=period;
+    const today=window.todayStr?todayStr():new Date().toISOString().slice(0,10);
+    const d=new Date(today+'T12:00:00');
+    if(period==='today'){f.from=today;f.to=today;}
+    else if(period==='yesterday'){d.setDate(d.getDate()-1);f.from=f.to=d.toISOString().slice(0,10);}
+    else if(period==='week'){d.setDate(d.getDate()-6);f.from=d.toISOString().slice(0,10);f.to=today;}
+    else if(period==='month'){d.setDate(1);f.from=d.toISOString().slice(0,10);f.to=today;}
+    else if(period==='all'){f.from='';f.to='';}
+    renderRastreosNacionales();
+  };
+  window.kpQuitarGuiaLocal=async function(id){
+    const o=(ORDERS||[]).find(x=>String(x.id)===String(id));if(!o)return;
+    const num=o.boxfulShipmentNumber||o.boxfulGuideNumber||'esta guía';
+    const ok=confirm(`¿Quitar ${num} de KPlace?\n\nLa orden se conservará y podrás crear otra guía. Esto NO cancela la guía en la paquetería; si ya fue emitida, tendrás que cancelarla con la empresa.`);
+    if(!ok)return;
+    try{
+      const del=firebase.firestore.FieldValue.delete();
+      await db.collection('orders').doc(id).update({boxfulShipment:del,boxfulShipmentNumber:del,boxfulGuideNumber:del,boxfulTrackingUrl:del,boxfulGuideUrl:del,boxfulCreatedAt:del,boxfulCourierIdField:del});
+      window.kpSel?.delete(id);toast('Guía quitada de KPlace. La orden sigue guardada.');renderRastreosNacionales();
+    }catch(e){toast('No se pudo quitar la guía: '+(e.message||'error'));}
+  };
+
+  // Override de rastreo: filtros por rango y COD/Pagadas, con selección individual para descargar.
+  renderRastreosNacionales=function(){
+    const view=document.getElementById('view');if(!view)return;
+    const f=window.kpRastreoFilter||{period:'today',from:'',to:'',pay:'all'};
+    const all=(ORDERS||[]).filter(o=>(kpIsNational(o)||kpProgNac(o))&&!kpIsHazabPickup(o)&&(o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment));
+    const envios=all.filter(o=>{
+      if(globalSearchTerm){if(!(orderMatchesSearch(o)||kpGuiaMatch(o,globalSearchTerm)))return false;}
+      else {const day=kpDiaCreacion(o)||o.fecha||'';if(f.from&&day<f.from)return false;if(f.to&&day>f.to)return false;}
+      const cod=Number(kpGuiaCobro(o)||0)>0;
+      if(f.pay==='cod'&&!cod)return false;if(f.pay==='paid'&&cod)return false;
+      return true;
+    }).slice().sort((a,b)=>(b.boxfulCreatedAt||b.fecha||'').localeCompare(a.boxfulCreatedAt||a.fecha||''));
+    const ids=envios.map(o=>o.id);const totCod=envios.reduce((t,o)=>t+Number(kpGuiaCobro(o)||0),0);
+    const rows=envios.map(o=>{
+      const shipment=o.boxfulShipment||{},links=boxfulShipmentLinks(shipment),numero=o.boxfulShipmentNumber||o.boxfulGuideNumber||kpBuscarGuia(shipment)||'—';
+      const status=boxfulStatusText(o),pdf=kpPdfDe(o),tracking=o.boxfulTrackingUrl||links.trackingUrl||shipment.trackingUrl||'';
+      const wa=boxfulTrackingWhatsAppUrl(o,numero,tracking),cod=Number(kpGuiaCobro(o)||0)>0;
+      return `<div class="kp-panel" style="margin-bottom:12px;padding:16px">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+          <label style="display:flex;gap:9px;align-items:center;font-size:12px;font-weight:800"><input type="checkbox" ${kpSel.has(o.id)?'checked':''} onchange="kpSelToggle('${o.id}')"><span>ORDEN #${escapeHtml(String(window.kpNumeroOrdenSafe?window.kpNumeroOrdenSafe(o):String(o.id).slice(-8)))}</span></label>
+          <div class="kp-guide-chip-row"><span class="chip ${cod?'pendiente':'pagado'}">${cod?'COD':'Pagada'}</span><span class="chip boxful">${escapeHtml(status)}</span></div>
+        </div>
+        <h3 style="margin:12px 0 4px">${escapeHtml(o.cliente||'Cliente')}</h3><div class="small">${escapeHtml(kpDiaCreacion(o)||'')} · ${escapeHtml(o.municipio||o.departamento||'Envío nacional')}</div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:13px;font-size:13px"><div><span class="small">Número de guía</span><br><b style="overflow-wrap:anywhere">${escapeHtml(numero)}</b></div><div><span class="small">Paquetería</span><br><b>${escapeHtml(kpCourierName(o)||'Boxful')}</b></div></div>
+        <div class="btnrow kp-rastreo-actions" style="margin-top:14px">
+          <button class="btn primary sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Abrir rastreo</button><button class="btn sm" onclick="kpAbrirPdf('${o.id}')">📄 PDF</button>
+          ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 Enviar guía al cliente</a>`:`<button class="btn sm" onclick="toast('Esta orden no tiene teléfono del cliente')">💬 Enviar guía al cliente</button>`}
+          <button class="btn sm" onclick="kpCompartirPdf('${o.id}')">📤 Compartir PDF</button><button class="btn gold sm" onclick="marcarRetraso('${o.id}')">🚩 Marcar retraso</button><button class="btn sm" onclick="kpCopiarLinkOrden('${o.id}')">📋 Copiar link</button>
+          <button class="btn sm" style="border-color:#8a3e4b;color:#ffb4bd" onclick="kpQuitarGuiaLocal('${o.id}')">🗑️ Quitar guía de KPlace</button>
+        </div>
+      </div>`;
+    }).join('');
+    const selectedCount=envios.filter(o=>kpSel.has(o.id)).length;
+    const selectedIds=JSON.stringify(ids).replace(/"/g,'&quot;');
+    const dateInput=`<div class="kp-filter-row"><label style="flex:1;min-width:125px;font-size:12px">Desde<input type="date" value="${escapeHtml(f.from||'')}" onchange="kpRastreoSetFilter('from',this.value)" style="display:block;width:100%;margin-top:5px"></label><label style="flex:1;min-width:125px;font-size:12px">Hasta<input type="date" value="${escapeHtml(f.to||'')}" onchange="kpRastreoSetFilter('to',this.value)" style="display:block;width:100%;margin-top:5px"></label></div>`;
+    view.innerHTML=renderSearchBar()+`<div class="kp-dashboard-head"><div><div class="kp-kicker">Envíos nacionales</div><h2>Rastreo de pedidos</h2><p>Filtrá por fecha y tipo de pago. Marcá solo las guías que querés descargar.</p></div><button class="btn" onclick="setTab('boxful')">← Envíos nacionales</button></div>
+      <div class="kp-filter-panel"><div class="kp-filter-title">📅 Filtrar por fecha</div><div class="kp-filter-grid">
+        <button class="btn ${f.period==='today'?'primary':''}" onclick="kpRastreoSetPeriod('today')">Hoy</button><button class="btn ${f.period==='yesterday'?'primary':''}" onclick="kpRastreoSetPeriod('yesterday')">Ayer</button>
+        <button class="btn ${f.period==='week'?'primary':''}" onclick="kpRastreoSetPeriod('week')">Últimos 7 días</button><button class="btn ${f.period==='month'?'primary':''}" onclick="kpRastreoSetPeriod('month')">Este mes</button>
+        <button class="btn ${f.period==='all'?'primary':''}" onclick="kpRastreoSetPeriod('all')">Todas las fechas</button><button class="btn ${f.period==='custom'?'primary':''}" onclick="kpRastreoSetFilter('period','custom')">Rango personalizado</button>
+      </div>${f.period==='custom'||f.period==='all'?dateInput:''}
+      <div class="kp-filter-title" style="margin-top:16px">💵 Tipo de pago</div><div class="kp-filter-grid"><button class="btn ${f.pay==='all'?'primary':''}" onclick="kpRastreoSetFilter('pay','all')">Todas</button><button class="btn ${f.pay==='cod'?'primary':''}" onclick="kpRastreoSetFilter('pay','cod')">💵 Solo COD</button><button class="btn ${f.pay==='paid'?'primary':''}" onclick="kpRastreoSetFilter('pay','paid')">✅ Solo pagadas</button></div></div>
+      <div class="kp-panel" style="display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="small">Guías: <b>${envios.length}</b> · COD por cobrar: <b>${kpMoneda()} ${totCod.toLocaleString('en-US',{minimumFractionDigits:2})}</b></div><div class="btnrow" style="margin:0;gap:8px"><button class="btn sm" onclick="kpSelTodas(${selectedIds})">Seleccionar todas las visibles</button>${selectedCount?`<button class="btn green sm" onclick="kpDescargarUnido()">📄 Unir PDF (${selectedCount})</button><button class="btn sm" onclick="kpSelLimpiar()">Limpiar selección</button>`:''}<button class="btn sm" onclick="kpRastreoSetPeriod('all')">Todas las fechas</button></div></div>
+      ${envios.length?rows:`<div class="empty">No hay guías que coincidan con estos filtros.</div>`}`;
+    updateKPlaceNav();
+  };
+
+  // Elimina botones idénticos repetidos en una misma vista sin afectar otras secciones.
+  window.kpDeduplicateGuideButtons=function(){
+    const root=document.getElementById('view');if(!root)return;
+    const seen=new Set();
+    root.querySelectorAll('button').forEach(b=>{
+      const label=(b.textContent||'').replace(/\s+/g,' ').trim();
+      if(!/^(🚚\s*)?(Crear guías múltiples|Crear guías múltiples\s*\(\d+\))$/.test(label))return;
+      const key=label;
+      if(seen.has(key))b.remove();else seen.add(key);
+    });
+  };
+  const oldRender=render;
+  if(typeof oldRender==='function'){
+    render=function(){const r=oldRender.apply(this,arguments);setTimeout(()=>window.kpDeduplicateGuideButtons(),0);return r;};
+  }
+})();
+
+</script>
 </body>
 </html>
