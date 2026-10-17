@@ -13254,24 +13254,41 @@ try{var _iv=new URLSearchParams(location.search).get('inv');if(_iv)localStorage.
 const ROLES_I={vendedor:'Vendedor',admin:'Administrador',envios:'Administrador de envíos',repartidor:'Repartidor'};
 async function canje(u,email,d){
   const tk=localStorage.getItem('kp_inv');if(!tk)return null;
-  const ref=db.collection('invitaciones').doc(tk),sn=await ref.get();if(!sn.exists)return null;
-  const iv=sn.data();if(iv.usada||(iv.expira&&Date.now()>iv.expira)||(iv.email&&norm(iv.email)!==email))return null;
-  const r=iv.rol||'vendedor',F=firebase.firestore.FieldValue;
-  await acceso().update({emails:F.arrayUnion(email),admins:r==='admin'?F.arrayUnion(email):F.arrayRemove(email)});
-  const vd=await db.collection('config').doc('vendedores').get();VENDEDORES=(vd.exists&&vd.data().lista)||[];
-  let v=VENDEDORES.find(x=>norm(x.email)===email);
-  const fl={soloOrdenes:false,esAdmin:r==='admin',esEncargadoEnvios:r==='envios',esRepartidor:r==='repartidor',esEmpacador:false};
-  if(v)Object.assign(v,fl,{activo:true,aprobado:true,cargo:ROLES_I[r]});
-  else{v={nombre:iv.nombre||u.displayName||email.split('@')[0],usuario:email.split('@')[0],email,activo:true,aprobado:true,fotoPerfil:'',cargo:ROLES_I[r],...fl};VENDEDORES.push(v);}
-  await save();
-  await ref.update({usada:true,usadaPor:email,usadaTs:F.serverTimestamp()});
+  if(!email)throw Object.assign(new Error('INVITE_EMAIL_MISMATCH'),{code:'invite/email-mismatch'});
+  const ref=db.collection('invitaciones').doc(tk),accessRef=acceso(),usersRef=db.collection('config').doc('vendedores');
+  const now=Date.now();let redeemed=null;
+  await db.runTransaction(async tx=>{
+    const results=await Promise.all([tx.get(ref),tx.get(accessRef),tx.get(usersRef)]);
+    const sn=results[0],ac=results[1],vd=results[2];
+    if(!sn.exists)throw Object.assign(new Error('INVITE_NOT_FOUND'),{code:'invite/not-found'});
+    const iv=sn.data()||{};
+    if(iv.usada)throw Object.assign(new Error('INVITE_ALREADY_USED'),{code:'invite/used'});
+    if(iv.expira&&now>iv.expira)throw Object.assign(new Error('INVITE_EXPIRED'),{code:'invite/expired'});
+    if(!iv.email||norm(iv.email)!==email)throw Object.assign(new Error('INVITE_EMAIL_MISMATCH'),{code:'invite/email-mismatch'});
+    const r=ROLES_I[iv.rol]?iv.rol:'vendedor';
+    const emails=Array.isArray(ac.data()?.emails)?ac.data().emails.map(norm).filter(Boolean):[];
+    const admins=Array.isArray(ac.data()?.admins)?ac.data().admins.map(norm).filter(Boolean):[];
+    const nextEmails=Array.from(new Set(emails.concat(email)));
+    const nextAdmins=Array.from(new Set(r==='admin'?admins.concat(email):admins.filter(x=>x!==email)));
+    const users=vd.exists&&Array.isArray(vd.data()?.lista)?vd.data().lista.slice():[];
+    const flags={soloOrdenes:false,esAdmin:r==='admin',esEncargadoEnvios:r==='envios',esRepartidor:r==='repartidor',esEmpacador:false};
+    let v=users.find(x=>norm(x.email)===email);
+    if(v)Object.assign(v,flags,{email,activo:true,aprobado:true,cargo:ROLES_I[r]});
+    else{v={nombre:iv.nombre||u.displayName||email.split('@')[0],usuario:email.split('@')[0],email,activo:true,aprobado:true,fotoPerfil:'',cargo:ROLES_I[r],...flags};users.push(v);}
+    tx.set(accessRef,{emails:nextEmails,admins:nextAdmins},{merge:true});
+    tx.set(usersRef,{lista:users});
+    tx.update(ref,{usada:true,usadaPor:email,usadaTs:firebase.firestore.FieldValue.serverTimestamp()});
+    redeemed=v;
+  });
   localStorage.removeItem('kp_inv');
-  return v;
+  VENDEDORES=(await usersRef.get()).data()?.lista||[];
+  return redeemed;
 }
 const $=id=>document.getElementById(id),norm=x=>String(x||'').trim().toLowerCase();
 let loaded=false,busy=false;
 const acceso=()=>db.collection('config').doc('acceso'),save=()=>db.collection('config').doc('vendedores').set({lista:VENDEDORES});
 const msg=t=>{const e=$('loginError');if(e)e.textContent=t;};
+const invitacionError=e=>{const c=(e&&e.code)||'';if(c==='invite/email-mismatch')return 'Este enlace fue creado para otro correo de Google.';if(c==='invite/used')return 'Este enlace ya se utilizó y no se puede volver a usar.';if(c==='invite/expired')return 'Este enlace venció. Pide al administrador que cree uno nuevo.';if(c==='invite/not-found')return 'Este enlace ya no es válido. Pide al administrador que cree uno nuevo.';return 'No se pudo verificar el enlace. Intenta de nuevo o pide uno nuevo.';};
 const wait=()=>new Promise(r=>{let n=0;const t=setInterval(()=>{if(loaded||++n>40){clearInterval(t);r();}},250);});
 window.kpAfterUsers=function(cache){if(!cache)loaded=true;};
 const nuevo=(u,adm)=>{const e=norm(u.email);return {nombre:u.displayName||e.split('@')[0],usuario:e.split('@')[0],email:e,activo:true,aprobado:true,esAdmin:adm,esRepartidor:false,esEncargadoEnvios:false,esEmpacador:false,soloOrdenes:!adm,fotoPerfil:''};};
@@ -13281,17 +13298,27 @@ async function onUser(u){
   try{
     if(!u){if(window.CURRENT_USER){localStorage.removeItem('eunoia_current_user');location.reload();}return;}
     const email=norm(u.email);
-    if(window.CURRENT_USER&&norm(CURRENT_USER.email)===email)return; /* sesión ya abierta: sin verificar de nuevo ni parpadear */
+    if(window.CURRENT_USER&&norm(CURRENT_USER.email)===email&&!localStorage.getItem('kp_inv'))return; /* sesión ya abierta: sin verificar de nuevo ni parpadear */
     msg('Verificando…');
     const a=await acceso().get();
     if(!a.exists){
+      if(localStorage.getItem('kp_inv')){
+        try{const invited=await canje(u,email,null);if(invited){enter(invited);return;}}
+        catch(e){msg(invitacionError(e));$('kpOut').style.display='';return;}
+      }
       if(OWNER_EMAIL&&norm(OWNER_EMAIL)!==email){msg('Esta app aún no tiene dueño y solo '+OWNER_EMAIL+' puede iniciarla.');await firebase.auth().signOut();return;}
       await acceso().set({emails:[email],admins:[email]});
       const v=nuevo(u,true);VENDEDORES=[v];await save();enter(v);return;}
     const d=a.data();
-    if(!(d.emails||[]).includes(email)){
-      let _v=null;try{_v=await canje(u,email,d);}catch(e){_v=null;}
-      if(_v){enter(_v);return;}
+    const allowed=(d.emails||[]).map(norm);
+    if(localStorage.getItem('kp_inv')){
+      try{const invited=await canje(u,email,d);if(invited){enter(invited);return;}}
+      catch(e){
+        if(!allowed.includes(email)){msg(invitacionError(e));$('kpOut').style.display='';return;}
+        localStorage.removeItem('kp_inv');
+      }
+    }
+    if(!allowed.includes(email)){
       await db.collection('solicitudes').doc(email.replace(/[^a-z0-9]/g,'_')).set({email,nombre:u.displayName||email,ts:firebase.firestore.FieldValue.serverTimestamp()});
       msg('Tu acceso está pendiente. Pide al administrador que apruebe: '+email);$('kpOut').style.display='';return;}
     try{localStorage.removeItem('kp_inv');}catch(e){}
@@ -13447,17 +13474,10 @@ window.kpInvitar=function(){
   o.querySelector('#kpIC').onclick=()=>o.remove();
   o.querySelector('#kpIOk').onclick=async()=>{
     const email=norm(o.querySelector('#kpIE').value),nom=o.querySelector('#kpIN').value.trim(),r=o.querySelector('#kpIR').value,m=o.querySelector('#kpIM');
-    if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){m.textContent='Escribe un correo válido o déjalo vacío.';return;}
+    if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){m.textContent='Escribe el correo de Google exacto de la persona invitada.';return;}
     try{
       const tk=Array.from(crypto.getRandomValues(new Uint8Array(12))).map(x=>x.toString(16).padStart(2,'0')).join('');
       await db.collection('invitaciones').doc(tk).set({rol:r,nombre:nom,email:email,usada:false,creadoPor:norm((firebase.auth().currentUser||{}).email),expira:Date.now()+7*864e5,ts:F.serverTimestamp()});
-      if(email){
-        await acc().update({emails:F.arrayUnion(email),admins:r==='admin'?F.arrayUnion(email):F.arrayRemove(email)});
-        let v=VENDEDORES.find(x=>norm(x.email)===email);
-        if(v)Object.assign(v,flags(r),{activo:true,aprobado:true,cargo:ROLES[r]});
-        else{v={nombre:nom||email.split('@')[0],usuario:email.split('@')[0],email,activo:true,aprobado:true,fotoPerfil:'',cargo:ROLES[r],...flags(r)};VENDEDORES.push(v);}
-        await save();
-      }
       const link=location.origin+location.pathname+'?inv='+tk;
       const txt='Te invito a KPlace como '+ROLES[r]+'. Abre este enlace y toca "Continuar con Google": '+link;
       o.firstChild.innerHTML='<h3 style="margin:0 0 6px;font-size:20px">✓ Enlace listo</h3><p style="margin:0 0 12px;color:#8f98a8;font-size:13px;line-height:1.45">Entrará como <b style="color:#e8ecf5">'+ROLES[r]+'</b>'+(email?' con el correo <b style="color:#e8ecf5">'+escapeHtml(email)+'</b>':' con la cuenta de Google que use')+'. Sirve una sola vez y vence en 7 días.</p><div style="background:#0c0f14;border:1px solid #303743;border-radius:12px;padding:10px 12px;font-size:12px;color:#a78bfa;word-break:break-all;margin-bottom:14px">'+escapeHtml(link)+'</div><button id="kpIW" style="width:100%;padding:13px;background:#25d366;color:#fff;border:0;border-radius:12px;font-weight:800;font-size:15px;margin-bottom:10px;cursor:pointer">Enviar por WhatsApp</button><button id="kpICp" style="width:100%;margin-bottom:10px;'+B2+'">Copiar enlace</button><button id="kpIX" style="width:100%;'+B2+'">Cerrar</button>';
@@ -18327,5 +18347,98 @@ setTimeout(hideLegacySidebar,500);
 
 })();
 </script>
+<script id="kp-mobile-google-and-invite-safety">
+(function(){
+  var auth=(window.firebase&&typeof firebase.auth==='function')?firebase.auth():null;
+  function showError(text){
+    var el=document.getElementById('loginError');
+    if(el)el.textContent=text;
+  }
+  function authError(e){
+    var code=(e&&e.code)||'';
+    if(code==='auth/unauthorized-domain')return 'Este dominio no está autorizado en Firebase Authentication.';
+    if(code==='auth/popup-blocked')return 'El navegador bloqueó la ventana de Google. Intenta de nuevo.';
+    if(code==='auth/network-request-failed')return 'No hay conexión estable. Revisa internet e intenta de nuevo.';
+    return 'No se pudo iniciar con Google. Código: '+(code||'error');
+  }
+  window.kpGoogleLogin=async function(){
+    showError('');
+    if(!auth){showError('No se pudo cargar el inicio de sesión de Google. Recarga la página e intenta de nuevo.');return;}
+    var provider=new firebase.auth.GoogleAuthProvider();
+    var mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    try{
+      if(mobile){
+        await auth.signInWithRedirect(provider);
+        return;
+      }
+      await auth.signInWithPopup(provider);
+    }catch(e){
+      if(!mobile&&e&&e.code==='auth/popup-blocked'){
+        try{await auth.signInWithRedirect(provider);return;}catch(redirectError){e=redirectError;}
+      }
+      showError(authError(e));
+    }
+  };
+  if(auth&&typeof auth.getRedirectResult==='function'){
+    auth.getRedirectResult().catch(function(e){
+      var display=function(){showError(authError(e));};
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',display,{once:true});
+      else display();
+    });
+  }
+  function protectInviteDialog(){
+    var input=document.getElementById('kpIE'),button=document.getElementById('kpIOk');
+    if(!input||!button||button.__kpEmailGuard)return;
+    button.__kpEmailGuard=true;
+    input.required=true;
+    input.placeholder='correo@gmail.com';
+    if(input.previousElementSibling)input.previousElementSibling.textContent='Correo de Google (obligatorio)';
+    if(input.nextElementSibling)input.nextElementSibling.textContent='El enlace solo funcionará con esta cuenta de Google.';
+    button.addEventListener('click',function(event){
+      var email=String(input.value||'').trim().toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var message=document.getElementById('kpIM');
+        if(message)message.textContent='Escribe el correo de Google de la persona invitada para limitar el acceso.';
+        input.focus();
+      }
+    },true);
+  }
+  new MutationObserver(protectInviteDialog).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+
+<style id="kp-channels-dark-cohesion">
+/* Canales: tarjetas y controles en la misma paleta oscura de KPlace */
+body.kp-dark .kp-chat-enterprise .kp-channels-shell,
+body.kp-dark .kp-chat-enterprise .kp-channel-list,
+body.kp-dark .kp-chat-enterprise .kp-channel-header,
+body.kp-dark .kp-chat-enterprise .kp-chat-composer{
+  background:#0d1422!important;border-color:#273249!important;color:#eef2ff!important;
+}
+body.kp-dark .kp-chat-enterprise .card,
+body.kp-dark .kp-chat-enterprise #kpCanalesList>.card,
+body.kp-dark .kp-chat-enterprise .kp-channel-item,
+body.kp-dark .kp-chat-enterprise .kp-inventory-empty,
+body.kp-dark .kp-chat-enterprise .kp-location-empty{
+  background:#111a2b!important;border:1px solid #29364f!important;color:#eef2ff!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.18)!important;
+}
+body.kp-dark .kp-chat-enterprise .card .name,
+body.kp-dark .kp-chat-enterprise .kp-channel-item,
+body.kp-dark .kp-chat-enterprise .kp-channel-header h2{color:#eef2ff!important}
+body.kp-dark .kp-chat-enterprise .card .meta,
+body.kp-dark .kp-chat-enterprise .kp-enterprise-head p,
+body.kp-dark .kp-chat-enterprise .kp-empty{color:#9aa8bf!important}
+body.kp-dark .kp-chat-enterprise .kp-channel-item.active{background:#242044!important;color:#e9d5ff!important;border-color:#7552c7!important;box-shadow:inset 3px 0 #a855f7!important}
+body.kp-dark .kp-chat-enterprise .kp-channel-item:hover{background:#19243a!important}
+body.kp-dark .kp-chat-enterprise .kp-chat-composer input,
+body.kp-dark #kpCanalesBuscar{background:#111a2b!important;color:#eef2ff!important;border-color:#303d56!important}
+body.kp-dark .kp-chat-enterprise .kp-chat-message{background:#151f31!important;color:#eef2ff!important;border-color:#2b3952!important}
+body.kp-dark .kp-chat-enterprise .kp-chat-message.mine{background:#292044!important;border-color:#574080!important}
+body.kp-dark .kp-chat-enterprise .kp-chat-message .meta{color:#aab6ca!important}
+</style>
+
 </body>
 </html>
