@@ -18743,6 +18743,7 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
 #view .card[data-kpx]:not(.kpn) .btnrow>.btn{width:100%!important;min-width:0!important;margin:0!important;white-space:normal!important;text-align:center}
 #view .card[data-kpx]:not(.kpn) .btnrow>.btn:last-child:nth-child(odd){grid-column:1/-1}
 #view .card.kpn .kpn-more .btn.kpn-del{grid-column:1/-1}
+#view .card .boxfulQuote .kpn-unlink{display:flex!important;align-items:center;justify-content:center;width:100%!important;margin:10px 0 0!important;min-height:42px;border-radius:12px!important;background:transparent!important;color:#f59e0b!important;border:1px solid rgba(245,158,11,.5)!important;font-weight:700!important}
 </style>
 <script id="kp-nacional-card-js">
 (function(){
@@ -18800,6 +18801,63 @@ function run(){
 }
 new MutationObserver(()=>{if(t)return;t=setTimeout(()=>{t=0;run();},200);}).observe(document.body,{childList:true,subtree:true});
 setInterval(run,1500);
+})();
+</script>
+<script id="kp-guia-nueva-js">
+(function(){
+/* Cada guía nueva usa un número de orden distinto en Boxful (id-2, id-3…) para que no
+   se vuelva a enlazar la guía anterior, que sigue existiendo en Boxful. */
+try{
+  if(typeof boxfulOrderData==='function'&&!boxfulOrderData.__kpg){
+    const base=boxfulOrderData;
+    const wrapped=function(o){
+      const d=base.apply(this,arguments),n=((o&&o.boxfulGuiasAnteriores)||[]).length;
+      if(n&&d&&o&&o.id)d.orderId=String(o.id)+'-'+(n+1);
+      return d;
+    };
+    wrapped.__kpg=1;
+    boxfulOrderData=wrapped;window.boxfulOrderData=wrapped;
+  }
+}catch(e){console.warn('kpg orderData',e);}
+
+window.kpDesvincularGuia=function(id){
+  const o=(window.ORDERS||[]).find(x=>String(x.id)===String(id));if(!o)return;
+  const num=o.boxfulShipmentNumber||o.boxfulGuideNumber||'esta guía';
+  const run=async()=>{
+    try{
+      const del=firebase.firestore.FieldValue.delete();
+      const prev=(o.boxfulGuiasAnteriores||[]).slice();
+      prev.push({numero:num,trackingUrl:o.boxfulTrackingUrl||'',guideUrl:o.boxfulGuideUrl||'',creada:o.boxfulCreatedAt||'',quitada:new Date().toISOString(),quitadaPor:(window.CURRENT_USER&&CURRENT_USER.nombre)||''});
+      await db.collection('orders').doc(id).update({
+        boxfulGuiasAnteriores:prev,
+        boxfulShipment:del,boxfulShipmentNumber:del,boxfulGuideNumber:del,boxfulTrackingUrl:del,boxfulGuideUrl:del,
+        boxfulCreatedAt:del,boxfulCourierIdField:del,boxfulCancelled:del,boxfulCancelledAt:del,
+        boxfulTrackingStatus:del,boxfulStatusCheckedAt:del,boxfulAlert:del,estadoNacional:'pendiente'
+      });
+      toast('Guía '+num+' quitada de la orden. Ya puedes crear otra.');
+      if(typeof render==='function')render();
+    }catch(e){console.error(e);toast('No se pudo quitar la guía: '+(e.message||'error'));}
+  };
+  const msg='Vas a quitar la guía '+num+' de la orden de "'+(o.cliente||'este cliente')+'".\n\nLa orden NO se borra y podrás crear una guía nueva. La guía anterior NO se cancela en Boxful: si ya existe allá, avísales para que no la procesen.';
+  if(typeof askKPlace==='function')askKPlace({title:'Quitar guía y crear otra',message:msg,confirmText:'Quitar guía',danger:true,onConfirm:run});
+  else if(confirm(msg))run();
+};
+window.kpQuitarGuiaLocal=window.kpDesvincularGuia;
+
+/* Botón dentro del cuadro "Guía Boxful" de cada orden */
+function addBtn(){
+  document.querySelectorAll('#view .card .boxfulQuote:not([data-kpu])').forEach(b=>{
+    if(!/^\s*Guía Boxful/i.test(b.textContent))return;
+    b.dataset.kpu='1';
+    const c=b.closest('.card'),m=c&&c.innerHTML.match(/(?:marcarEstadoNacional|boxfulQuoteOrder|cancelarGuia)\('([^']+)'/);
+    if(!m)return;
+    const x=document.createElement('button');x.type='button';x.className='btn sm kpn-unlink';
+    x.textContent='🔄 Quitar guía y crear otra';x.onclick=()=>kpDesvincularGuia(m[1]);
+    b.append(x);
+  });
+}
+new MutationObserver(()=>{if(addBtn.t)return;addBtn.t=setTimeout(()=>{addBtn.t=0;addBtn();},200);}).observe(document.body,{childList:true,subtree:true});
+setInterval(addBtn,1500);
 })();
 </script>
 </body>
