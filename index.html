@@ -645,7 +645,7 @@ body.kp-role-repartidor .kp-drawer-nav .driver-menu-status.on{color:#15803d;}
 body.kp-role-repartidor .kp-drawer-nav .driver-menu-status.on .statusDot{background:#22c55e;}
 body.kp-role-repartidor .kp-drawer-nav .driver-menu-status.off{color:#b91c1c;}
 @media(max-width:700px){body.kp-role-repartidor .kp-user-button{min-width:108px!important;}.kp-user-copy .nameTagMini{font-size:9px!important;max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}}
-<style>.driver-shift-btn{width:100%;border:0;border-radius:12px;padding:11px 12px;font-weight:900;font-size:12px;cursor:pointer;margin:0 0 9px}.driver-shift-btn.start{background:#16a34a;color:#fff}.driver-shift-btn.end{background:#dc2626;color:#fff}.driver-status-toggle{border:0;background:transparent;padding:0;cursor:pointer;font:inherit}</style>
+.driver-shift-btn{width:100%;border:0;border-radius:12px;padding:11px 12px;font-weight:900;font-size:12px;cursor:pointer;margin:0 0 9px}.driver-shift-btn.start{background:#16a34a;color:#fff}.driver-shift-btn.end{background:#dc2626;color:#fff}.driver-status-toggle{border:0;background:transparent;padding:0;cursor:pointer;font:inherit}
 </style>
 <script id="kp-v53-repartidor-menu-status-js">
 (function(){
@@ -18703,5 +18703,889 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
 @media(min-width:700px){#view .card .btnrow{grid-template-columns:repeat(3,minmax(0,1fr))!important}#view .kp-selection-toolbar{flex-direction:row!important;align-items:center!important;justify-content:space-between!important}#view .kp-selection-tools{display:flex!important;flex-wrap:wrap!important}}
 </style>
 
+<style id="kp-refinement-inline">
+/*
+ * KPlace order-screen refinement
+ * Load after the existing inline styles so these focused overrides win.
+ * The palette follows KPlace's current navy / orange theme, including kp-dark.
+ */
+
+:root {
+  color-scheme: light;
+  --kp-refine-surface: #ffffff;
+  --kp-refine-soft: #f4f6fa;
+  --kp-refine-border: #dce3ed;
+  --kp-refine-ink: #182230;
+  --kp-refine-muted: #687588;
+  --kp-refine-focus: rgba(242, 113, 28, 0.22);
+}
+
+body.kp-dark {
+  color-scheme: dark;
+  --kp-refine-surface: #1a2029;
+  --kp-refine-soft: #202735;
+  --kp-refine-border: #3a4556;
+  --kp-refine-ink: #edf2f7;
+  --kp-refine-muted: #a5b0c1;
+  --kp-refine-focus: rgba(255, 145, 66, 0.26);
+}
+
+/* Keep long names, product variants and monetary details inside the card. */
+#view,
+#view .card,
+#view .card > *,
+#view .card .row,
+#view .card .row > div,
+#view .card .kp-order-statuses,
+#view .card .btnrow {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#view .card {
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+#view .card .row {
+  gap: 8px;
+}
+
+#view .card .name,
+#view .card .meta,
+#view .card .prodline,
+#view .card .notas,
+#view .card .boxfulQuote,
+#view .card .kp-order-statuses .chip {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+#view .card .total {
+  max-width: 42%;
+  white-space: normal;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+#view .card .phoneRow,
+#view .card .contactBtns,
+#view .card .kp-order-statuses {
+  flex-wrap: wrap;
+}
+
+#view .card .phonePill {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* A clearly grouped batch workflow that stays scannable at thumb width. */
+#view .kp-selection-panel {
+  min-width: 0;
+  overflow: hidden;
+  border-color: var(--kp-refine-border) !important;
+  background: var(--kp-refine-surface) !important;
+}
+
+#view .kp-selection-heading {
+  padding: 1px 2px 2px;
+}
+
+#view .kp-selection-title {
+  color: var(--kp-refine-ink) !important;
+  overflow-wrap: anywhere;
+}
+
+#view .kp-selection-count {
+  color: var(--kp-refine-muted) !important;
+}
+
+#view .kp-bulk-guide-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#view .kp-bulk-guide-panel .kp-selection-toolbar {
+  margin: 0 !important;
+}
+
+#view .kp-bulk-guide-panel .kp-bulk-quote-button {
+  width: 100%;
+  min-height: 46px;
+  white-space: normal;
+}
+
+#view .kp-bulk-preferred {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--kp-refine-border);
+  border-radius: 14px;
+  background: var(--kp-refine-soft);
+}
+
+#view .kp-bulk-preferred label {
+  margin: 0;
+  color: var(--kp-refine-ink);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+#view .kp-bulk-preferred small {
+  color: var(--kp-refine-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#view .kp-bulk-order-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+#view .kp-bulk-order-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--kp-refine-border);
+  border-radius: 14px;
+  background: var(--kp-refine-surface);
+}
+
+#view .kp-bulk-order-row.kp-bulk-order-fallback {
+  border-color: #e8b24b;
+  background: color-mix(in srgb, #e8b24b 8%, var(--kp-refine-surface));
+}
+
+#view .kp-bulk-order-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+#view .kp-bulk-order-copy b {
+  color: var(--kp-refine-ink);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+#view .kp-bulk-order-copy small,
+#view .kp-bulk-order-state {
+  color: var(--kp-refine-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+#view .kp-bulk-order-fallback .kp-bulk-order-copy small {
+  color: #a66a00;
+  font-weight: 700;
+}
+
+body.kp-dark #view .kp-bulk-order-fallback .kp-bulk-order-copy small {
+  color: #f2c66d;
+}
+
+#view .kp-bulk-empty {
+  padding: 13px;
+  border: 1px dashed var(--kp-refine-border);
+  border-radius: 13px;
+  color: var(--kp-refine-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#view .kp-selection-tools {
+  min-width: 0;
+  align-items: stretch;
+}
+
+#view .kp-selection-tools .btn,
+#view .kp-bulk-create-guides .btn {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  -webkit-text-size-adjust: 100%;
+}
+
+#view .kp-bulk-create-guides {
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--kp-refine-border);
+}
+
+#view .kp-bulk-create-guides .btn {
+  padding-inline: 12px !important;
+  touch-action: manipulation;
+}
+
+#view .kp-bulk-hint {
+  color: var(--kp-refine-muted) !important;
+}
+
+/* Android-friendly native select: large hit area, explicit chevron and states. */
+select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 11px 44px 11px 13px !important;
+  border: 1px solid var(--kp-refine-border) !important;
+  border-radius: 12px !important;
+  background-color: var(--kp-refine-surface) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5.5 7.5 4.5 4.5 4.5-4.5' stroke='%23687588' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 13px center !important;
+  background-size: 20px 20px !important;
+  color: var(--kp-refine-ink) !important;
+  font: inherit;
+  font-size: 15px !important;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+}
+
+body.kp-dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5.5 7.5 4.5 4.5 4.5-4.5' stroke='%23c0cada' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+}
+
+select option,
+select optgroup {
+  background: var(--kp-refine-surface);
+  color: var(--kp-refine-ink);
+  font-size: 16px;
+}
+
+select:focus-visible {
+  border-color: #f2711c !important;
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--kp-refine-focus) !important;
+}
+
+select:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  background-color: var(--kp-refine-soft) !important;
+}
+
+button:focus-visible,
+.btn:focus-visible,
+a.btn:focus-visible {
+  outline: 3px solid var(--kp-refine-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  #view {
+    width: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  #view .card {
+    padding: 13px 12px;
+    border-radius: 15px;
+  }
+
+  #view .card .row {
+    align-items: flex-start;
+  }
+
+  #view .card .total {
+    max-width: 38%;
+    font-size: 15px;
+  }
+
+  #view .kp-selection-panel {
+    padding: 12px !important;
+    border-radius: 17px !important;
+  }
+
+  #view .kp-selection-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  #view .kp-selection-tools .btn {
+    min-height: 46px !important;
+    padding: 9px 7px !important;
+    font-size: 12px;
+  }
+
+  select {
+    min-height: 50px;
+    font-size: 16px !important;
+  }
+}
+
+@media (min-width: 701px) {
+  #view .kp-selection-panel {
+    padding: 17px !important;
+  }
+
+  #view .kp-bulk-order-row {
+    grid-template-columns: minmax(180px, 0.72fr) minmax(240px, 1fr);
+    align-items: center;
+  }
+
+  #view .kp-bulk-create-guides {
+    padding-top: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view .card,
+  #view .card *,
+  select,
+  button,
+  .btn {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+</style>
+<script id="kp-bulk-guide-inline">
+/* Batch courier selection and guide creation for the KPlace Boxful flow. */
+(function () {
+  'use strict';
+
+  const state = window.__kpBulkGuideState || {
+    preferred: '',
+    choices: Object.create(null),
+    sources: Object.create(null),
+    running: false,
+  };
+  window.__kpBulkGuideState = state;
+
+  const esc = (value) =>
+    typeof window.escapeHtml === 'function'
+      ? window.escapeHtml(value)
+      : String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;',
+        })[char]);
+
+  const normalize = (value) =>
+    typeof window.boxfulNormName === 'function'
+      ? window.boxfulNormName(value)
+      : String(value ?? '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim();
+
+  function getVisibleEligibleOrders() {
+    const visible =
+      typeof window.kpBoxfulList === 'function'
+        ? window.kpBoxfulList()
+        : window.ORDERS || [];
+    return visible.filter(
+      (order) =>
+        !(order.boxfulShipmentNumber ||
+          order.boxfulGuideNumber ||
+          order.boxfulShipment),
+    );
+  }
+
+  function getSelectedOrders() {
+    const selected = window.boxfulGuiaSeleccion;
+    if (!(selected instanceof Set)) return [];
+    const eligible = getVisibleEligibleOrders();
+    const eligibleIds = new Set(eligible.map((order) => String(order.id)));
+    [...selected].forEach((id) => {
+      if (!eligibleIds.has(String(id))) selected.delete(id);
+    });
+    return [...selected]
+      .map((id) =>
+        eligible.find((order) => String(order.id) === String(id)),
+      )
+      .filter(Boolean);
+  }
+
+  function optionsFor(order) {
+    if (
+      !order.boxfulQuote ||
+      typeof window.boxfulGetQuoteOptions !== 'function'
+    ) {
+      return [];
+    }
+    return window.boxfulGetQuoteOptions(order.boxfulQuote);
+  }
+
+  function selectedQuoteIndex(order, options) {
+    if (!order.boxfulSelectedQuote || !options.length) return -1;
+    const selectedId =
+      typeof window.boxfulQuoteCourierId === 'function'
+        ? window.boxfulQuoteCourierId(order.boxfulSelectedQuote)
+        : '';
+    if (selectedId) {
+      const byId = options.findIndex(
+        (option) =>
+          String(window.boxfulQuoteCourierId?.(option) || '') ===
+          String(selectedId),
+      );
+      if (byId >= 0) return byId;
+    }
+
+    const selectedName = normalize(
+      window.boxfulQuoteName?.(order.boxfulSelectedQuote, 0),
+    );
+    const selectedService = normalize(
+      order.boxfulSelectedQuote.serviceName ||
+        order.boxfulSelectedQuote.service ||
+        '',
+    );
+    return options.findIndex((option, index) => {
+      if (
+        normalize(window.boxfulQuoteName?.(option, index)) !== selectedName
+      ) {
+        return false;
+      }
+      if (!selectedService) return true;
+      return (
+        normalize(option.serviceName || option.service || '') ===
+        selectedService
+      );
+    });
+  }
+
+  function matchingCourierIndex(options, name) {
+    if (!name) return -1;
+    const wanted = normalize(name);
+    return options.findIndex(
+      (option, index) =>
+        normalize(window.boxfulQuoteName?.(option, index)) === wanted,
+    );
+  }
+
+  function choiceFor(order, options) {
+    const id = String(order.id);
+    if (Object.prototype.hasOwnProperty.call(state.choices, id)) {
+      const saved = state.choices[id];
+      if (saved === '') {
+        if (state.sources[id] === 'manual-empty' || !state.preferred) {
+          return '';
+        }
+        const preferredIndex = matchingCourierIndex(
+          options,
+          state.preferred,
+        );
+        if (preferredIndex >= 0) {
+          state.choices[id] = String(preferredIndex);
+          state.sources[id] = 'preferred';
+          return String(preferredIndex);
+        }
+        return '';
+      }
+      const index = Number(saved);
+      if (Number.isInteger(index) && options[index]) return String(index);
+      delete state.choices[id];
+      delete state.sources[id];
+    }
+
+    if (state.preferred) {
+      const preferredIndex = matchingCourierIndex(
+        options,
+        state.preferred,
+      );
+      if (preferredIndex >= 0) {
+        state.choices[id] = String(preferredIndex);
+        state.sources[id] = 'preferred';
+        return String(preferredIndex);
+      }
+      return '';
+    }
+
+    const savedIndex = selectedQuoteIndex(order, options);
+    if (savedIndex >= 0) {
+      state.choices[id] = String(savedIndex);
+      state.sources[id] = 'existing';
+      return String(savedIndex);
+    }
+    state.choices[id] = '';
+    return '';
+  }
+
+  function quoteName(option, index) {
+    return window.boxfulQuoteName?.(option, index) || `Paquetería ${index + 1}`;
+  }
+
+  function quoteLabel(option, index) {
+    const name = quoteName(option, index);
+    const service = option.serviceName || option.service || '';
+    const price = Number(window.boxfulQuotePrice?.(option) || 0);
+    const currency = window.kpMoneda?.() || 'L.';
+    return `${name}${service ? ` · ${service}` : ''} · ${currency} ${price.toFixed(2)}`;
+  }
+
+  function carrierChoices(orders) {
+    const choices = new Map();
+    orders.forEach((order) => {
+      optionsFor(order).forEach((option, index) => {
+        const name = quoteName(option, index);
+        const key = normalize(name);
+        if (key && !choices.has(key)) choices.set(key, name);
+      });
+    });
+    return [...choices.values()].sort((a, b) =>
+      a.localeCompare(b, 'es', { sensitivity: 'base' }),
+    );
+  }
+
+  function rowForOrder(order) {
+    const id = String(order.id);
+    const number =
+      window.kpNumeroOrdenSafe?.(order) || order.numeroOrden || id;
+    const options = optionsFor(order);
+    const chosen = choiceFor(order, options);
+
+    if (!options.length) {
+      return `<div class="kp-bulk-order-row kp-bulk-order-missing">
+        <div class="kp-bulk-order-copy">
+          <b>#${esc(number)} · ${esc(order.cliente || 'Cliente')}</b>
+          <small>${order.boxfulQuote ? 'La cotización no devolvió tarifas.' : 'Esta orden necesita cotización.'}</small>
+        </div>
+        <span class="kp-bulk-order-state">Cotización pendiente</span>
+      </div>`;
+    }
+
+    const selectedIndex = chosen === '' ? -1 : Number(chosen);
+    const chosenName =
+      selectedIndex >= 0 ? quoteName(options[selectedIndex], selectedIndex) : '';
+    const preferredIndex = matchingCourierIndex(options, state.preferred);
+    const noCoverage = Boolean(state.preferred) && preferredIndex < 0;
+    const invalidSelected =
+      selectedIndex >= 0 &&
+      !window.boxfulQuoteCourierId?.(options[selectedIndex]);
+    const status = invalidSelected
+      ? 'Esta tarifa no tiene un ID válido · elegí otra'
+      : noCoverage
+      ? chosenName
+        ? `Alternativa: ${chosenName}`
+        : `Sin cobertura de ${state.preferred} · elegí otra`
+      : chosenName
+        ? `Usará ${chosenName}`
+        : 'Elegí la paquetería para esta orden';
+
+    return `<label class="kp-bulk-order-row ${noCoverage ? 'kp-bulk-order-fallback' : ''} ${invalidSelected ? 'kp-bulk-order-invalid' : ''}">
+      <span class="kp-bulk-order-copy">
+        <b>#${esc(number)} · ${esc(order.cliente || 'Cliente')}</b>
+        <small>${esc(status)}</small>
+      </span>
+      <select class="kp-bulk-order-select" data-order-id="${esc(id)}" aria-label="Paquetería para la orden ${esc(number)}" onchange="kpBulkSetCarrier(this)">
+        <option value="">Seleccionar paquetería…</option>
+        ${options
+          .map(
+            (option, index) =>
+              `<option value="${index}" ${selectedIndex === index ? 'selected' : ''}>${esc(quoteLabel(option, index))}</option>`,
+          )
+          .join('')}
+      </select>
+    </label>`;
+  }
+
+  function renderGuideToolbar() {
+    if (!window.boxfulGuideMode || window.boxfulExcelMode) {
+      return originalToolbar
+        ? originalToolbar.apply(this, arguments)
+        : '';
+    }
+
+    const eligible = getVisibleEligibleOrders();
+    const selected = getSelectedOrders();
+    const selectedIds = window.boxfulGuiaSeleccion;
+    const selectedCount = selectedIds instanceof Set ? selectedIds.size : 0;
+    const unquoted = selected.filter((order) => !optionsFor(order).length);
+    const allQuoted = selected.length > 0 && unquoted.length === 0;
+    const names = carrierChoices(selected);
+    const needsChoice = selected.filter((order) => {
+      const options = optionsFor(order);
+      const chosen = choiceFor(order, options);
+      const option = chosen === '' ? null : options[Number(chosen)];
+      return (
+        !option ||
+        !window.boxfulQuoteCourierId?.(option)
+      );
+    }).length;
+    const invalidCourierCount = selected.filter((order) => {
+      const options = optionsFor(order);
+      const chosen = choiceFor(order, options);
+      const option = chosen === '' ? null : options[Number(chosen)];
+      return Boolean(option && !window.boxfulQuoteCourierId?.(option));
+    }).length;
+    const canCreate =
+      selected.length > 0 &&
+      selected.length === selectedCount &&
+      allQuoted &&
+      needsChoice === 0 &&
+      !state.running;
+
+    const quoteButton =
+      selected.length && unquoted.length
+        ? `<button class="btn primary sm kp-bulk-quote-button" onclick="kpCotizarSeleccionadas()">Cotizar seleccionadas (${selected.length})</button>`
+        : '';
+    const preferredControl =
+      names.length && selected.length
+        ? `<div class="kp-bulk-preferred">
+            <label for="kpBulkCourierSelect">Paquetería preferida</label>
+            <select id="kpBulkCourierSelect" onchange="kpBulkPreferredChanged(this.value)">
+              <option value="">Usar la tarifa guardada de cada orden</option>
+              ${names
+                .map(
+                  (name) =>
+                    `<option value="${esc(name)}" ${normalize(state.preferred) === normalize(name) ? 'selected' : ''}>${esc(name)}</option>`,
+                )
+                .join('')}
+            </select>
+            <small>Si una orden no tiene cobertura, elegí una alternativa en su propia fila.</small>
+          </div>`
+        : '';
+
+    const orderRows = selected.length
+      ? `<div class="kp-bulk-order-list">${selected.map(rowForOrder).join('')}</div>`
+      : `<div class="kp-bulk-empty">Marcá una o más órdenes para preparar sus guías.</div>`;
+
+    const help = !selected.length
+      ? 'Seleccioná las órdenes que querés enviar.'
+      : unquoted.length
+        ? `Cotizá ${unquoted.length} orden${unquoted.length === 1 ? '' : 'es'} antes de elegir la paquetería.`
+        : invalidCourierCount
+          ? `Elegí otra tarifa para ${invalidCourierCount} orden${invalidCourierCount === 1 ? '' : 'es'}; su paquetería no tiene un ID válido.`
+        : needsChoice
+          ? `Elegí una tarifa para ${needsChoice} orden${needsChoice === 1 ? '' : 'es'} para continuar.`
+          : 'Se crearán todas las guías en una sola acción, una por una para no saturar Boxful.';
+
+    return `<div class="kp-selection-panel kp-bulk-guide-panel">
+      <div class="kp-selection-toolbar">
+        <div class="kp-selection-heading">
+          <div class="kp-selection-title">Preparar guías múltiples</div>
+          <div class="kp-selection-count">${selected.length} seleccionada${selected.length === 1 ? '' : 's'} de ${eligible.length} disponible${eligible.length === 1 ? '' : 's'}</div>
+        </div>
+        <div class="kp-selection-tools">
+          <button class="btn sm" onclick="kpSelectAllMode('guide',true)">✓ Seleccionar todo</button>
+          <button class="btn sm" onclick="kpSelectAllMode('guide',false)">Limpiar</button>
+          <button class="btn sm" onclick="toggleBoxfulGuideMode()">Cerrar selección</button>
+        </div>
+      </div>
+      ${quoteButton}
+      ${preferredControl}
+      ${orderRows}
+      <div class="kp-bulk-create-guides">
+        <button class="btn primary" ${canCreate ? '' : 'disabled'} onclick="kpCrearGuiasSeleccionadas()">
+          🚚 Crear todas las guías (${selected.length})
+        </button>
+        <div class="kp-bulk-hint">${esc(help)}</div>
+      </div>
+    </div>`;
+  }
+
+  const originalToolbar = window.renderBoxfulSelectionToolbar;
+  window.renderBoxfulSelectionToolbar = renderGuideToolbar;
+
+  // Keep "select all" aligned with the orders actually visible on the screen.
+  window.boxfulGuiaSeleccionables = getVisibleEligibleOrders;
+
+  window.kpBulkPreferredChanged = function (name) {
+    state.preferred = String(name || '');
+    getSelectedOrders().forEach((order) => {
+      const id = String(order.id);
+      const source = state.sources[id];
+      const options = optionsFor(order);
+      if (!state.preferred) {
+        if (source !== 'manual') {
+          if (source === 'manual-empty') return;
+          const existing = selectedQuoteIndex(order, options);
+          state.choices[id] = existing >= 0 ? String(existing) : '';
+          state.sources[id] = existing >= 0 ? 'existing' : '';
+        }
+        return;
+      }
+
+      const index = matchingCourierIndex(options, state.preferred);
+      if (index >= 0) {
+        state.choices[id] = String(index);
+        state.sources[id] = 'preferred';
+      } else if (source !== 'manual') {
+        state.choices[id] = '';
+        state.sources[id] = '';
+      }
+    });
+    window.render?.();
+  };
+
+  window.kpBulkSetCarrier = function (select) {
+    const id = String(select?.dataset?.orderId || '');
+    if (!id) return;
+    state.choices[id] = String(select.value || '');
+    state.sources[id] = select.value ? 'manual' : 'manual-empty';
+    window.render?.();
+  };
+
+  window.kpCrearGuiasSeleccionadas = async function () {
+    if (!window.kpCanManageShipping?.()) {
+      window.toast?.('Solo el administrador de envíos puede crear guías.');
+      return;
+    }
+    if (state.running) return;
+
+    const ids = window.boxfulGuiaSeleccion;
+    const selected = getSelectedOrders();
+    if (!(ids instanceof Set) || !selected.length) {
+      window.toast?.('Marcá al menos una orden para crear guías.');
+      return;
+    }
+    if (selected.length !== ids.size) {
+      window.toast?.('La selección cambió. Revisá las órdenes visibles y volvé a intentar.');
+      return;
+    }
+
+    const plans = selected.map((order) => {
+      const options = optionsFor(order);
+      const rawIndex = choiceFor(order, options);
+      return {
+        order,
+        options,
+        index: rawIndex === '' ? -1 : Number(rawIndex),
+      };
+    });
+    const needsQuote = plans.filter((plan) => !plan.options.length).length;
+    if (needsQuote) {
+      window.toast?.(`Cotizá primero ${needsQuote} orden${needsQuote === 1 ? '' : 'es'}.`);
+      return;
+    }
+    const missingCarrier = plans.filter(
+      (plan) => plan.index < 0 || !plan.options[plan.index],
+    );
+    if (missingCarrier.length) {
+      window.toast?.('Elegí una paquetería para cada orden, incluidas las alternativas.');
+      return;
+    }
+    if (!window.db || typeof window.boxfulCreateShipment !== 'function') {
+      window.toast?.('No se pudo conectar con el servicio de guías.');
+      return;
+    }
+
+    state.running = true;
+    window.__kpBatch = true;
+    document.body.classList.add('kp-busy');
+    const bar = document.createElement('div');
+    bar.id = 'kpProgreso';
+    bar.className = 'kpProgreso';
+    document.body.appendChild(bar);
+
+    const results = [];
+    try {
+      window.render?.();
+      for (let index = 0; index < plans.length; index += 1) {
+        const { order, options, index: optionIndex } = plans[index];
+        const chosen = options[optionIndex];
+        const id = String(order.id);
+        const client = order.cliente || id;
+        bar.textContent = `Creando guía ${index + 1} de ${plans.length} · ${client}`;
+
+        try {
+          const courierId = window.boxfulQuoteCourierId?.(chosen);
+          if (!courierId) {
+            throw new Error('La tarifa seleccionada no tiene un identificador válido.');
+          }
+
+          await window.db.collection('orders').doc(id).update({
+            boxfulSelectedQuote: chosen,
+            boxfulSelectedCourierId: String(courierId),
+            boxfulSelectedQuotePrice: window.boxfulQuotePrice?.(chosen) || 0,
+          });
+          Object.assign(order, {
+            boxfulSelectedQuote: chosen,
+            boxfulSelectedCourierId: String(courierId),
+            boxfulSelectedQuotePrice: window.boxfulQuotePrice?.(chosen) || 0,
+          });
+
+          const ok = await window.boxfulCreateShipment(id, {
+            silencioso: true,
+          });
+          results.push({
+            id,
+            client,
+            ok: Boolean(ok),
+            message: ok
+              ? 'Guía creada'
+              : 'Boxful no aceptó la guía; revisá los datos de envío.',
+          });
+        } catch (error) {
+          results.push({
+            id,
+            client,
+            ok: false,
+            message: error?.message || 'Error al guardar la paquetería.',
+          });
+        }
+
+        if (index < plans.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 600));
+        }
+      }
+    } finally {
+      state.running = false;
+      window.__kpBatch = false;
+      document.body.classList.remove('kp-busy');
+      bar.remove();
+    }
+
+    results
+      .filter((result) => result.ok)
+      .forEach((result) => {
+        [...ids].forEach((id) => {
+          if (String(id) === result.id) ids.delete(id);
+        });
+      });
+
+    const successes = results.filter((result) => result.ok).length;
+    const failures = results.filter((result) => !result.ok);
+    if (successes && window.db && window.firebase?.firestore?.FieldValue) {
+      window.db
+        .collection('push_eventos')
+        .add({
+          titulo: `📦 ${successes} guía${successes === 1 ? '' : 's'} creada${successes === 1 ? '' : 's'}`,
+          cuerpo: 'Envíos nacionales',
+          tipo: 'guia',
+          link: 'ordenes:',
+          autorEmail: '',
+          enviado: false,
+          ts: window.firebase.firestore.FieldValue.serverTimestamp(),
+        })
+        .catch(() => {});
+    }
+
+    window.render?.();
+    window.toast?.(
+      `Guías creadas: ${successes}${failures.length ? ` · pendientes: ${failures.length}` : ' · listo'}`,
+    );
+    if (failures.length) {
+      window.boxfulShowErrorModal?.(
+        'Resultado de la creación múltiple',
+        failures
+          .map((result) => `❌ ${result.client} — ${result.message}`)
+          .join('\n'),
+        null,
+      );
+    }
+  };
+})();
+
+</script>
 </body>
 </html>
