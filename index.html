@@ -18783,12 +18783,14 @@ function build(c){
   sweep(c);
 }
 const pend=c=>c.dataset.kpn!=='no'&&(!c.dataset.kpn||(c.querySelector(':scope > .btnrow')||(c.querySelector(':scope > .kpx-toggle ~ :not(.kpn-body)'))));
-let t;
-new MutationObserver(()=>{clearTimeout(t);t=setTimeout(()=>{
+let t=0;
+function run(){
   document.querySelectorAll('#view .card[data-kpx]').forEach(c=>{
-    if(c.dataset.kpn==='1')sweep(c);else if(!c.dataset.kpn)build(c);
+    try{if(c.dataset.kpn==='1')sweep(c);else if(!c.dataset.kpn)build(c);}catch(e){console.warn('kpn',e);}
   });
-},250);}).observe(document.body,{childList:true,subtree:true});
+}
+new MutationObserver(()=>{if(t)return;t=setTimeout(()=>{t=0;run();},200);}).observe(document.body,{childList:true,subtree:true});
+setInterval(run,1500);
 })();
 </script>
 </body>
