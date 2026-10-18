@@ -18791,6 +18791,29 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
   #view .kp-kicker,#view .kp-mini-status,#view .kp-order-id{font-weight:700!important}
   .kps-ic,.kp-top-mark,.kp-menu-drawer [class*="ic"]{font-family:'Noto Color Emoji','Segoe UI Emoji',sans-serif!important}
 }
+/* ===== Menú ☰ dibujado con CSS (se ve igual en Windows y en el celular) ===== */
+@media(min-width:701px){
+  #menuBtn{font-size:0!important;color:#263a62}
+  #menuBtn::before{content:"";display:block;width:18px;height:2px;border-radius:2px;background:currentColor;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor}
+  body.kp-dark #menuBtn{background:#15132a!important;color:#c084fc!important;border-color:#3d2a68!important}
+}
+/* ===== Canales en escritorio: estilo WhatsApp Web ===== */
+@media(min-width:1000px){
+  #kpdLeft{position:fixed;left:0;top:82px;bottom:0;width:380px;overflow-y:auto;padding:14px 14px 24px;background:#0d1423;border-right:1px solid rgba(148,163,184,.16);z-index:6}
+  body:not(.kp-dark) #kpdLeft{background:#fff;border-right-color:#e6eaf1}
+  body.kpd-chat #view{margin:0 0 0 380px!important;max-width:none!important;padding:0!important;min-height:calc(100vh - 82px)}
+  body.kpd-chat.kp-chat-open .topbar{display:flex!important}
+  body.kpd-chat.kp-chat-open .kp-chat-enterprise{height:calc(100dvh - 82px)!important;max-width:none!important;margin:0!important;border-radius:0!important}
+  body.kpd-chat #view:empty{display:flex;align-items:center;justify-content:center;height:calc(100vh - 82px)}
+  body.kpd-chat #view:empty::before{content:"💬  Elige un canal o un chat para empezar";color:#8a97ad;font-size:16px}
+  body.kpd-chat .view:before{display:none}
+  #kpdLeft .kpc-wrap{max-width:none!important;margin:0!important;padding:0!important}
+  #kpdLeft .kpc-head{margin-bottom:12px}
+  #kpdLeft .kpc-head h2{font-size:22px!important}
+  #kpdLeft .kpc-head .small{display:none}
+  #kpdLeft .kpc-row{border-radius:12px}
+  #kpdLeft .kpc-row.kpd-on{background:rgba(124,58,237,.22)!important}
+}
 </style>
 <script id="kp-nacional-card-js">
 (function(){
@@ -19020,6 +19043,42 @@ function wrap(obj,key){
 }
 wrap(window.KP,'extraerDatosOrden');
 wrap(window,'extraerDatos');
+})();
+</script>
+<script id="kp-chat-desktop-js">
+(function(){
+/* Canales en escritorio: lista a la izquierda y conversación a la derecha (como WhatsApp Web) */
+const MQ=matchMedia('(min-width:1000px)'),$=id=>document.getElementById(id);
+let left=null,cur=null,asked=false,t=0;
+const tabNow=()=>{try{return typeof activeTab!=='undefined'?activeTab:window.activeTab;}catch(e){return window.activeTab;}};
+function L(){if(!left){const v=$('view');if(!v)return null;left=document.createElement('aside');left.id='kpdLeft';v.parentNode.insertBefore(left,v);}return left;}
+function mark(){if(!left)return;left.querySelectorAll('.kpc-row[data-id]').forEach(r=>r.classList.toggle('kpd-on',cur!=null&&r.dataset.id===String(cur)));}
+function tick(){
+  const v=$('view');if(!v)return;
+  const desk=MQ.matches,list=v.querySelector(':scope > .kpc-wrap'),conv=v.querySelector('.kpw-head');
+  const chat=desk&&!!(list||conv||tabNow()==='chat');
+  document.body.classList.toggle('kpd-chat',chat);
+  if(!chat){
+    if(left){if(!desk&&left.firstElementChild&&!v.firstElementChild)v.append(left.firstElementChild);left.innerHTML='';left.style.display='none';}
+    return;
+  }
+  const l=L();if(!l)return;l.style.display='';
+  if(list){l.innerHTML='';list.classList.remove('kp-chat-enterprise');l.append(list);asked=false;}
+  else if(conv&&!l.firstElementChild&&!asked){
+    asked=true;const id=cur,C=window.KP&&KP.Channels;
+    if(C&&C.render)Promise.resolve(C.render()).then(()=>{if(id&&C.open)C.open(id);});
+  }
+  mark();
+}
+function install(){
+  const C=window.KP&&KP.Channels;if(!C)return false;if(C.__kpd)return true;C.__kpd=1;
+  const r=C.render;C.render=function(){cur=null;if(left&&MQ.matches)left.innerHTML='';return r.apply(this,arguments);};
+  const o=C.open;C.open=function(id){cur=id;const x=o.apply(this,arguments);setTimeout(mark,60);return x;};
+  return true;
+}
+const iv=setInterval(()=>{if(install())clearInterval(iv);},400);
+new MutationObserver(()=>{if(t)return;t=setTimeout(()=>{t=0;try{tick();}catch(e){console.warn('kpd',e);}},80);}).observe(document.body,{childList:true,subtree:true});
+MQ.addEventListener&&MQ.addEventListener('change',tick);
 })();
 </script>
 </body>
