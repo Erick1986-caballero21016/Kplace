@@ -18704,6 +18704,8 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
 </style>
 
 
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Noto+Color+Emoji&display=swap" media="(min-width:1000px)">
 <style id="kp-nacional-card-20261017">
 /* Nivel Nacional · tarjeta ordenada (cabecera, desplegable y acciones) */
 #view .card[data-kpx] .kp-order-number{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px!important;width:100%!important;max-width:100%!important;overflow:visible!important;white-space:normal!important;background:none!important;border:0!important;padding:0!important;margin-bottom:10px!important}
@@ -18744,6 +18746,51 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
 #view .card[data-kpx]:not(.kpn) .btnrow>.btn:last-child:nth-child(odd){grid-column:1/-1}
 #view .card.kpn .kpn-more .btn.kpn-del{grid-column:1/-1}
 #view .card .boxfulQuote .kpn-unlink{display:flex!important;align-items:center;justify-content:center;width:100%!important;margin:10px 0 0!important;min-height:42px;border-radius:12px!important;background:transparent!important;color:#f59e0b!important;border:1px solid rgba(245,158,11,.5)!important;font-weight:700!important}
+/* ===== KPlace · escritorio (≥1000px): panel centrado, parejo y legible ===== */
+@media(min-width:1000px){
+  #view{max-width:1240px!important;margin:0 auto!important;padding:28px 32px 110px!important}
+  #view .kp-dashboard-head{align-items:center!important;margin-bottom:22px!important}
+  #view .kp-dashboard-head h2{font-size:30px!important;margin:2px 0 4px!important}
+  #view .kp-dashboard-head .btn.primary{padding:13px 22px!important;font-size:14px!important;border-radius:14px!important}
+  #view .kp-stats6{gap:16px!important;margin-bottom:20px!important}
+  #view .kp-stats6 .kps{padding:18px 20px!important;min-height:132px}
+  #view .kp-stats6 .kps .value{font-size:28px!important;margin-top:10px!important}
+  #view .kp-stats6 .kps .label{font-size:12.5px!important}
+  #view .kp-stats6 .kps .trend{font-size:11.5px!important}
+  #view .kp-grid2{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px!important;align-items:start!important}
+  #view .kp-panel{padding:20px 22px!important;backdrop-filter:none!important}
+  #view .kp-panel>div:first-child{align-items:center!important;margin-bottom:6px}
+  #view .kp-panel h3{margin:0!important;font-size:16px!important}
+  #view .kp-panel .btn.sm{padding:8px 14px!important;font-size:12.5px!important;border-radius:11px!important}
+  #view .kp-order-row{grid-template-columns:54px minmax(0,1fr) auto auto auto!important;gap:14px!important;padding:14px 0!important;font-size:12.5px!important}
+  #view .kp-order-name{font-size:13.5px!important;line-height:1.25}
+  #view .kp-order-meta{font-size:11.5px!important;overflow-wrap:anywhere}
+  #view .kp-mini-status{padding:5px 11px!important;font-size:11px!important;white-space:nowrap}
+  #view .kp-dash-copy{padding:8px 12px!important;font-size:12px!important;white-space:nowrap}
+  body.kp-dark #view .kp-order-row{border-bottom:1px solid rgba(148,163,184,.14)!important}
+  body.kp-dark #view .kp-order-row:last-child{border-bottom:0!important}
+  .card,.kp-panel,.kp-stat{backdrop-filter:none!important}
+}
+@media(min-width:1500px){
+  #view{max-width:1360px!important}
+  #view .kp-stats6{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+  #view .kp-stats6 .kps .value{font-size:23px!important}
+}
+
+/* ===== Escritorio: tipografía y emojis iguales a los del teléfono =====
+   En Windows, 'Segoe UI' no tiene grosores 800/900 y los simula muy pesados.
+   Roboto (solo 400/500/700) hace que todo lo "extra negrita" quede en 700,
+   y Noto Color Emoji hace que los íconos se vean como en el celular. */
+@media(min-width:1000px){
+  html,body,button,input,select,textarea{
+    font-family:'Roboto','Segoe UI',system-ui,-apple-system,Arial,'Noto Color Emoji','Segoe UI Emoji',sans-serif!important;
+    -webkit-font-smoothing:auto;text-rendering:optimizeLegibility;
+  }
+  #view .kp-dashboard-head h2,#view .kp-stat .value{font-weight:700!important;letter-spacing:-.4px!important}
+  #view .kp-stat .label,#view .kp-order-name,#view .kp-panel h3{font-weight:500!important}
+  #view .kp-kicker,#view .kp-mini-status,#view .kp-order-id{font-weight:700!important}
+  .kps-ic,.kp-top-mark,.kp-menu-drawer [class*="ic"]{font-family:'Noto Color Emoji','Segoe UI Emoji',sans-serif!important}
+}
 </style>
 <script id="kp-nacional-card-js">
 (function(){
