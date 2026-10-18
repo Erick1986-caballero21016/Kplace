@@ -18860,5 +18860,120 @@ new MutationObserver(()=>{if(addBtn.t)return;addBtn.t=setTimeout(()=>{addBtn.t=0
 setInterval(addBtn,1500);
 })();
 </script>
+<script id="kp-wa-paste-js">
+(function(){
+/* ---- 1) Limpia texto copiado de WhatsApp ("[17/10, 08:37] Nombre:" / "17/10/2026 8:37 a. m. - Nombre:") ---- */
+const HEAD=/^[\u200e\u200f\u202f\s]*\[?\d{1,2}[\/.\-]\d{1,2}(?:[\/.\-]\d{2,4})?,?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]\.?\s?m\.?)?\]?\s*(?:[-–]\s*)?[^:\n]{1,60}:\s?/i;
+const SKIP=/^(<?multimedia omitido>?|<?media omitted>?|imagen omitida|este mensaje fue eliminado|you deleted this message|se elimin[oó] este mensaje)\s*$/i;
+window.kpLimpiarWhatsApp=function(t){
+  return String(t||'').replace(/[\u200e\u200f\u202f]/g,' ').split('\n').map(l=>l.replace(HEAD,'').trim()).filter(l=>l&&!SKIP.test(l)).join('\n');
+};
+
+/* ---- 2) Extracción con Gemini (si falla o no hay clave, se usa el extractor de siempre) ---- */
+let pidioClave=false;
+const getLocal=()=>{try{return localStorage.getItem('kp_gemini_key')||'';}catch(e){return '';}};
+const setLocal=k=>{try{localStorage.setItem('kp_gemini_key',k);}catch(e){}};
+const ref=()=>db.collection('config').doc('gemini');
+const quien=()=>(window.CURRENT_USER&&CURRENT_USER.nombre)||'';
+async function cloudGet(){try{const s=await ref().get();return s.exists?((s.data()||{}).key||''):'';}catch(e){return null;}}
+function cloudSet(k){try{return ref().set({key:k,por:quien(),cuando:new Date().toISOString()},{merge:true});}catch(e){}}
+/* La clave vive en la nube (config/gemini): sirve en el celular, la compu y cualquier dispositivo */
+async function getKey(){
+  let k=getLocal();
+  if(!k){const c=await cloudGet();if(c){k=c;setLocal(k);}}
+  if(!k&&!pidioClave){
+    pidioClave=true;
+    try{k=(prompt('Para leer los datos con Gemini pega tu clave de API (Google AI Studio). Se guarda en tu cuenta y sirve en todos tus dispositivos. Déjalo vacío para usar el lector normal.')||'').trim();
+      if(k){setLocal(k);cloudSet(k);}}catch(e){}
+  }
+  return k;
+}
+/* Sincroniza al abrir la app: baja la clave de la nube o la sube si solo está en este dispositivo */
+let tries=0;
+async function sync(){
+  if(!window.db||!window.firebase)return false;
+  const c=await cloudGet();if(c===null)return false;
+  const l=getLocal();
+  if(c&&c!==l)setLocal(c);else if(l&&!c)await cloudSet(l);
+  return true;
+}
+const iv=setInterval(async()=>{try{if(++tries>40||await sync())clearInterval(iv);}catch(e){}},4000);
+setTimeout(()=>{sync().catch(()=>{});},1500);
+const tel=v=>{let d=String(v||'').replace(/\D/g,'');if(d.length>8&&d.indexOf('504')===0)d=d.slice(3);return d.slice(-8)===d.slice(-8)&&d.length>8?d.slice(-8):d;};
+async function gemini(texto,key){
+  const prompt=`Eres un asistente de una tienda en Honduras que recibe pedidos por WhatsApp. Te paso un texto copiado de un chat; puede traer fechas, horas y nombres de quien escribe (por ejemplo "[17/10, 08:37] Erick Caballero:"). Ese nombre es de quien reenvía el mensaje, NO es el cliente: ignóralo. Extrae los datos del CLIENTE que recibirá el pedido.
+
+Devuelve SOLO un objeto JSON con estos campos (usa "" si el dato no aparece; NO inventes nada):
+- "cliente": nombre completo del cliente, tal como está escrito (corrige solo mayúsculas obvias).
+- "numero": teléfono principal, solo dígitos, 8 dígitos sin +504.
+- "numero2": segundo teléfono si hay, igual formato.
+- "direccion": dirección de entrega en una sola línea, tal como la escribió el cliente, sin agregar datos que no estén.
+- "metodoPago": "efectivo", "transferencia", "link de pago" o "tarjeta" solo si lo dice; si no, "".
+- "total": monto total en números si se menciona; si no, "".
+- "productos": lista de {"producto","modelo","tamano","color"} solo si se mencionan; si no, [].
+
+Texto:
+${texto}`;
+  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);
+  try{
+    let model='gemini-2.5-flash';try{model=GEMINI_MODEL||model;}catch(e){}
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{
+      method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0,maxOutputTokens:2048,thinkingConfig:{thinkingBudget:0}}})
+    });
+    if(!r.ok)throw new Error('Gemini '+r.status);
+    const data=await r.json(),txt=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text;
+    if(!txt)throw new Error('Gemini sin contenido');
+    let j;try{j=JSON.parse(txt);}catch(e){const m=txt.match(/\{[\s\S]*\}/);if(!m)throw e;j=JSON.parse(m[0]);}
+    if(Array.isArray(j))j=j[0]||{};
+    return j;
+  }finally{clearTimeout(to);}
+}
+/* Convierte la respuesta en el formato con etiquetas que ya entiende el formulario */
+function aEtiquetas(j){
+  const L=[],s=v=>String(v==null?'':v).replace(/\s*\n\s*/g,', ').trim();
+  if(s(j.cliente))L.push('Cliente: '+s(j.cliente));
+  if(tel(j.numero))L.push('Número: '+tel(j.numero));
+  if(tel(j.numero2))L.push('Número 2: '+tel(j.numero2));
+  if(s(j.direccion))L.push('Dirección: '+s(j.direccion));
+  (Array.isArray(j.productos)?j.productos:[]).forEach(p=>{
+    if(!p||!s(p.producto))return;
+    L.push('Producto: '+s(p.producto));
+    if(s(p.modelo))L.push('Modelo: '+s(p.modelo));
+    if(s(p.tamano))L.push('Tamaño: '+s(p.tamano));
+    if(s(p.color))L.push('Color: '+s(p.color));
+  });
+  if(s(j.metodoPago))L.push('Método de pago: '+s(j.metodoPago));
+  const tot=parseInt(String(j.total||'').replace(/[^\d]/g,''),10);
+  if(tot)L.push('Total: '+tot);
+  return L.join('\n');
+}
+function wrap(obj,key){
+  const f=obj&&obj[key];if(typeof f!=='function'||f.__kpwa)return;
+  const w=async function(){
+    const self=this,args=arguments,el=document.getElementById('f_pegado');
+    if(!el||!el.value||!el.value.trim())return f.apply(self,args);
+    el.value=window.kpLimpiarWhatsApp(el.value);
+    const btn=document.querySelector('button[onclick*="extraerDatos"]'),label=btn&&btn.textContent;
+    try{
+      const key=await getKey();
+      if(key){
+        if(btn){btn.disabled=true;btn.textContent='🪄 Leyendo con Gemini…';}
+        const et=aEtiquetas(await gemini(el.value,key));
+        if(/^(Cliente|Número|Dirección):/m.test(et))el.value=et;
+        else if(typeof toast==='function')toast('Gemini no encontró datos claros; uso el lector normal');
+      }
+    }catch(e){
+      console.warn('Gemini falló, se usa el lector normal',e);
+      if(typeof toast==='function')toast('No se pudo usar Gemini ('+(e.message||'error')+'). Uso el lector normal');
+    }finally{if(btn){btn.disabled=false;btn.textContent=label;}}
+    return f.apply(self,args);
+  };
+  w.__kpwa=1;obj[key]=w;
+}
+wrap(window.KP,'extraerDatosOrden');
+wrap(window,'extraerDatos');
+})();
+</script>
 </body>
 </html>
