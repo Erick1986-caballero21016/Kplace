@@ -18821,6 +18821,13 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
   html body .kp-top-logo .kp-top-mark{width:42px!important;height:42px!important;border-radius:12px!important;box-shadow:0 2px 8px rgba(124,58,237,.28)!important}
   .kp-top-sub{font-size:10px!important;font-weight:500!important;letter-spacing:.08em!important}
 }
+
+/* ===== Logo vectorial (nítido en cualquier tamaño) y círculos de conteo centrados ===== */
+:root{--kp-logo:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22%3E%3Cdefs%3E%3ClinearGradient id=%22a%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%23b57bff%22/%3E%3Cstop offset=%221%22 stop-color=%22%236d28d9%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22b%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%237c3aed%22/%3E%3Cstop offset=%221%22 stop-color=%22%23d946ef%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22c%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%238b5cf6%22/%3E%3Cstop offset=%221%22 stop-color=%22%234c1d95%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22g%22 cx=%22.5%22 cy=%22.38%22 r=%22.7%22%3E%3Cstop offset=%220%22 stop-color=%22%232a1259%22/%3E%3Cstop offset=%221%22 stop-color=%22%2308050f%22/%3E%3C/radialGradient%3E%3ClinearGradient id=%22s%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%237c3aed%22 stop-opacity=%22.9%22/%3E%3Cstop offset=%221%22 stop-color=%22%234c1d95%22 stop-opacity=%22.25%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x=%226%22 y=%226%22 width=%22500%22 height=%22500%22 rx=%22112%22 fill=%22url(%23g)%22/%3E%3Crect x=%2210%22 y=%2210%22 width=%22492%22 height=%22492%22 rx=%22108%22 fill=%22none%22 stroke=%22url(%23s)%22 stroke-width=%225%22/%3E%3Cpath d=%22M146 92h46v236h-30q-16 0-16-16z%22 fill=%22url(%23a)%22/%3E%3Cpath d=%22M318 92h50q8 0 3 7L262 200l-70 12z%22 fill=%22url(%23c)%22/%3E%3Cpath d=%22M262 200L378 314q6 6 0 12H256L192 262z%22 fill=%22url(%23b)%22/%3E%3Cpath d=%22M192 212l70-12-70 62z%22 fill=%22%232e0a73%22 opacity=%22.55%22/%3E%3Cg font-family=%22Roboto,Arial,Helvetica,sans-serif%22 font-size=%2246%22 letter-spacing=%2213%22 text-anchor=%22middle%22%3E%3Ctext x=%22256%22 y=%22414%22 fill=%22%23f3e8ff%22%3E%3Ctspan fill=%22%23a855f7%22%3EK%3C/tspan%3EPLACE%3C/text%3E%3C/g%3E%3C/svg%3E")}
+html body .kp-drawer-head .kp-top-mark{width:46px!important;height:46px!important;border-radius:13px!important}
+html body #menuBtn .kp-menu-dot:not([style*="none"]),html body .kpn-badge:not([style*="none"]):not(:empty){box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 6px 1px!important;line-height:1!important;font-family:Roboto,system-ui,'Segoe UI',Arial,sans-serif!important;font-weight:700!important;font-variant-numeric:tabular-nums;letter-spacing:0!important;text-shadow:none!important;border-radius:999px!important}
+html body #menuBtn .kp-menu-dot[style*="none"],html body .kpn-badge[style*="none"],html body .kpn-badge:empty{display:none!important}
+html body .kpn-badge:not([style*="none"]):not(:empty){min-width:22px!important;height:22px!important;font-size:12px!important}
 </style>
 <script id="kp-nacional-card-js">
 (function(){
@@ -19158,6 +19165,38 @@ setInterval(()=>{if(sig(readLocal())!==lastSig)sync();},5000);   /* cambios loca
 setInterval(sync,45000);                                          /* cambios hechos en otro dispositivo */
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync();});
 window.kpBoxfulSync=sync;
+})();
+</script>
+<script id="kp-excel-js">
+(function(){
+/* Excel de órdenes: orden correlativo por fecha (16 oct, luego 17 oct…) y número de orden; archivo "ordenes kplace.xlsx" */
+const num=o=>{try{const v=window.kpNumeroOrdenSafe?window.kpNumeroOrdenSafe(o):(o.id||'');const n=parseInt(String(v).replace(/\D/g,''),10);return isNaN(n)?0:n;}catch(e){return 0;}};
+const cmp=(a,b)=>{const fa=a.fecha||'9999-99-99',fb=b.fecha||'9999-99-99';if(fa!==fb)return fa<fb?-1:1;return num(a)-num(b);};
+const ON=o=>(window.kpNumeroOrdenSafe?window.kpNumeroOrdenSafe(o):(o.id||''));
+const prod=p=>`${p.categoria==='__custom__'?(p.categoriaManual||''):p.categoria} ${p.modelo||''} ${p.tamano||''}`;
+const color=p=>`${p.colorEn||''}${p.colorEs?' ('+p.colorEs+')':''}`;
+const tipo=o=>(window.TIPO_ENTREGA_LABELS&&window.TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'—';
+window.exportExcel=function(){
+  const desde=document.getElementById('expDesde')?.value||'',hasta=document.getElementById('expHasta')?.value||'';
+  db.collection('orders').get().then(snap=>{
+    let ordenes=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(desde)ordenes=ordenes.filter(o=>(o.fecha||'')>=desde);
+    if(hasta)ordenes=ordenes.filter(o=>(o.fecha||'')<=hasta);
+    ordenes.sort(cmp);
+    const rows=ordenes.map(o=>({'N° Orden':ON(o),Fecha:o.fecha,Plataforma:o.plataforma,Vendedor:o.vendedor,Cliente:o.cliente,Teléfono:o.numero,'Dirección de Envío':o.direccion,
+      'Productos Solicitados':(o.productos||[]).map(p=>`${prod(p)} — ${color(p)} x${p.cantidad||1}`).join(' | '),
+      'Método Pago':o.metodoPago,'Estado Pago':o.estadoPago,Banco:o.banco||'','Total (L)':totalOrden(o),'Tipo Entrega':tipo(o),
+      Entregado:o.entregado===true?'Sí':(o.entregado===false?'No':'Pendiente')}));
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.json_to_sheet(rows,{header:['N° Orden','Fecha','Plataforma','Vendedor','Cliente','Teléfono','Dirección de Envío','Productos Solicitados','Método Pago','Estado Pago','Banco','Total (L)','Tipo Entrega','Entregado']});
+    kpExcelCellStyle(ws,[14,12,14,20,24,14,38,55,16,14,14,12,16,14],1);XLSX.utils.book_append_sheet(wb,ws,'Órdenes');
+    const detalle=[];
+    ordenes.forEach(o=>(o.productos||[]).forEach(p=>detalle.push({'N° Orden':ON(o),Fecha:o.fecha,Cliente:o.cliente,'Producto / Modelo':`${prod(p)} — ${color(p)}`.replace(/\s+/g,' ').trim(),Cantidad:p.cantidad||1,'Estado Pago':o.estadoPago,'Tipo Entrega':tipo(o)})));
+    const ws2=XLSX.utils.json_to_sheet(detalle,{header:['N° Orden','Fecha','Cliente','Producto / Modelo','Cantidad','Estado Pago','Tipo Entrega']});
+    kpExcelCellStyle(ws2,[14,12,24,55,12,14,16],1);XLSX.utils.book_append_sheet(wb,ws2,'Desglose de productos');
+    XLSX.writeFile(wb,'ordenes kplace.xlsx');toast('Excel de órdenes descargado.');
+  }).catch(e=>toast('No se pudo descargar el Excel: '+(e.message||'error')));
+};
 })();
 </script>
 </body>
