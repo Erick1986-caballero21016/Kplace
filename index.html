@@ -19080,5 +19080,77 @@ new MutationObserver(()=>{if(t)return;t=setTimeout(()=>{t=0;try{tick();}catch(e)
 MQ.addEventListener&&MQ.addEventListener('change',tick);
 })();
 </script>
+<script id="kp-boxful-sync-js">
+(function(){
+/* Sincroniza la conexión de Boxful (cuentas, tokens, dirección) entre todos los dispositivos
+   usando Firestore: config/boxful. Gana siempre la versión con el token más reciente. */
+const KEY='kplace_boxful_api';
+const readLocal=()=>{try{const r=JSON.parse(localStorage.getItem(KEY)||'{}');return Array.isArray(r.accounts)?r:{selectedId:r.selectedId||'',accounts:[]};}catch(e){return{selectedId:'',accounts:[]};}};
+const writeLocal=s=>{try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}};
+const ref=()=>db.collection('config').doc('boxful');
+const hasTok=s=>(s.accounts||[]).some(a=>a&&(a.accessToken||a.refreshToken));
+const score=a=>(Number(a.accessTokenExpiresAt)||0)+(a.accessToken?1:0)+(a.refreshToken?1:0);
+const sig=s=>JSON.stringify((s.accounts||[]).map(a=>[a.id,String(a.accessToken||'').slice(-8),String(a.refreshToken||'').slice(-8),a.accessTokenExpiresAt||0,a.recolectionAddressId||'']).sort());
+function merge(l,c,dead){
+  const map=new Map();
+  (c.accounts||[]).forEach(a=>{if(a&&a.id&&!dead.has(a.id))map.set(a.id,a);});
+  (l.accounts||[]).forEach(a=>{
+    if(!a||!a.id||dead.has(a.id))return;
+    const o=map.get(a.id);
+    map.set(a.id,!o?a:(score(a)>=score(o)?Object.assign({},o,a):Object.assign({},a,o)));
+  });
+  const accounts=[...map.values()];
+  let sel=l.selectedId||c.selectedId||'';
+  if(!accounts.some(a=>a.id===sel))sel=accounts[0]?accounts[0].id:'';
+  return{selectedId:sel,accounts};
+}
+async function cloudGet(){try{const s=await ref().get();return s.exists?(s.data()||{}):{};}catch(e){return null;}}
+let busy=false,lastSig='';
+async function sync(){
+  if(busy||!window.db||!window.firebase)return false;
+  busy=true;
+  try{
+    const c=await cloudGet();if(c===null)return false;
+    let cs={accounts:[]};try{cs=JSON.parse(c.store||'{}');}catch(e){}
+    if(!Array.isArray(cs.accounts))cs={accounts:[]};
+    const dead=new Set(c.deleted||[]),l=readLocal();
+    if(!hasTok(l)&&!hasTok(cs))return true;
+    const m=merge(l,cs,dead);
+    if(sig(m)!==sig(l)){
+      writeLocal(m);
+      try{if(typeof boxfulUpdateStatus==='function')boxfulUpdateStatus();}catch(e){}
+    }
+    if(sig(m)!==sig(cs)||!c.store){
+      await ref().set({store:JSON.stringify(m),updatedAt:Date.now(),por:(window.CURRENT_USER&&CURRENT_USER.nombre)||''},{merge:true});
+    }
+    lastSig=sig(readLocal());
+    return true;
+  }catch(e){return false;}finally{busy=false;}
+}
+/* Si borras una cuenta en un dispositivo, se borra en todos */
+try{
+  const del=window.kpBoxfulDeleteAccount;
+  if(typeof del==='function'&&!del.__kpb){
+    const w=function(id){
+      const r=del.apply(this,arguments);
+      setTimeout(async()=>{
+        if(readLocal().accounts.some(a=>String(a.id)===String(id)))return;
+        try{await ref().set({deleted:firebase.firestore.FieldValue.arrayUnion(String(id))},{merge:true});}catch(e){}
+        sync();
+      },50);
+      return r;
+    };
+    w.__kpb=1;window.kpBoxfulDeleteAccount=w;
+  }
+}catch(e){}
+let tries=0;
+const iv=setInterval(async()=>{try{if(++tries>40||await sync())clearInterval(iv);}catch(e){}},4000);
+setTimeout(sync,1500);
+setInterval(()=>{if(sig(readLocal())!==lastSig)sync();},5000);   /* cambios locales (token renovado, cuenta nueva) */
+setInterval(sync,45000);                                          /* cambios hechos en otro dispositivo */
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync();});
+window.kpBoxfulSync=sync;
+})();
+</script>
 </body>
 </html>
