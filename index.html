@@ -18793,8 +18793,8 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
 }
 /* ===== Menú ☰ dibujado con CSS (se ve igual en Windows y en el celular) ===== */
 @media(min-width:701px){
-  #menuBtn{font-size:0!important;color:#263a62}
-  #menuBtn::before{content:"";display:block;width:18px;height:2px;border-radius:2px;background:currentColor;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor}
+  #menuBtn{font-size:0!important;color:#263a62;position:relative}
+  #menuBtn::before{content:"";position:absolute;left:50%;top:50%;width:18px;height:2px;margin:-1px 0 0 -9px;border-radius:2px;background:currentColor;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor}
   body.kp-dark #menuBtn{background:#15132a!important;color:#c084fc!important;border-color:#3d2a68!important}
 }
 /* ===== Canales en escritorio: estilo WhatsApp Web ===== */
@@ -18805,8 +18805,7 @@ body.kp-dark #view .card .kp-order-statuses .chip.boxful{background:#182b48!impo
   body.kpd-chat.kp-chat-open .topbar{display:flex!important}
   body.kpd-chat.kp-chat-open .kp-chat-enterprise{height:calc(100dvh - 82px)!important;max-width:none!important;margin:0!important;border-radius:0!important}
   body.kpd-chat #view:empty{display:flex;align-items:center;justify-content:center;height:calc(100vh - 82px)}
-  body.kpd-chat #view:empty::before{content:"💬  Elige un canal o un chat para empezar";color:#8a97ad;font-size:16px}
-  body.kpd-chat .view:before{display:none}
+  body.kpd-chat #view:empty::before{content:"💬  Elige un canal o un chat para empezar";position:static!important;color:#8a97ad!important;font-size:16px!important;letter-spacing:0!important;font-weight:400!important}
   #kpdLeft .kpc-wrap{max-width:none!important;margin:0!important;padding:0!important}
   #kpdLeft .kpc-head{margin-bottom:12px}
   #kpdLeft .kpc-head h2{font-size:22px!important}
@@ -19056,7 +19055,7 @@ function mark(){if(!left)return;left.querySelectorAll('.kpc-row[data-id]').forEa
 function tick(){
   const v=$('view');if(!v)return;
   const desk=MQ.matches,list=v.querySelector(':scope > .kpc-wrap'),conv=v.querySelector('.kpw-head');
-  const chat=desk&&!!(list||conv||tabNow()==='chat');
+  const chat=desk&&!!(list||conv||tabNow()==='principal');
   document.body.classList.toggle('kpd-chat',chat);
   if(!chat){
     if(left){if(!desk&&left.firstElementChild&&!v.firstElementChild)v.append(left.firstElementChild);left.innerHTML='';left.style.display='none';}
