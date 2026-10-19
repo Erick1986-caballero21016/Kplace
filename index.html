@@ -19731,5 +19731,42 @@ const iv=setInterval(()=>{try{if(wrap())clearInterval(iv);}catch(e){console.warn
 window.__kpDevBoxfulCtx=()=>ctx;window.__kpDevConCtx=conCtx;
 })();
 </script>
+
+<!-- KPlace: corrección de acciones Boxful duplicadas en tarjetas de órdenes/reenvíos -->
+<script id="kp-boxful-dedupe-fix-20261019">
+(function(){
+  function limpiarBotonesBoxful(){
+    document.querySelectorAll('#view .card').forEach(function(card){
+      var vistos=new Set();
+      card.querySelectorAll('button').forEach(function(btn){
+        var txt=(btn.innerText||btn.textContent||'').replace(/\s+/g,' ').trim();
+        var accion=btn.getAttribute('onclick')||'';
+        if(!/Crear guía|Ver\/actualizar guía/i.test(txt)) return;
+        // Sólo elimina duplicados idénticos dentro de la misma tarjeta; conserva el primero.
+        var clave=txt+'|'+accion.replace(/\s+/g,'');
+        if(vistos.has(clave)){btn.remove();return;}
+        vistos.add(clave);
+      });
+    });
+  }
+  var pendiente=false;
+  function programar(){if(pendiente)return;pendiente=true;setTimeout(function(){pendiente=false;try{limpiarBotonesBoxful();}catch(e){console.warn('KPlace dedupe Boxful',e);}},80);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',programar);else programar();
+  new MutationObserver(programar).observe(document.body,{childList:true,subtree:true});
+  // Señal visual inmediata al solicitar cotización, sin modificar el flujo ni la decisión de cobro.
+  var original=window.boxfulQuoteOrder;
+  if(typeof original==='function'&&!original.__kpLoadingFix){
+    var wrapped=function(id){
+      var card=null;try{card=[...document.querySelectorAll('#view .card')].find(c=>(c.innerHTML||'').includes(String(id)));}catch(e){}
+      var btn=card&&[...card.querySelectorAll('button')].find(b=>/Cotizar envío|Actualizar cotización/i.test(b.textContent||''));
+      if(btn&&!btn.disabled){btn.disabled=true;btn.dataset.kpQuoteBusy='1';var old=btn.textContent;btn.textContent='⏳ Cotizando…';}
+      var result;
+      try{result=original.apply(this,arguments);}catch(e){if(btn){btn.disabled=false;btn.textContent=old;}throw e;}
+      return Promise.resolve(result).finally(function(){if(btn&&btn.isConnected){btn.disabled=false;btn.textContent=old;btn.removeAttribute('data-kp-quote-busy');}});
+    };
+    wrapped.__kpLoadingFix=true;window.boxfulQuoteOrder=wrapped;
+  }
+})();
+</script>
 </body>
 </html>
