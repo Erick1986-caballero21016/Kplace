@@ -11129,12 +11129,21 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
 
   // Número correlativo visible y sin huecos según el orden de creación actual.
   function orderSort(a,b){
-    const av=a.creado?.toMillis?a.creado.toMillis():String(a.creado||'');
-    const bv=b.creado?.toMillis?b.creado.toMillis():String(b.creado||'');
+    // Una orden recién creada aún no tiene 'creado' (el servidor lo pone después): va al FINAL, no al inicio.
+    const T=o=>{const c=o&&o.creado;if(c&&c.toMillis)return c.toMillis();if(c&&c.seconds!=null)return c.seconds*1000;if(typeof c==='number')return c;if(typeof c==='string'&&c){const q=Date.parse(c);return isNaN(q)?Infinity:q;}return Infinity;};
+    const av=T(a),bv=T(b);
     return av<bv?-1:av>bv?1:String(a.id).localeCompare(String(b.id));
   }
-  window.kpNumeroOrden=function(o){
-    const all=[...(window.ORDERS||[])].sort(orderSort);
+  // Un reenvío (se envió mal) conserva el número de la orden original y no ocupa un número propio.
+  const esReenvioOrden=x=>!!x&&!!x.ordenOriginalId&&x.tipoOrden!=='devolucion'&&!x.esDevolucion&&(x.esReenvio||x.tipoOrden==='cambio');
+  window.kpNumeroOrden=function(o,_d){
+    const ords=window.ORDERS||[];
+    if(esReenvioOrden(o)&&(_d||0)<6){
+      const orig=ords.find(x=>String(x.id)===String(o.ordenOriginalId));
+      if(orig)return window.kpNumeroOrden(orig,(_d||0)+1);
+      if(o.ordenOriginalNumero)return o.ordenOriginalNumero;
+    }
+    const all=ords.filter(x=>!esReenvioOrden(x)).sort(orderSort);
     const i=all.findIndex(x=>String(x.id)===String(o?.id));
     return i>=0?i+1:all.length+1;
   };
