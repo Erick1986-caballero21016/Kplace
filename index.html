@@ -16417,7 +16417,7 @@ function openNW(){
   var ac=$('kpNWa');if(ac)ac.onclick=async function(){try{await kpActivarAvisos()}catch(e){}openNW()};
   o.querySelectorAll('input[data-k]').forEach(function(i){i.onchange=function(){setPref(i.dataset.k,i.checked)}});
   renderList();paintBadge();
-  var rb=$('kpNWr');if(rb)rb.onclick=function(){var b=rd();b.forEach(function(x){x.r=1});try{localStorage.setItem(IK,JSON.stringify(b))}catch(e){}paintBadge();renderList();};
+  var rb=$('kpNWr');if(rb)rb.onclick=function(){removeIds(lista().map(function(x){return x.id}));paintBadge();};
 }
 window.kpOpenNotifs=openNW;window.kpPaintBadge=paintBadge;
 
@@ -18828,6 +18828,16 @@ html body .kp-drawer-head .kp-top-mark{width:46px!important;height:46px!importan
 html body #menuBtn .kp-menu-dot:not([style*="none"]),html body .kpn-badge:not([style*="none"]):not(:empty){box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 6px 1px!important;line-height:1!important;font-family:Roboto,system-ui,'Segoe UI',Arial,sans-serif!important;font-weight:700!important;font-variant-numeric:tabular-nums;letter-spacing:0!important;text-shadow:none!important;border-radius:999px!important}
 html body #menuBtn .kp-menu-dot[style*="none"],html body .kpn-badge[style*="none"],html body .kpn-badge:empty{display:none!important}
 html body .kpn-badge:not([style*="none"]):not(:empty){min-width:22px!important;height:22px!important;font-size:12px!important}
+.kpe-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;padding:10px 12px;border:1px dashed rgba(148,163,184,.35);border-radius:14px}
+.kpe-bar .kpe-count{flex:1 1 180px;font-size:12.5px;color:#94a3b8}
+.kpo-tag{display:inline-block;margin:0 6px 0 0;padding:2px 9px;border-radius:999px;background:rgba(168,85,247,.2);color:#d8b4fe;font-size:11px;font-weight:700;letter-spacing:.2px;vertical-align:1px;border:1px solid rgba(168,85,247,.45)}
+body:not(.kp-dark) .kpo-tag{background:#f3e8ff;color:#7e22ce;border-color:#d8b4fe}
+.kpd2-badge{margin:0 0 10px;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.35;border:1px solid}
+.kpd2-badge.dev{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.5);color:#fbbf24}
+.kpd2-badge.cam{background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.5);color:#93c5fd}
+body:not(.kp-dark) .kpd2-badge.dev{color:#92400e}body:not(.kp-dark) .kpd2-badge.cam{color:#1e40af}
+.kpd2-hint{margin:8px 0 2px;padding:10px 12px;border-radius:12px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);font-size:12.5px;line-height:1.4}
+#view .card.kpn .kpn-more .btn.kpd2-btn{grid-column:auto}
 </style>
 <script id="kp-nacional-card-js">
 (function(){
@@ -19197,6 +19207,406 @@ window.exportExcel=function(){
     XLSX.writeFile(wb,'ordenes kplace.xlsx');toast('Excel de órdenes descargado.');
   }).catch(e=>toast('No se pudo descargar el Excel: '+(e.message||'error')));
 };
+})();
+</script>
+<script id="kp-reportes-js">
+(function(){
+const nk=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COLS=[['negro|black|noir','#4b5563'],['blanco|white|ivory|marfil','#e5e7eb'],['crema|cream|beige|nude|arena','#e3cfa6'],['cognac|coñac|caramelo|camel|tan','#b9722e'],['taupe|grisaceo','#8b7765'],['cafe|marron|brown|chocolate','#7c4a21'],['rojo|red|vino|burgundy|wine','#c81e3a'],['azul|blue|navy|marino','#2563eb'],['verde|green|olive|oliva','#16a34a'],['rosa|pink|rose|fucsia','#ec4899'],['morado|purple|lila|violet|lavanda','#9333ea'],['gris|gray|grey|plata|silver','#6b7280'],['dorado|gold','#d4af37'],['naranja|orange','#f97316'],['amarillo|yellow','#eab308']];
+const colorHex=t=>{const s=nk(t);for(const [k,h] of COLS){if(new RegExp(k).test(s))return h;}return '#f59e0b';};
+const ordersNow=()=>{const b=(window.KP&&KP._reportBranch)||'todas';return (window.ORDERS||[]).filter(o=>b==='todas'||o.sucursalId===b);};
+const money=n=>Number(n||0);
+const colTxt=p=>{const en=(p.colorEn||'').trim(),es=(p.colorEs||'').trim();return en&&es&&nk(en)!==nk(es)?en+' ('+es+')':(en||es);};
+const catOf=p=>p.categoria==='__custom__'?(p.categoriaManual||'Personalizado'):(p.categoria||'Producto');
+function agg(orders){
+  const prod={},cat={},col={};
+  orders.forEach(o=>(o.productos||[]).forEach(p=>{
+    const u=Number(p.cantidad||1),c=catOf(p),m=p.modelo||'',t=p.tamano||'',cl=colTxt(p);
+    const k=nk([c,m,t,cl].join('|'));const e=prod[k]||(prod[k]={cat:c,mod:m,tam:t,col:cl,u:0});e.u+=u;
+    const kc=nk(c);const ec=cat[kc]||(cat[kc]={n:c,u:0});ec.u+=u;
+    if(cl){const kl=nk(cl);const el=col[kl]||(col[kl]={n:cl,u:0});el.u+=u;}
+  }));
+  const srt=o=>Object.values(o).sort((a,b)=>b.u-a.u);
+  return{prod:srt(prod),cat:srt(cat),col:srt(col)};
+}
+const PIE=['#a855f7','#3b82f6','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1','#14b8a6','#eab308'];
+
+/* ---------- Pantalla: pastel por categoría, productos con color y colores ---------- */
+const panel=(title,sub,id,xl)=>`<div class="kp-enterprise-panel" data-kpx2="${id}"><div class="kp-panel-title"><h3>${title}</h3><button class="btn sm" onclick="KP.exportReportSheet('${xl}')">📥 Excel</button></div><p class="kp-rep-sub">${sub}</p><div class="kp-chart-box" id="${id}Box"><canvas id="${id}"></canvas></div></div>`;
+function empty(id){const b=document.getElementById(id+'Box');if(b){b.style.height='auto';b.innerHTML='<div class="kp-rep-empty">Todavía no hay datos para mostrar aquí.</div>';}}
+const PAL={fg:'#dbe2f0'};
+const valPlugin=fmt=>({id:'kpV2',afterDatasetsDraw(ch){const ctx=ch.ctx;ch.getDatasetMeta(0).data.forEach((b,i)=>{const v=ch.data.datasets[0].data[i];ctx.save();ctx.fillStyle=PAL.fg;ctx.font='700 11px system-ui';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(fmt(v),b.x+8,b.y);ctx.restore();});}});
+function extras(){
+  if(typeof Chart==='undefined'||!window.KP||!document.getElementById('kpChartProductos'))return;
+  const orders=ordersNow(),a=agg(orders),charts=KP._reportCharts||(KP._reportCharts=[]);
+  /* productos más vendidos, con tamaño y color (la barra toma el color del producto) */
+  const el=document.getElementById('kpChartProductos');
+  if(el&&!el.dataset.kp2){
+    el.dataset.kp2='1';
+    try{const old=Chart.getChart(el);if(old)old.destroy();}catch(e){}
+    const top=a.prod.slice(0,12);
+    if(!top.length)empty('kpChartProductos');
+    else{
+      document.getElementById('kpChartProductosBox').style.height=Math.max(160,top.length*64+30)+'px';
+      const sh=(t,k)=>t.length>k?t.slice(0,k-1)+'…':t;
+      charts.push(new Chart(el,{type:'bar',data:{labels:top.map(e=>[sh(e.cat+(e.mod?' · '+e.mod:''),34),sh([e.tam,e.col].filter(Boolean).join(' · '),34)].filter(Boolean)),datasets:[{data:top.map(e=>e.u),backgroundColor:top.map(e=>colorHex(e.col)),borderRadius:9,barThickness:26}]},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:450},layout:{padding:{right:90}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.parsed.x+(c.parsed.x===1?' unidad':' unidades')}}},scales:{x:{display:false,beginAtZero:true},y:{grid:{display:false},border:{display:false},ticks:{color:PAL.fg,font:{size:12,weight:'600'},autoSkip:false}}}},
+        plugins:[valPlugin(u=>u+(u===1?' unidad':' unidades'))]}));
+    }
+    const sub=el.closest('.kp-enterprise-panel')&&el.closest('.kp-enterprise-panel').querySelector('.kp-rep-sub');
+    if(sub)sub.textContent='Los 12 productos con más unidades vendidas, con tamaño y color. La barra toma el color del producto.';
+  }
+  /* pastel por categoría */
+  const grid=document.querySelector('.kp-report-grid');
+  const anchor=el&&el.closest('.kp-enterprise-panel');
+  if(grid&&!document.getElementById('kpChartCategoria')){
+    anchor.insertAdjacentHTML('afterend',panel('Ventas por categoría','Qué parte de las unidades vendidas aporta cada categoría.','kpChartCategoria','categoria'));
+    const c=document.getElementById('kpChartCategoria'),tot=a.cat.reduce((t,x)=>t+x.u,0);
+    if(!tot)empty('kpChartCategoria');
+    else{
+      document.getElementById('kpChartCategoriaBox').style.height='340px';
+      charts.push(new Chart(c,{type:'doughnut',data:{labels:a.cat.map(x=>x.n+' · '+x.u+' ('+Math.round(x.u*100/tot)+'%)'),datasets:[{data:a.cat.map(x=>x.u),backgroundColor:a.cat.map((x,i)=>PIE[i%PIE.length]),borderColor:'rgba(15,20,35,.9)',borderWidth:3}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'52%',animation:{duration:450},plugins:{legend:{position:'right',labels:{color:PAL.fg,font:{size:12,weight:'600'},boxWidth:14,padding:12}},tooltip:{callbacks:{label:c=>' '+c.parsed+' unidades'}}}}}));
+    }
+  }
+  /* colores más vendidos */
+  if(grid&&!document.getElementById('kpChartColores')){
+    document.getElementById('kpChartCategoriaBox').closest('.kp-enterprise-panel').insertAdjacentHTML('afterend',panel('Colores más vendidos','Qué colores se llevan más clientes.','kpChartColores','colores'));
+    const c=document.getElementById('kpChartColores'),top=a.col.slice(0,10);
+    if(!top.length)empty('kpChartColores');
+    else{
+      document.getElementById('kpChartColoresBox').style.height=Math.max(150,top.length*50+30)+'px';
+      charts.push(new Chart(c,{type:'bar',data:{labels:top.map(x=>x.n.length>30?x.n.slice(0,29)+'…':x.n),datasets:[{data:top.map(x=>x.u),backgroundColor:top.map(x=>colorHex(x.n)),borderRadius:9,barThickness:24}]},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:450},layout:{padding:{right:90}},plugins:{legend:{display:false}},scales:{x:{display:false,beginAtZero:true},y:{grid:{display:false},border:{display:false},ticks:{color:PAL.fg,font:{size:12,weight:'600'}}}}},
+        plugins:[valPlugin(u=>u+(u===1?' unidad':' unidades'))]}));
+    }
+  }
+}
+function install(){
+  if(!window.KP||!KP.renderReportes||KP.renderReportes.__kp2)return false;
+  const o=KP.renderReportes;
+  KP.renderReportes=function(){const r=o.apply(this,arguments);try{extras();}catch(e){console.warn('rep',e);}return r;};
+  KP.renderReportes.__kp2=1;
+  const os=KP.exportReportSheet;
+  KP.exportReportSheet=function(kind){
+    if(kind==='categoria'||kind==='colores'){
+      const a=agg(ordersNow()),rows=kind==='categoria'?[['Categoría','Unidades vendidas'],...a.cat.map(x=>[x.n,x.u])]:[['Color','Unidades vendidas'],...a.col.map(x=>[x.n,x.u])];
+      const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Reporte');
+      XLSX.writeFile(wb,(kind==='categoria'?'ventas por categoria':'colores mas vendidos')+'.xlsx');return;
+    }
+    if(kind==='productos'){
+      const a=agg(ordersNow()),rows=[['Categoría','Modelo','Tamaño','Color','Unidades vendidas'],...a.prod.slice(0,50).map(e=>[e.cat,e.mod,e.tam,e.col,e.u])];
+      const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Reporte');XLSX.writeFile(wb,'productos mas vendidos.xlsx');return;
+    }
+    return os.apply(this,arguments);
+  };
+  return true;
+}
+const iv=setInterval(()=>{if(install())clearInterval(iv);},400);
+/* por si la pantalla ya estaba dibujada con la versión anterior */
+setInterval(()=>{try{if(document.getElementById('kpChartProductos')&&window.KP&&KP._reportCharts&&KP._reportCharts.length)extras();}catch(e){}},1500);
+
+/* ---------- Excel completo con todas las gráficas ---------- */
+function chartPNG(cfg,w,h){
+  const c=document.createElement('canvas');c.width=w||900;c.height=h||460;
+  cfg.options=Object.assign({responsive:false,animation:false,devicePixelRatio:1},cfg.options||{});
+  cfg.plugins=(cfg.plugins||[]).concat([{id:'bg',beforeDraw(ch){const x=ch.canvas.getContext('2d');x.save();x.globalCompositeOperation='destination-over';x.fillStyle='#fff';x.fillRect(0,0,ch.canvas.width,ch.canvas.height);x.restore();}}]);
+  const ch=new Chart(c.getContext('2d'),cfg);const u=c.toDataURL('image/png');ch.destroy();return u;
+}
+const vp=fmt=>({id:'v',afterDatasetsDraw(ch){const ctx=ch.ctx,hz=ch.options.indexAxis==='y';ch.getDatasetMeta(0).data.forEach((b,i)=>{const v=ch.data.datasets[0].data[i];if(!v)return;ctx.save();ctx.fillStyle='#111';ctx.font='bold 12px Arial';if(hz){ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(fmt(v),b.x+6,b.y);}else{ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(fmt(v),b.x,b.y-4);}ctx.restore();});}});
+const barImg=(labels,data,colors,fmt,horizontal)=>chartPNG({type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:4}]},options:{indexAxis:horizontal?'y':'x',layout:{padding:{right:horizontal?90:10,top:horizontal?10:24}},plugins:{legend:{display:false}},scales:{x:{grid:{display:!horizontal},ticks:{color:'#222',font:{size:11}}},y:{beginAtZero:true,grid:{color:'#e5e7eb'},ticks:{color:'#222',font:{size:11}}}}},plugins:[vp(fmt)]},900,horizontal?Math.max(300,labels.length*38+60):460);
+const pieImg=(labels,data)=>chartPNG({type:'doughnut',data:{labels,datasets:[{data,backgroundColor:data.map((_,i)=>PIE[i%PIE.length]),borderColor:'#fff',borderWidth:2}]},options:{cutout:'50%',plugins:{legend:{position:'right',labels:{color:'#222',font:{size:13},boxWidth:16,padding:12}}}}},900,460);
+function loadExcelJS(){return new Promise((res,rej)=>{if(window.ExcelJS)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=res;s.onerror=()=>rej(new Error('No se pudo cargar el generador de Excel (revisa tu internet)'));document.head.appendChild(s);});}
+const numOrden=o=>{try{const n=parseInt(String(window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):(o.id||'')).replace(/\D/g,''),10);return isNaN(n)?0:n;}catch(e){return 0;}};
+const sortFecha=(a,b)=>{const fa=a.fecha||'9999-99-99',fb=b.fecha||'9999-99-99';return fa!==fb?(fa<fb?-1:1):numOrden(a)-numOrden(b);};
+const sumBy=(arr,kf,vf)=>{const m={};arr.forEach(x=>{const raw=String(kf(x)||'').trim()||'Sin nombre',k=nk(raw);const e=m[k]||(m[k]={n:raw,v:0});e.v+=vf(x);});return Object.values(m).sort((a,b)=>b.v-a.v);};
+KP.exportReportExcel=async function(){
+  if(typeof Chart==='undefined'){toast('Abre primero la pantalla de Reportes para cargar las gráficas');return;}
+  try{
+    toast('Armando el Excel con todas las gráficas…');
+    await loadExcelJS();
+    const branchSel=KP._reportBranch||'todas',orders=ordersNow().slice().sort(sortFecha),a=agg(orders);
+    const MON='"L" #,##0.00';let mon='L.';try{mon=kpMoneda()||'L.';}catch(e){}
+    const branchName=id=>((KP.branches||[]).find(b=>b.id===id)||{}).nombre||id||'Sin sucursal';
+    const total=orders.reduce((t,o)=>t+money(o.totalPedido),0),n=orders.length,deliv=orders.filter(o=>o.entregado===true).length;
+    const suc=sumBy(orders,o=>branchName(o.sucursalId),o=>money(o.totalPedido));
+    const days=[...Array(30)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-(29-i));return todayStr(d);});
+    const byDay={};orders.forEach(o=>{if(o.fecha)byDay[o.fecha]=(byDay[o.fecha]||0)+money(o.totalPedido);});
+    const vend=sumBy(orders,o=>o.vendedor,o=>money(o.totalPedido)).slice(0,15);
+    const rep=sumBy(orders.filter(o=>o.entregado===true),o=>o.repartidorNombre,()=>1).slice(0,15);
+    const wb=new ExcelJS.Workbook();wb.creator='KPlace';wb.created=new Date();
+    const HEAD={font:{bold:true,color:{argb:'FFFFFFFF'},name:'Calibri',size:11},fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF2E2B2A'}},alignment:{horizontal:'center',vertical:'middle',wrapText:true}};
+    const img=(ws,png,col,row,w,h)=>{const id=wb.addImage({base64:png,extension:'png'});ws.addImage(id,{tl:{col,row},ext:{width:w,height:h}});};
+    function sheet(name,title,headers,rows,widths,fmts){
+      const ws=wb.addWorksheet(name,{views:[{showGridLines:false,state:'frozen',ySplit:3}]});
+      ws.getCell('A1').value=title;ws.getCell('A1').font={bold:true,size:15,color:{argb:'FF2E2B2A'}};
+      ws.getCell('A2').value='Sucursal: '+(branchSel==='todas'?'Todas':branchName(branchSel))+'  ·  Descargado: '+todayStr();ws.getCell('A2').font={size:9,color:{argb:'FF666666'}};
+      const hr=ws.getRow(3);headers.forEach((h,i)=>{const c=hr.getCell(i+1);c.value=h;Object.assign(c,HEAD);});hr.height=22;
+      rows.forEach((r,ri)=>{const row=ws.getRow(4+ri);r.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border={bottom:{style:'thin',color:{argb:'FFD9DDE3'}}};c.alignment={vertical:'middle',wrapText:true};if(fmts&&fmts[i])c.numFmt=fmts[i];});});
+      widths.forEach((w,i)=>{ws.getColumn(i+1).width=w;});
+      return ws;
+    }
+    /* Resumen */
+    const rs=sheet('Resumen','Reportes KPlace',['Indicador','Valor'],[['Total vendido',total],['Órdenes',n],['Venta promedio',n?total/n:0],['Entregadas',deliv+' de '+n+' ('+(n?Math.round(deliv*100/n):0)+'%)']],[26,24]);
+    rs.getCell('B4').numFmt=MON;rs.getCell('B6').numFmt=MON;
+    img(rs,barImg(suc.map(x=>x.n),suc.map(x=>x.v),'#a855f7',v=>mon+' '+Math.round(v).toLocaleString('es-HN'),true),0,8,620,Math.round(620*Math.max(300,suc.length*38+60)/900));
+    img(rs,barImg(days.map(d=>d.slice(8)+'/'+d.slice(5,7)),days.map(d=>byDay[d]||0),'#3b82f6',v=>Math.round(v).toLocaleString('es-HN'),false),0,24,620,320);
+    if(a.cat.length)img(rs,pieImg(a.cat.map(x=>x.n+' ('+x.u+')'),a.cat.map(x=>x.u)),0,41,620,318);
+    /* Ventas por sucursal */
+    const s1=sheet('Sucursales','Ventas por sucursal',['Sucursal','Total vendido'],suc.map(x=>[x.n,x.v]),[28,18],[null,MON]);
+    img(s1,barImg(suc.map(x=>x.n),suc.map(x=>x.v),'#a855f7',v=>mon+' '+Math.round(v).toLocaleString('es-HN'),true),3,2,640,Math.round(640*Math.max(300,suc.length*38+60)/900));
+    /* Ventas por día */
+    const s2=sheet('Ventas por día','Ventas de los últimos 30 días',['Fecha','Total vendido'],days.map(d=>[d,byDay[d]||0]),[14,18],[null,MON]);
+    img(s2,barImg(days.map(d=>d.slice(8)+'/'+d.slice(5,7)),days.map(d=>byDay[d]||0),'#3b82f6',v=>Math.round(v).toLocaleString('es-HN'),false),3,2,700,358);
+    /* Vendedores */
+    const s3=sheet('Vendedores','Ventas por vendedor',['Vendedor','Total vendido','% del total'],vend.map(x=>[x.n,x.v,total?x.v/total:0]),[28,18,12],[null,MON,'0%']);
+    img(s3,barImg(vend.map(x=>x.n),vend.map(x=>x.v),'#22c55e',v=>mon+' '+Math.round(v).toLocaleString('es-HN'),true),4,2,640,Math.round(640*Math.max(300,vend.length*38+60)/900));
+    /* Productos con color */
+    const top=a.prod.slice(0,15);
+    const s4=sheet('Productos','Productos más vendidos (con tamaño y color)',['Categoría','Modelo','Tamaño','Color','Unidades'],top.map(e=>[e.cat,e.mod,e.tam,e.col,e.u]),[22,28,12,24,11]);
+    if(top.length)img(s4,barImg(top.map(e=>(e.cat+' '+e.mod+' '+e.col).trim().slice(0,46)),top.map(e=>e.u),top.map(e=>colorHex(e.col)),v=>v+' u.',true),6,2,640,Math.round(640*Math.max(300,top.length*38+60)/900));
+    /* Categorías (pastel) */
+    const ctot=a.cat.reduce((t,x)=>t+x.u,0);
+    const s5=sheet('Categorías','Ventas por categoría',['Categoría','Unidades','%'],a.cat.map(x=>[x.n,x.u,ctot?x.u/ctot:0]),[28,12,10],[null,null,'0%']);
+    if(a.cat.length)img(s5,pieImg(a.cat.map(x=>x.n+' ('+x.u+')'),a.cat.map(x=>x.u)),4,2,620,318);
+    /* Colores */
+    const cl=a.col.slice(0,15);
+    const s6=sheet('Colores','Colores más vendidos',['Color','Unidades'],cl.map(x=>[x.n,x.u]),[30,12]);
+    if(cl.length)img(s6,barImg(cl.map(x=>x.n.slice(0,40)),cl.map(x=>x.u),cl.map(x=>colorHex(x.n)),v=>v+' u.',true),3,2,640,Math.round(640*Math.max(300,cl.length*38+60)/900));
+    /* Repartidores */
+    const s7=sheet('Repartidores','Entregas por repartidor',['Repartidor','Entregas'],rep.map(x=>[x.n,x.v]),[28,12]);
+    if(rep.length)img(s7,barImg(rep.map(x=>x.n),rep.map(x=>x.v),'#8b5cf6',v=>v+' ent.',true),3,2,640,Math.round(640*Math.max(300,rep.length*38+60)/900));
+    /* Todas las órdenes (de la fecha más antigua a la más nueva) */
+    const tipo=o=>(window.TIPO_ENTREGA_LABELS&&TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'';
+    const so=sheet('Órdenes','Todas las órdenes',['N° Orden','Fecha','Sucursal','Plataforma','Vendedor','Cliente','Teléfono','Dirección de envío','Productos','Método de pago','Estado de pago','Total','Tipo de entrega','Entregado','Repartidor'],
+      orders.map(o=>[window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):(o.id||''),o.fecha||'',branchName(o.sucursalId),o.plataforma||'',o.vendedor||'',o.cliente||'',o.numero||'',o.direccion||'',(o.productos||[]).map(p=>`${catOf(p)} ${p.modelo||''} ${p.tamano||''} — ${colTxt(p)} x${p.cantidad||1}`.replace(/\s+/g,' ')).join(' | '),o.metodoPago||'',o.estadoPago||'',money(o.totalPedido),tipo(o),o.entregado===true?'Sí':(o.entregado===false?'No':'Pendiente'),o.repartidorNombre||'']),
+      [10,12,16,12,18,24,13,36,50,15,13,13,14,11,18],[null,null,null,null,null,null,null,null,null,null,null,MON]);
+    so.autoFilter={from:{row:3,column:1},to:{row:3,column:15}};
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a2=document.createElement('a');a2.href=URL.createObjectURL(blob);a2.download='reportes kplace.xlsx';document.body.appendChild(a2);a2.click();setTimeout(()=>{URL.revokeObjectURL(a2.href);a2.remove();},1500);
+    toast('Excel de reportes descargado con todas las gráficas.');
+  }catch(e){console.error(e);toast('No se pudo armar el Excel: '+(e.message||'error'));}
+};
+})();
+</script>
+<script id="kp-etiquetas-js">
+(function(){
+/* Etiqueta de producto (Cartera, Billetera…): se pone desde el catálogo/inventario y se ve solo en las órdenes */
+const nk=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const inv=()=>{try{return Array.isArray(INVENTARIO)?INVENTARIO:[];}catch(e){return window.INVENTARIO||[];}};
+window.kpEtiquetaDe=function(p){
+  try{
+    const cat=nk(p.categoria==='__custom__'?p.categoriaManual:p.categoria),mod=nk(p.modelo);
+    const same=inv().filter(i=>i&&i.etiqueta&&nk(i.categoria)===cat&&nk(i.modelo)===mod);
+    if(!same.length)return '';
+    const col=nk(p.colorEn||p.colorEs),tam=nk(p.tamano);
+    const ex=same.find(i=>nk(i.tamano)===tam&&(!col||nk(i.colorEn)===col||nk(i.colorEs)===col));
+    return (ex||same[0]).etiqueta||'';
+  }catch(e){return '';}
+};
+/* En la tarjeta de la orden: la etiqueta va al principio de cada producto */
+(function(){
+  const prev=window.orderCard;if(typeof prev!=='function'||prev.__kpe)return;
+  const w=function(o){
+    let h=prev.apply(this,arguments);
+    try{
+      const tags=((o&&o.productos)||[]).slice(0,4).map(window.kpEtiquetaDe);
+      if(tags.some(Boolean)){let i=0;h=h.replace(/<div class="kpo-l"><b>/g,()=>{const t=tags[i++];return t?'<div class="kpo-l"><span class="kpo-tag">'+esc(t)+'</span><b>':'<div class="kpo-l"><b>';});}
+    }catch(e){}
+    return h;
+  };
+  w.__kpe=1;window.orderCard=w;
+})();
+function ids(){return [...(window.kpLabelSelection||[])].map(String);}
+window.kpSetEtiqueta=async function(list,name){
+  list=[...new Set((list||[]).map(String))];name=String(name||'').trim();
+  if(!list.length){toast('Marca uno o varios productos con el check.');return;}
+  const ref=db.collection('config').doc('inventario');
+  try{
+    const res=await db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);const items=(snap.exists&&Array.isArray(snap.data().items))?snap.data().items:[];
+      const want=new Set(list);let n=0;
+      const out=items.map(x=>{if(!want.has(String(x.id)))return x;n++;const c=Object.assign({},x);if(name)c.etiqueta=name;else delete c.etiqueta;return c;});
+      if(!n)throw new Error('No se encontraron los productos seleccionados.');
+      tx.set(ref,{items:out},{merge:true});return {out,n};
+    });
+    try{INVENTARIO=res.out;}catch(e){window.INVENTARIO=res.out;}
+    if(typeof closeModal==='function')closeModal();
+    if(typeof renderInventoryManager==='function'&&document.getElementById('kpInventoryManager'))renderInventoryManager();
+    toast(name?`Etiqueta “${name}” puesta a ${res.n} producto(s).`:`Etiqueta quitada a ${res.n} producto(s).`);
+  }catch(e){toast('No se pudo guardar la etiqueta: '+(e.message||'error'));}
+};
+window.kpAbrirEtiqueta=function(){
+  const sel=ids();if(!sel.length){toast('Marca con el check los productos a los que quieres poner etiqueta.');return;}
+  const usadas=[...new Set(inv().map(i=>i.etiqueta).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const html=`<div class="kp-pro-modal-head"><div><div class="kp-kicker">ETIQUETA</div><h2>Poner etiqueta a ${sel.length} producto(s)</h2><p>Aparece al principio del producto en las órdenes (ej. Cartera · Carolina Herrera…). No se ve en el inventario.</p></div></div>
+    <label>Nombre de la etiqueta</label><input id="kpeName" placeholder="Cartera, Billetera, Mochila…" maxlength="30" autocomplete="off" style="width:100%">
+    ${usadas.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">${usadas.map(u=>`<button type="button" class="btn sm" onclick="document.getElementById('kpeName').value=this.textContent">${esc(u)}</button>`).join('')}</div>`:''}
+    <div class="kp-pro-actions"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="kpSetEtiqueta(window.kpLabelSelection?[...window.kpLabelSelection]:[],document.getElementById('kpeName').value)">Guardar etiqueta</button></div>`;
+  if(typeof modal==='function')modal(html);else{const n=prompt('Nombre de la etiqueta');if(n)kpSetEtiqueta(sel,n);}
+  setTimeout(()=>{const i=document.getElementById('kpeName');i&&i.focus();},50);
+};
+window.kpQuitarEtiqueta=function(){
+  const sel=ids();if(!sel.length){toast('Marca con el check los productos.');return;}
+  if(confirm('¿Quitar la etiqueta a '+sel.length+' producto(s)?'))kpSetEtiqueta(sel,'');
+};
+/* Barra con los botones, dentro del inventario/catálogo */
+function bar(){
+  const box=document.getElementById('kpInventoryManager');if(!box)return;
+  let b=box.querySelector('.kpe-bar');
+  const n=ids().length;
+  if(!b){
+    const anchor=box.querySelector('.kp-inv-filters');if(!anchor)return;
+    anchor.insertAdjacentHTML('beforebegin','<div class="kpe-bar"><span class="kpe-count"></span><button class="btn sm primary" type="button" onclick="kpAbrirEtiqueta()">🔖 Poner etiqueta</button><button class="btn sm" type="button" onclick="kpQuitarEtiqueta()">Quitar etiqueta</button><button class="btn sm red" type="button" onclick="kpDeleteSelectedInventory()">🗑️ Borrar seleccionados</button></div>');
+    b=box.querySelector('.kpe-bar');
+  }
+  const c=b.querySelector('.kpe-count'),t=n?`${n} seleccionado${n===1?'':'s'}`:'Marca productos con el check para etiquetarlos o borrarlos';
+  if(c.textContent!==t)c.textContent=t;
+}
+new MutationObserver(()=>{if(bar.t)return;bar.t=setTimeout(()=>{bar.t=0;try{bar();}catch(e){}},120);}).observe(document.body,{childList:true,subtree:true});
+setInterval(()=>{try{bar();}catch(e){}},700);
+})();
+</script>
+<script id="kp-devolucion-js">
+(function(){
+/* ===== WhatsApp con etiqueta, reenvío sin cobro y devoluciones ===== */
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clean=v=>String(v==null?'':v).replace(/\s*\n+\s*/g,', ').trim();
+const num=o=>{try{return window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):(o.id||'');}catch(e){return o&&o.id||'';}};
+const getOrder=id=>(window.ORDERS||[]).find(x=>String(x.id)===String(id));
+
+/* --- Destino de las devoluciones (dirección del negocio), guardado en la nube --- */
+const DK='kp_dev_destino';
+async function destino(forcePrompt){
+  let d='';try{d=localStorage.getItem(DK)||'';}catch(e){}
+  if(!d&&window.db){try{const s=await db.collection('config').doc('devolucion').get();if(s.exists)d=(s.data()||{}).destino||'';if(d)localStorage.setItem(DK,d);}catch(e){}}
+  if(!d||forcePrompt){
+    const n=prompt('¿En qué dirección se reciben las devoluciones? (dirección del negocio)',d||'');
+    if(n&&n.trim()){d=n.trim();try{localStorage.setItem(DK,d);}catch(e){}try{db.collection('config').doc('devolucion').set({destino:d,por:(window.CURRENT_USER&&CURRENT_USER.nombre)||''},{merge:true});}catch(e){}}
+  }
+  return d;
+}
+
+/* --- Texto de WhatsApp --- */
+function waFix(t,o){
+  const L=String(t).split('\n');let inProd=false;
+  const out=L.map(l=>{
+    if(/^\*Productos\*/.test(l)){inProd=true;return l;}
+    if(inProd&&/^-{5,}/.test(l))inProd=false;
+    if(inProd){const m=l.match(/^(\d+)\.\s+(.*)$/);if(m){const p=(o.productos||[])[+m[1]-1]||{};const tag=window.kpEtiquetaDe?kpEtiquetaDe(p):'';return 'Producto '+m[1]+': '+(tag?tag+', ':'')+m[2];}}
+    return l;
+  });
+  let r=out.join('\n');
+  if(o&&o.tipoOrden==='devolucion'){
+    if(!/DEVOLUCI[ÓO]N/.test(r))r=r.replace(/^(\*ORDEN[^\n]*)/m,'$1  (ORDEN DE DEVOLUCIÓN)');
+    r=r.replace(/^Dirección:\s*(.*)$/m,'Recolectar en (dirección del cliente): $1'+(o.direccionDestino?'\nEntregar en: '+clean(o.direccionDestino):''));
+  }
+  return r;
+}
+(function(){
+  const prev=window.kpTextoOrdenWhatsApp;if(typeof prev!=='function'||prev.__kpd)return;
+  const w=function(o){let t=prev.apply(this,arguments);try{t=waFix(t,o||{});}catch(e){console.warn('wa',e);}return t;};
+  w.__kpd=1;window.kpTextoOrdenWhatsApp=w;
+})();
+
+/* --- Aviso en la tarjeta de la orden --- */
+(function(){
+  const prev=window.orderCard;if(typeof prev!=='function'||prev.__kpd)return;
+  const w=function(o){
+    let h=prev.apply(this,arguments);
+    try{
+      let b='';
+      if(o&&o.tipoOrden==='devolucion')b='<div class="kpd2-badge dev">↩️ <b>DEVOLUCIÓN</b> · recoger donde el cliente'+(o.direccionDestino?' y llevar a: '+esc(clean(o.direccionDestino)):'')+(o.ordenOriginalNumero?' <small>(de la orden #'+esc(o.ordenOriginalNumero)+')</small>':'')+'</div>';
+      else if(o&&o.tipoOrden==='cambio'&&o.ordenOriginalId)b='<div class="kpd2-badge cam">🔁 <b>REENVÍO</b> · se envió mal'+(o.ordenOriginalNumero?' <small>(de la orden #'+esc(o.ordenOriginalNumero)+')</small>':'')+(Number(o.totalPedido||0)===0?' · sin cobro':'')+'</div>';
+      if(b){const m=h.match(/<div class="card[^"]*"[^>]*>/);if(m){const k=h.indexOf(m[0])+m[0].length;h=h.slice(0,k)+b+h.slice(k);}}
+    }catch(e){}
+    return h;
+  };
+  w.__kpd=1;window.orderCard=w;
+})();
+
+/* --- Crear la orden nueva a partir de otra --- */
+window.kpClonarOrden=async function(id,modo){
+  const o=getOrder(id);if(!o){toast('No se encontró la orden');return;}
+  if(!(window.KP&&typeof KP.openEnterpriseOrder==='function')){toast('El formulario no está listo, intenta de nuevo');return;}
+  const b=JSON.parse(JSON.stringify(o));
+  Object.keys(b).forEach(k=>{if(/^(boxful|repartidor|entregad|comprobante|foto|estadoNacional|asignad|pagoRepartidor)/i.test(k)||['id','numeroOrden','nroOrden','consecutivo','creadoEn','createdAt','fecha','entregado','fechaEntrega'].includes(k))delete b[k];});
+  b.ordenOriginalId=o.id;b.ordenOriginalNumero=num(o);
+  b.totalPedido=0;b.subtotal=0;b.estadoPago='pagado';b.metodoPago='efectivo';b.fecha=(typeof todayStr==='function'?todayStr():'');
+  b.productos=(b.productos||[]).map(p=>Object.assign({},p,{precio:0}));
+  if(modo==='devolucion'){
+    const d=await destino(false);if(!d)return;
+    b.tipoOrden='devolucion';b.esDevolucion=true;b.direccionRecoleccion=o.direccion||'';b.direccionDestino=d;
+  }else{b.tipoOrden='cambio';b.esReenvio=true;}
+  window.__kpDevExtra={ordenOriginalId:b.ordenOriginalId,ordenOriginalNumero:b.ordenOriginalNumero,esDevolucion:!!b.esDevolucion,esReenvio:!!b.esReenvio,direccionRecoleccion:b.direccionRecoleccion||null,direccionDestino:b.direccionDestino||null,modo};
+  try{window.editingOrderId=null;}catch(e){}
+  try{window.draftProducts=JSON.parse(JSON.stringify(b.productos));}catch(e){}
+  try{await KP.openEnterpriseOrder(b);}catch(e){console.error(e);toast('No se pudo abrir el formulario');return;}
+  setTimeout(()=>prepararForm(modo),120);
+  toast(modo==='devolucion'?'Devolución lista: revisa los datos y guarda. Sin cobro salvo que escribas un monto.':'Reenvío listo: se crea igual que la orden anterior y sin cobro. Si vas a cobrar algo, escribe el monto en Total.');
+};
+/* Agrega los tipos al formulario y deja seleccionado el correcto */
+function prepararForm(modo){
+  const box=document.getElementById('kpOrderType');if(!box)return;
+  const add=(v,t)=>{if(!box.querySelector('[data-v="'+v+'"]')){const d=document.createElement('div');d.className='pill';d.dataset.v=v;d.textContent=t;d.onclick=function(){if(typeof selPill==='function')selPill('kpOrderType',this);else{box.querySelectorAll('.pill').forEach(x=>x.classList.remove('sel'));this.classList.add('sel');}relabel();};box.appendChild(d);}};
+  add('cambio','🔁 Reenvío (se envió mal)');add('devolucion','↩️ Devolución');
+  box.querySelectorAll('.pill').forEach(p=>{if(!p.__kpd){p.__kpd=1;p.addEventListener('click',()=>setTimeout(relabel,30));}});
+  if(modo){const want=modo==='devolucion'?'devolucion':'cambio';box.querySelectorAll('.pill').forEach(p=>p.classList.toggle('sel',p.dataset.v===want));}
+  relabel();
+}
+function relabel(){
+  const box=document.getElementById('kpOrderType'),dir=document.getElementById('f_direccion');if(!box||!dir)return;
+  const v=(box.querySelector('.pill.sel')||{dataset:{}}).dataset.v;
+  let lab=dir.previousElementSibling;while(lab&&lab.tagName!=='LABEL')lab=lab.previousElementSibling;
+  if(!lab){const p=dir.closest('div');lab=p&&p.querySelector('label');}
+  if(lab){if(!lab.dataset.kpo)lab.dataset.kpo=lab.textContent;lab.textContent=v==='devolucion'?'Dirección de recolecta (donde recogemos la devolución)':lab.dataset.kpo;}
+  let hint=document.getElementById('kpDevHint');
+  if(!hint){hint=document.createElement('div');hint.id='kpDevHint';box.insertAdjacentElement('afterend',hint);}
+  hint.className=v==='devolucion'||v==='cambio'?'kpd2-hint':'';
+  hint.innerHTML=v==='devolucion'?'↩️ <b>Devolución:</b> la dirección de arriba es donde se <b>recoge</b>. Se entrega en: <b>'+esc(window.__kpDevExtra&&window.__kpDevExtra.direccionDestino||'(dirección del negocio)')+'</b>. Sin cobro salvo que escribas un monto en Total.':v==='cambio'?'🔁 <b>Reenvío:</b> misma orden, <b>sin cobro</b>. Si vas a cobrar algo, escribe el monto en Total.':'';
+}
+/* Al guardar, la orden nueva recuerda de cuál viene */
+(function(){
+  const prev=window.saveOrder;if(typeof prev!=='function'||prev.__kpd)return;
+  const w=async function(){
+    const box=document.getElementById('kpOrderType'),v=box&&(box.querySelector('.pill.sel')||{dataset:{}}).dataset.v;
+    const extra=window.__kpDevExtra;
+    if(!extra||(v!=='cambio'&&v!=='devolucion'))return prev.apply(this,arguments);
+    const orig=db.collection,had=Object.prototype.hasOwnProperty.call(db,'collection');
+    db.collection=function(n){const c=orig.apply(db,arguments);if(n==='orders'){const add=c.add.bind(c);c.add=function(d){return add(Object.assign({},d,{ordenOriginalId:extra.ordenOriginalId,ordenOriginalNumero:extra.ordenOriginalNumero,esDevolucion:v==='devolucion',esReenvio:v==='cambio',direccionRecoleccion:v==='devolucion'?(d.direccion||null):null,direccionDestino:v==='devolucion'?extra.direccionDestino:null}));};}return c;};
+    try{const r=await prev.apply(this,arguments);window.__kpDevExtra=null;return r;}
+    finally{if(had)db.collection=orig;else{try{delete db.collection;}catch(e){db.collection=orig;}}}
+  };
+  w.__kpd=1;window.saveOrder=w;
+})();
+/* Aunque abras el formulario normal, si eliges Reenvío/Devolución se muestra el aviso */
+setInterval(()=>{const b=document.getElementById('kpOrderType');if(b&&!b.querySelector('[data-v="devolucion"]'))prepararForm(null);},800);
+
+/* --- Datos para la guía de devolución nacional --- */
+window.kpCopiarDatosGuia=function(id){
+  const o=getOrder(id);if(!o)return;
+  const t=['DEVOLUCIÓN · ORDEN #'+num(o),'','RECOGER EN (cliente):',clean(o.cliente),'Tel: '+(o.numero||'')+(o.numero2?' / '+o.numero2:''),clean(o.direccionRecoleccion||o.direccion||''),[o.municipio,o.departamento].filter(Boolean).join(', '),'','ENTREGAR EN (negocio):',clean(o.direccionDestino||''),'','Contenido: '+(o.productos||[]).map(p=>[p.categoria==='__custom__'?p.categoriaManual:p.categoria,p.modelo,p.tamano,p.colorEn||p.colorEs].filter(Boolean).join(' ')+' x'+(p.cantidad||1)).join(' | ')].join('\n');
+  try{navigator.clipboard.writeText(t);toast('Datos de la guía copiados.');}catch(e){prompt('Copia estos datos:',t);}
+};
+
+/* --- Botones en la tarjeta de cada orden --- */
+function btns(){
+  if(window.CURRENT_USER&&CURRENT_USER.esRepartidor)return;
+  document.querySelectorAll('#view .card[data-kpx] .kpn-more:not([data-kpd])').forEach(m=>{
+    const c=m.closest('.card'),mm=c&&c.innerHTML.match(/(?:editOrder|kpEnviarOrdenWhatsApp|kpCopyOrderWhatsApp|marcarEstadoNacional|boxfulQuoteOrder|cancelarGuia)\(\s*['"]([^'"]+)['"]/);
+    if(!mm)return;m.dataset.kpd='1';const id=mm[1],o=getOrder(id)||{};
+    const mk=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.className='btn sm kpd2-btn';b.textContent=txt;b.onclick=fn;return b;};
+    const del=m.querySelector('.kpn-del');
+    const list=[mk('🔁 Reenviar sin cobro',()=>kpClonarOrden(id,'cambio')),mk('↩️ Devolución',()=>kpClonarOrden(id,'devolucion'))];
+    if(o.tipoOrden==='devolucion'&&o.tipoEntrega==='nacional')list.push(mk('📋 Datos para la guía',()=>kpCopiarDatosGuia(id)));
+    list.forEach(b=>del?m.insertBefore(b,del):m.appendChild(b));
+  });
+}
+new MutationObserver(()=>{if(btns.t)return;btns.t=setTimeout(()=>{btns.t=0;try{btns();}catch(e){}},150);}).observe(document.body,{childList:true,subtree:true});
+setInterval(()=>{try{btns();}catch(e){}},1500);
 })();
 </script>
 </body>
