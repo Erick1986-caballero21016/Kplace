@@ -1745,7 +1745,6 @@ function buildTabs(){
   tabs.push({id:'repartidor', label:'Repartidor'});
   if(CURRENT_USER.esAdmin) {
     tabs.push({id:'admin', label:'Admin'});
-    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
     tabs.push({id:'adminEnviosDevoluciones', label:'Devoluciones', badge:nd>0?nd:null});
   }
   document.getElementById('tabs').innerHTML = tabs.map(t=>
@@ -6215,7 +6214,6 @@ function buildTabs(){
   if(CURRENT_USER.esEncargadoEnvios){
     const nt=ORDERS.filter(o=>kpIsTegusShip(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
     const nn=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
-    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
     const tabs=[
       {id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt?nt:null},
       {id:'adminEnviosNacional',label:'Envíos nacionales',badge:nn?nn:null},
@@ -6241,7 +6239,6 @@ function buildTabs(){
   tabs.push({id:'repartidor',label:'Repartidor'});
   if(CURRENT_USER.esAdmin){
     tabs.push({id:'admin',label:'Admin'});
-    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
     tabs.push({id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd>0?nd:null});
   }
   document.getElementById('tabs').innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
@@ -6807,8 +6804,7 @@ buildTabs=function(){
   if(CURRENT_USER?.esEncargadoEnvios){
     const nt=ORDERS.filter(o=>kpIsTegusShip(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
     const nn=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
-    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
-    const tabs=[{id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt||null},{id:'adminEnviosNacional',label:'Envíos nacionales',badge:nn||null},{id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}];
+    const tabs=[{id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt||null},{id:'adminEnviosNacional',label:'Envíos nacionales',badge:nn||null},];
     document.getElementById('tabs').innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
     if(!tabs.some(t=>t.id===activeTab)) activeTab='adminEnviosTegus';
     updateKPlaceNav(); return;
@@ -6872,8 +6868,7 @@ buildTabs = function(){
   if(CURRENT_USER.esAdmin && !CURRENT_USER.esEncargadoEnvios && !CURRENT_USER.esRepartidor){
     const tabsEl=document.getElementById('tabs');
     if(tabsEl && !tabsEl.querySelector('[data-tab="adminEnviosDevoluciones"]')){
-      const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
-      const div=document.createElement('div');
+        const div=document.createElement('div');
       div.className='tab '+(activeTab==='adminEnviosDevoluciones'?'active':'');
       div.dataset.tab='adminEnviosDevoluciones';
       div.onclick=()=>setTab('adminEnviosDevoluciones');
@@ -6946,11 +6941,10 @@ render = function(){
     if(CURRENT_USER.esEncargadoEnvios && !CURRENT_USER.esAdmin){
       const nt=ORDERS.filter(o=>kpIsTegusShip(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
       const nn=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
-      const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
-      const arr=[
+        const arr=[
         {id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt||null},
         {id:'adminEnviosNacional',label:'Envíos nacionales',badge:nn||null},
-        {id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}
+        
       ];
       tabsEl.innerHTML=arr.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
       if(!arr.some(t=>t.id===activeTab)) activeTab='adminEnviosTegus';
@@ -6960,7 +6954,6 @@ render = function(){
     const nPrincipal=ORDERS.filter(o=>['tegucigalpa','nacional','roatan'].includes(o.tipoEntrega)&&o.fecha===selectedDate).length;
     const nHoy=ORDERS.filter(o=>o.fecha===selectedDate).length;
     const nNacional=ORDERS.filter(o=>kpIsNational(o)&&o.fecha===selectedDate).length;
-    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
     const nr=countRetrasosPendientes();
     const arr=[
       {id:'inicio',label:'Inicio'},
@@ -6972,7 +6965,7 @@ render = function(){
       {id:'retrasos',label:'Retrasos',badge:nr||null},
       {id:'repartidor',label:'Repartidor'},
       {id:'admin',label:'Usuarios y equipo'},
-      {id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}
+      
     ];
     tabsEl.innerHTML=arr.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
     updateKPlaceNav();
@@ -6994,7 +6987,7 @@ render = function(){
         ['inicio','🏠','Inicio'],['principal','💬','Chat interno'],['hoy','📦','Órdenes'],
         ['boxful','🚚','Envíos nacionales'],['rastreosNacionales','📍','Rastreo de pedidos'],
         ['programadas','🕒','Programadas'],['retrasos','🚩','Retrasos'],['repartidor','🛵','Repartidor'],
-        ['admin','👥','Usuarios y equipo'],['adminEnviosDevoluciones','↩️','Devoluciones'],['integraciones','🔗','Integraciones']
+        ['admin','👥','Usuarios y equipo'],['integraciones','🔗','Integraciones']
       ];
     }
     const role=CURRENT_USER?.esAdmin?'Administrador':(CURRENT_USER?.esEncargadoEnvios?'Administrador de envíos':'Usuario');
@@ -7773,13 +7766,12 @@ body.kp-hide-date .dateNav{display:none!important}
     const nHoy=ORDERS.filter(o=>o.fecha===selectedDate).length;
     const nNacional=ORDERS.filter(o=>(o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan')&&o.fecha===selectedDate).length;
     const nr=countRetrasosPendientes();
-    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
     const tabs=[
       {id:'inicio',label:'Inicio'},{id:'principal',label:'Chat',badge:(CHAT_UNREAD.principal||nPrincipal)||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},
       {id:'boxful',label:'Nivel Nacional',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreos Envíos Nacionales'},
       {id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidor'},
       {id:'adminOrdersInventory',label:'Órdenes e Inventario'},{id:'admin',label:'Usuarios y equipo'},
-      {id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}
+      
     ];
     tabsEl.innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
     if(!tabs.some(t=>t.id===activeTab))activeTab='inicio';updateKPlaceNav();
@@ -8409,9 +8401,9 @@ body.kp-hide-date .dateNav{display:none!important}
       if(u?.esRepartidor && !window.kpIsAdmin()){
         items=[['hoy','📦','Órdenes'],['repartidor','🛵','Repartidor'],['principal','💬','Canales'],['ayuda','📖','Ayuda']];
       }else if(u?.esEncargadoEnvios && !window.kpIsAdmin()){
-        items=[['adminEnviosTegus','📦','Tegucigalpa'],['adminEnviosNacional','🚚','Envíos nacionales'],['rastreosNacionales','📍','Rastreo de pedidos'],['adminEnviosDevoluciones','↩️','Devoluciones'],['ayuda','📖','Ayuda']];
+        items=[['adminEnviosTegus','📦','Tegucigalpa'],['adminEnviosNacional','🚚','Envíos nacionales'],['rastreosNacionales','📍','Rastreo de pedidos'],['ayuda','📖','Ayuda']];
       }else{
-        items=[['inicio','🏠','Inicio'],['principal','💬','Canales'],['hoy','📦','Órdenes'],['boxful','🚚','Envíos nacionales'],['rastreosNacionales','📍','Rastreo de pedidos'],['programadas','🕒','Programadas'],['retrasos','🚩','Retrasos'],['repartidor','🛵','Repartidor'],['adminOrdersInventory','🗃️','Inventario y ubicaciones'],['admin','👥','Usuarios y equipo'],['adminEnviosDevoluciones','↩️','Devoluciones'],['reportes','📊','Reportes'],['gps','◎','GPS'],['configNegocio','🧩','Configuración del negocio'],['integraciones','🔗','Integraciones'],['ayuda','📖','Ayuda']];
+        items=[['inicio','🏠','Inicio'],['principal','💬','Canales'],['hoy','📦','Órdenes'],['boxful','🚚','Envíos nacionales'],['rastreosNacionales','📍','Rastreo de pedidos'],['programadas','🕒','Programadas'],['retrasos','🚩','Retrasos'],['repartidor','🛵','Repartidor'],['adminOrdersInventory','🗃️','Inventario y ubicaciones'],['admin','👥','Usuarios y equipo'],['reportes','📊','Reportes'],['gps','◎','GPS'],['configNegocio','🧩','Configuración del negocio'],['integraciones','🔗','Integraciones'],['ayuda','📖','Ayuda']];
       }
       const role=window.kpIsAdmin()?'Administrador':(u?.esEncargadoEnvios?'Administrador de envíos':u?.esRepartidor?'Repartidor':'Usuario');
       drawer.innerHTML=`<div class="kp-drawer-head"><div class="kp-drawer-brand"><span class="kp-top-mark">K</span><div><strong>KPlace</strong><small>${role.toUpperCase()}</small></div></div><button class="kp-drawer-close" onclick="closeKPlaceMenu()">×</button></div>
@@ -8436,15 +8428,13 @@ body.kp-hide-date .dateNav{display:none!important}
       if(u.esEncargadoEnvios && !window.kpIsAdmin()){
         const nt=ORDERS.filter(o=>kpIsTegusShip(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
         const nn=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
-        const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
-        const a=[{id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt||null},{id:'adminEnviosNacional',label:'Envíos nacionales',badge:nn||null},{id:'rastreosNacionales',label:'Rastreo de pedidos'},{id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}];
+        const a=[{id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt||null},{id:'adminEnviosNacional',label:'Envíos nacionales',badge:nn||null},{id:'rastreosNacionales',label:'Rastreo de pedidos'},];
         tabsEl.innerHTML=a.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join(''); updateKPlaceNav(); return;
       }
       const nHoy=ORDERS.filter(o=>o.fecha===selectedDate).length;
       const nNacional=ORDERS.filter(o=>kpIsNational(o)&&o.fecha===selectedDate).length;
-      const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
-      const nr=countRetrasosPendientes();
-      const a=[{id:'inicio',label:'Inicio'},{id:'principal',label:'Chat',badge:(CHAT_UNREAD.principal||0)||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},{id:'boxful',label:'Envíos nacionales',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreo de pedidos'},{id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidor'},{id:'adminOrdersInventory',label:'Inventario y ubicaciones'},{id:'admin',label:'Usuarios y equipo'},{id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}];
+        const nr=countRetrasosPendientes();
+      const a=[{id:'inicio',label:'Inicio'},{id:'principal',label:'Chat',badge:(CHAT_UNREAD.principal||0)||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},{id:'boxful',label:'Envíos nacionales',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreo de pedidos'},{id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidor'},{id:'adminOrdersInventory',label:'Inventario y ubicaciones'},{id:'admin',label:'Usuarios y equipo'},];
       tabsEl.innerHTML=a.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
       if(!a.some(t=>t.id===activeTab)) activeTab='inicio'; updateKPlaceNav();
     };
@@ -9681,14 +9671,14 @@ window.buildTabs=function(){
    const nt=ORDERS.filter(o=>kpIsTegusShip(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
    const nn=ORDERS.filter(o=>kpIsNational(o)&&!kpIsHazabPickup(o)&&o.fecha===selectedDate).length;
    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
-   tabs=[{id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt||null},{id:'adminEnviosNacional',label:'Nivel Nacional',badge:nn||null},{id:'rastreosNacionales',label:'Rastreo'},{id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null},{id:'adminOrdersInventory',label:'Inventario'},{id:'gps',label:'GPS'}];
+   tabs=[{id:'adminEnviosTegus',label:'Tegucigalpa',badge:nt||null},{id:'adminEnviosNacional',label:'Nivel Nacional',badge:nn||null},{id:'rastreosNacionales',label:'Rastreo'},{id:'adminOrdersInventory',label:'Inventario'},{id:'gps',label:'GPS'}];
  }
  else{
    const nHoy=ORDERS.filter(o=>o.fecha===selectedDate).length;
    const nNacional=ORDERS.filter(o=>kpIsNational(o)&&o.fecha===selectedDate).length;
    const nd=ORDERS.filter(o=>o.devolucionPendiente&&!o.devolucionProcesada).length;
    const nr=typeof countRetrasosPendientes==='function'?countRetrasosPendientes():0;
-   tabs=[{id:'inicio',label:'Inicio'},{id:'principal',label:'Canales',badge:KP.Channels?._mentionBadge||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},{id:'boxful',label:'Nivel Nacional',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreo'},{id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidores'},{id:'adminOrdersInventory',label:'Inventario y ubicaciones'},{id:'admin',label:'Usuarios y equipo'},{id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null},{id:'reportes',label:'Reportes'},{id:'gps',label:'GPS'},{id:'configNegocio',label:'Configuración del negocio'}];
+   tabs=[{id:'inicio',label:'Inicio'},{id:'principal',label:'Canales',badge:KP.Channels?._mentionBadge||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},{id:'boxful',label:'Nivel Nacional',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreo'},{id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidores'},{id:'adminOrdersInventory',label:'Inventario y ubicaciones'},{id:'admin',label:'Usuarios y equipo'},{id:'reportes',label:'Reportes'},{id:'gps',label:'GPS'},{id:'configNegocio',label:'Configuración del negocio'}];
    if(CURRENT_USER.esAdmin)tabs.push({id:'integraciones',label:'Integraciones'});
  }
  if(activeTab!=='integraciones' && activeTab!=='ayuda' && !tabs.some(t=>t.id===activeTab))activeTab=tabs[0].id;
@@ -9720,7 +9710,6 @@ window.render=function(){
     return oldRender?oldRender():null;
   }
   if(activeTab==='adminOrdersInventory'&&(CURRENT_USER.esAdmin||CURRENT_USER.esEncargadoEnvios)){return window.renderOrdenesInventario?.();}
-  if(activeTab==='adminEnviosDevoluciones'&&(CURRENT_USER.esAdmin||CURRENT_USER.esEncargadoEnvios))return renderDevolucionesTab?.();
   if(activeTab==='adminEnviosTegus')return renderAdminEnviosTab?.('tegus');
   if(activeTab==='adminEnviosNacional')return renderAdminEnviosTab?.('nacional');
   if(activeTab==='rastreosNacionales')return renderRastreosNacionales?.();
@@ -10752,7 +10741,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     const unread=Number(window.KP?.Channels?._mentionBadge||0);
     const a=[];
     if(retrasos)a.push({i:'⚠️',t:`${retrasos} pedido${retrasos===1?'':'s'} requiere${retrasos===1?'':'n'} atención`,s:'Revisa los retrasos pendientes',tab:'retrasos'});
-    if(dev)a.push({i:'↩️',t:`${dev} devolución${dev===1?'':'es'} pendiente${dev===1?'':'s'}`,s:'Hay pedidos que necesitan revisión',tab:'adminEnviosDevoluciones'});
+
     if(low.length)a.push({i:'📦',t:`${low.length} producto${low.length===1?'':'s'} con stock bajo`,s:'Revisa el inventario antes de quedarte sin existencias',tab:'adminOrdersInventory'});
     if(unread)a.push({i:'💬',t:`${unread} mención${unread===1?'':'es'} sin leer en canales`,s:'Tienes conversaciones pendientes',tab:'principal'});
     const today=o.filter(x=>x.fecha===window.selectedDate).length;
@@ -19564,7 +19553,7 @@ function prepararForm(modo){
   window.__kpDevFormOpen=true;
   const box=document.getElementById('kpOrderType');if(!box)return;
   const add=(v,t)=>{if(!box.querySelector('[data-v="'+v+'"]')){const d=document.createElement('div');d.className='pill';d.dataset.v=v;d.textContent=t;d.onclick=function(){if(typeof selPill==='function')selPill('kpOrderType',this);else{box.querySelectorAll('.pill').forEach(x=>x.classList.remove('sel'));this.classList.add('sel');}relabel();};box.appendChild(d);}};
-  add('cambio','🔁 Reenvío (se envió mal)');add('devolucion','↩️ Devolución');
+  add('cambio','🔁 Reenvío (se envió mal)');
   box.querySelectorAll('.pill').forEach(p=>{if(!p.__kpd){p.__kpd=1;p.addEventListener('click',()=>setTimeout(relabel,30));}});
   if(modo){const want=modo==='devolucion'?'devolucion':'cambio';box.querySelectorAll('.pill').forEach(p=>p.classList.toggle('sel',p.dataset.v===want));}
   relabel();
@@ -19645,7 +19634,7 @@ function btns(){
     if(!mm)return;m.dataset.kpd='1';const id=mm[1],o=getOrder(id)||{};
     const mk=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.className='btn sm kpd2-btn';b.textContent=txt;b.onclick=fn;return b;};
     const del=m.querySelector('.kpn-del');
-    const list=[mk('🔁 Reenviar sin cobro',()=>kpClonarOrden(id,'cambio')),mk('↩️ Devolución',()=>kpClonarOrden(id,'devolucion'))];
+    const list=[mk('🔁 Reenviar sin cobro',()=>kpClonarOrden(id,'cambio'))];
     if(o.tipoOrden==='devolucion'&&o.tipoEntrega==='nacional')list.push(mk('📋 Datos para la guía',()=>kpCopiarDatosGuia(id)));
     list.forEach(b=>del?m.insertBefore(b,del):m.appendChild(b));
   });
