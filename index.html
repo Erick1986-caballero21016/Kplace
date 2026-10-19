@@ -5325,7 +5325,7 @@ function boxfulQuoteSummaryHtml(o){
     // Advertencia temprana: si el courierId de la opción ya elegida vino del fallback dudoso (x.id),
     // avisamos ANTES de que el usuario le dé "Crear guía" — así no hay que esperar al 500 para saber
     // que probablemente es esa la causa.
-    return `<div class="small" style="margin-top:6px"><b>Tarifa seleccionada:</b> ${kpMoneda()} ${boxfulQuotePrice(o.boxfulSelectedQuote).toFixed(2)} · ${escapeHtml(o.boxfulSelectedQuote.deliveryType||'')}</div><div class="btnrow" style="margin-top:10px"><button class="btn green" onclick="boxfulCreateShipment('${o.id}')">🚚 Crear guía</button></div>`;
+    return `<div class="small" style="margin-top:6px"><b>Tarifa seleccionada:</b> ${kpMoneda()} ${boxfulQuotePrice(o.boxfulSelectedQuote).toFixed(2)} · ${escapeHtml(o.boxfulSelectedQuote.deliveryType||'')}</div>`;
   })():'<div class="small" style="margin-top:8px">Seleccioná una paquetería para habilitar la creación de la guía.</div>'}</div>`;
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));}
