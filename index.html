@@ -18832,12 +18832,21 @@ html body .kpn-badge:not([style*="none"]):not(:empty){min-width:22px!important;h
 .kpe-bar .kpe-count{flex:1 1 180px;font-size:12.5px;color:#94a3b8}
 .kpo-tag{display:inline-block;margin:0 6px 0 0;padding:2px 9px;border-radius:999px;background:rgba(168,85,247,.2);color:#d8b4fe;font-size:11px;font-weight:700;letter-spacing:.2px;vertical-align:1px;border:1px solid rgba(168,85,247,.45)}
 body:not(.kp-dark) .kpo-tag{background:#f3e8ff;color:#7e22ce;border-color:#d8b4fe}
+
+.kpe-bar.has-sel{position:sticky;bottom:86px;z-index:35;background:#10172a;border:1px solid rgba(168,85,247,.55);box-shadow:0 8px 24px rgba(0,0,0,.45)}
+body:not(.kp-dark) .kpe-bar.has-sel{background:#fff}
 .kpd2-badge{margin:0 0 10px;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.35;border:1px solid}
 .kpd2-badge.dev{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.5);color:#fbbf24}
 .kpd2-badge.cam{background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.5);color:#93c5fd}
 body:not(.kp-dark) .kpd2-badge.dev{color:#92400e}body:not(.kp-dark) .kpd2-badge.cam{color:#1e40af}
 .kpd2-hint{margin:8px 0 2px;padding:10px 12px;border-radius:12px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);font-size:12.5px;line-height:1.4}
 #view .card.kpn .kpn-more .btn.kpd2-btn{grid-column:auto}
+.kpd2-box{display:none;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
+@media(max-width:700px){.kpd2-box{grid-template-columns:1fr}}
+.kpd2-col{padding:12px;border-radius:14px;border:1px solid rgba(148,163,184,.3);background:rgba(148,163,184,.06)}
+.kpd2-t{font-weight:800;font-size:14px;margin-bottom:6px}.kpd2-t small{font-weight:400;opacity:.75}
+.kpd2-s{font-size:12px;opacity:.8;margin-bottom:6px}
+.kpd2-l{display:block;font-size:12px;margin-top:8px}.kpd2-l input,.kpd2-l textarea{display:block;width:100%;margin-top:4px;box-sizing:border-box}
 </style>
 <script id="kp-nacional-card-js">
 (function(){
@@ -19459,12 +19468,13 @@ function bar(){
   let b=box.querySelector('.kpe-bar');
   const n=ids().length;
   if(!b){
-    const anchor=box.querySelector('.kp-inv-filters');if(!anchor)return;
-    anchor.insertAdjacentHTML('beforebegin','<div class="kpe-bar"><span class="kpe-count"></span><button class="btn sm primary" type="button" onclick="kpAbrirEtiqueta()">🔖 Poner etiqueta</button><button class="btn sm" type="button" onclick="kpQuitarEtiqueta()">Quitar etiqueta</button><button class="btn sm red" type="button" onclick="kpDeleteSelectedInventory()">🗑️ Borrar seleccionados</button></div>');
+    const anchor=box.querySelector('.kp-inv-resultbar')||box.querySelector('.kp-inv-toolbar')||box.querySelector('.kp-inv-filters');if(!anchor)return;
+    anchor.insertAdjacentHTML('beforebegin','<div class="kpe-bar"><span class="kpe-count"></span><button class="btn sm primary" type="button" onclick="kpAbrirEtiqueta()">🔖 Poner etiqueta de producto</button><button class="btn sm" type="button" onclick="kpQuitarEtiqueta()">Quitar etiqueta de producto</button><button class="btn sm red" type="button" onclick="kpDeleteSelectedInventory()">🗑️ Borrar seleccionados</button></div>');
     b=box.querySelector('.kpe-bar');
   }
-  const c=b.querySelector('.kpe-count'),t=n?`${n} seleccionado${n===1?'':'s'}`:'Marca productos con el check para etiquetarlos o borrarlos';
+  const c=b.querySelector('.kpe-count'),t=n?`${n} seleccionado${n===1?'':'s'}`:'Etiqueta de producto (Cartera, Billetera…; no es la etiqueta QR): marca productos con el check';
   if(c.textContent!==t)c.textContent=t;
+  b.classList.toggle('has-sel',n>0);
 }
 new MutationObserver(()=>{if(bar.t)return;bar.t=setTimeout(()=>{bar.t=0;try{bar();}catch(e){}},120);}).observe(document.body,{childList:true,subtree:true});
 setInterval(()=>{try{bar();}catch(e){}},700);
@@ -19478,16 +19488,17 @@ const clean=v=>String(v==null?'':v).replace(/\s*\n+\s*/g,', ').trim();
 const num=o=>{try{return window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):(o.id||'');}catch(e){return o&&o.id||'';}};
 const getOrder=id=>(window.ORDERS||[]).find(x=>String(x.id)===String(id));
 
-/* --- Destino de las devoluciones (dirección del negocio), guardado en la nube --- */
+/* --- Destino de las devoluciones (negocio): se recuerda y se comparte entre dispositivos --- */
 const DK='kp_dev_destino';
-async function destino(forcePrompt){
-  let d='';try{d=localStorage.getItem(DK)||'';}catch(e){}
-  if(!d&&window.db){try{const s=await db.collection('config').doc('devolucion').get();if(s.exists)d=(s.data()||{}).destino||'';if(d)localStorage.setItem(DK,d);}catch(e){}}
-  if(!d||forcePrompt){
-    const n=prompt('¿En qué dirección se reciben las devoluciones? (dirección del negocio)',d||'');
-    if(n&&n.trim()){d=n.trim();try{localStorage.setItem(DK,d);}catch(e){}try{db.collection('config').doc('devolucion').set({destino:d,por:(window.CURRENT_USER&&CURRENT_USER.nombre)||''},{merge:true});}catch(e){}}
-  }
-  return d;
+async function destino(){
+  let o={};try{o=JSON.parse(localStorage.getItem(DK)||'{}')||{};}catch(e){}
+  if(!o.dir&&window.db){try{const s=await db.collection('config').doc('devolucion').get();if(s.exists){const x=s.data()||{};o={dir:x.destino||x.dir||'',dep:x.dep||'',mun:x.mun||'',tel:x.tel||''};localStorage.setItem(DK,JSON.stringify(o));}}catch(e){}}
+  return o;
+}
+function guardarDestino(x){
+  if(!x||!x.dir)return;
+  try{localStorage.setItem(DK,JSON.stringify(x));}catch(e){}
+  try{db.collection('config').doc('devolucion').set({destino:x.dir,dep:x.dep||'',mun:x.mun||'',tel:x.tel||'',por:(window.CURRENT_USER&&CURRENT_USER.nombre)||''},{merge:true});}catch(e){}
 }
 
 /* --- Texto de WhatsApp --- */
@@ -19502,7 +19513,7 @@ function waFix(t,o){
   let r=out.join('\n');
   if(o&&o.tipoOrden==='devolucion'){
     if(!/DEVOLUCI[ÓO]N/.test(r))r=r.replace(/^(\*ORDEN[^\n]*)/m,'$1  (ORDEN DE DEVOLUCIÓN)');
-    r=r.replace(/^Dirección:\s*(.*)$/m,'Recolectar en (dirección del cliente): $1'+(o.direccionDestino?'\nEntregar en: '+clean(o.direccionDestino):''));
+    r=r.replace(/^Dirección:\s*(.*)$/m,'Recolectar en (dirección del cliente): $1'+(o.direccionDestino?'\nEntregar en: '+clean(o.direccionDestino)+([o.destinoMunicipio,o.destinoDepartamento].filter(Boolean).length?' ('+[o.destinoMunicipio,o.destinoDepartamento].filter(Boolean).join(', ')+')':''):''));
   }
   return r;
 }
@@ -19538,10 +19549,10 @@ window.kpClonarOrden=async function(id,modo){
   b.totalPedido=0;b.subtotal=0;b.estadoPago='pagado';b.metodoPago='efectivo';b.fecha=(typeof todayStr==='function'?todayStr():'');
   b.productos=(b.productos||[]).map(p=>Object.assign({},p,{precio:0}));
   if(modo==='devolucion'){
-    const d=await destino(false);if(!d)return;
-    b.tipoOrden='devolucion';b.esDevolucion=true;b.direccionRecoleccion=o.direccion||'';b.direccionDestino=d;
+    const D=await destino(false);
+    b.tipoOrden='devolucion';b.esDevolucion=true;b.direccionRecoleccion=o.direccion||'';b.direccionDestino=D.dir||'';b.destinoDepartamento=D.dep||'';b.destinoMunicipio=D.mun||'';b.destinoTelefono=D.tel||'';b.recolectaDepartamento=o.departamento||'';b.recolectaMunicipio=o.municipio||'';
   }else{b.tipoOrden='cambio';b.esReenvio=true;}
-  window.__kpDevExtra={ordenOriginalId:b.ordenOriginalId,ordenOriginalNumero:b.ordenOriginalNumero,esDevolucion:!!b.esDevolucion,esReenvio:!!b.esReenvio,direccionRecoleccion:b.direccionRecoleccion||null,direccionDestino:b.direccionDestino||null,modo};
+  window.__kpDevExtra={ordenOriginalId:b.ordenOriginalId,ordenOriginalNumero:b.ordenOriginalNumero,esDevolucion:!!b.esDevolucion,esReenvio:!!b.esReenvio,direccionRecoleccion:b.direccionRecoleccion||null,direccionDestino:b.direccionDestino||null,destinoDepartamento:b.destinoDepartamento||'',destinoMunicipio:b.destinoMunicipio||'',destinoTelefono:b.destinoTelefono||'',recolectaDepartamento:b.recolectaDepartamento||'',recolectaMunicipio:b.recolectaMunicipio||'',modo};
   try{window.editingOrderId=null;}catch(e){}
   try{window.draftProducts=JSON.parse(JSON.stringify(b.productos));}catch(e){}
   try{await KP.openEnterpriseOrder(b);}catch(e){console.error(e);toast('No se pudo abrir el formulario');return;}
@@ -19550,12 +19561,35 @@ window.kpClonarOrden=async function(id,modo){
 };
 /* Agrega los tipos al formulario y deja seleccionado el correcto */
 function prepararForm(modo){
+  window.__kpDevFormOpen=true;
   const box=document.getElementById('kpOrderType');if(!box)return;
   const add=(v,t)=>{if(!box.querySelector('[data-v="'+v+'"]')){const d=document.createElement('div');d.className='pill';d.dataset.v=v;d.textContent=t;d.onclick=function(){if(typeof selPill==='function')selPill('kpOrderType',this);else{box.querySelectorAll('.pill').forEach(x=>x.classList.remove('sel'));this.classList.add('sel');}relabel();};box.appendChild(d);}};
   add('cambio','🔁 Reenvío (se envió mal)');add('devolucion','↩️ Devolución');
   box.querySelectorAll('.pill').forEach(p=>{if(!p.__kpd){p.__kpd=1;p.addEventListener('click',()=>setTimeout(relabel,30));}});
   if(modo){const want=modo==='devolucion'?'devolucion':'cambio';box.querySelectorAll('.pill').forEach(p=>p.classList.toggle('sel',p.dataset.v===want));}
   relabel();
+}
+function parseCoords(t){
+  t=String(t||'');let m=t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||t.match(/(-?\d{1,2}\.\d+)\s*[,;\s]\s*(-?\d{1,3}\.\d+)/);
+  if(!m)return null;const la=parseFloat(m[1]),lo=parseFloat(m[2]);
+  return(Math.abs(la)<=90&&Math.abs(lo)<=180)?{lat:la,lng:lo}:null;
+}
+window.kpParseCoords=parseCoords;
+const gv=id=>((document.getElementById(id)||{}).value||'').trim();
+function devExtras(){
+  const c=parseCoords(gv('kpDevCoords'));
+  return{direccionRecoleccion:gv('f_direccion'),recolectaDepartamento:gv('kpDevRecDep'),recolectaMunicipio:gv('kpDevRecMun'),recolectaCoordsTexto:gv('kpDevCoords'),recolectaLat:c?c.lat:null,recolectaLng:c?c.lng:null,direccionDestino:gv('kpDevDest'),destinoDepartamento:gv('kpDevDestDep'),destinoMunicipio:gv('kpDevDestMun'),destinoTelefono:gv('kpDevDestTel')};
+}
+function boxHtml(){
+  const f=(id,t,ph,tag)=>'<label class="kpd2-l">'+t+(tag==='ta'?'<textarea id="'+id+'" rows="2" placeholder="'+ph+'"></textarea>':'<input id="'+id+'" placeholder="'+ph+'">')+'</label>';
+  return '<div class="kpd2-col"><div class="kpd2-t">📍 Recolecta <small>(donde está el cliente)</small></div><div class="kpd2-s">La <b>Dirección de recolecta</b> es el campo de arriba.</div>'+f('kpDevRecDep','Departamento de recolecta','Ej. Cortés')+f('kpDevRecMun','Municipio de recolecta','Ej. San Pedro Sula')+f('kpDevCoords','Ubicación en Google Maps (para la guía)','Link o coordenadas: 15.5, -88.0')+'</div>'
+   +'<div class="kpd2-col"><div class="kpd2-t">🏠 Destino <small>(donde se entrega)</small></div>'+f('kpDevDest','Dirección de destino','Dirección del negocio u otra','ta')+f('kpDevDestDep','Departamento de destino','Ej. Francisco Morazán')+f('kpDevDestMun','Municipio de destino','Ej. Distrito Central')+f('kpDevDestTel','Teléfono en destino','Ej. 99999999')+'</div>';
+}
+function llenarBox(){
+  const box=document.getElementById('kpDevBox');if(!box||box.dataset.filled)return;box.dataset.filled='1';
+  const x=window.__kpDevExtra||getOrder(window.editingOrderId)||{},set=(id,v)=>{const e=document.getElementById(id);if(e&&!e.value)e.value=v||'';};
+  set('kpDevRecDep',x.recolectaDepartamento||x.departamento);set('kpDevRecMun',x.recolectaMunicipio||x.municipio);set('kpDevCoords',x.recolectaCoordsTexto||(x.recolectaLat!=null&&x.recolectaLat!==''?x.recolectaLat+', '+x.recolectaLng:''));
+  set('kpDevDest',x.direccionDestino);set('kpDevDestDep',x.destinoDepartamento);set('kpDevDestMun',x.destinoMunicipio);set('kpDevDestTel',x.destinoTelefono);
 }
 function relabel(){
   const box=document.getElementById('kpOrderType'),dir=document.getElementById('f_direccion');if(!box||!dir)return;
@@ -19566,17 +19600,28 @@ function relabel(){
   let hint=document.getElementById('kpDevHint');
   if(!hint){hint=document.createElement('div');hint.id='kpDevHint';box.insertAdjacentElement('afterend',hint);}
   hint.className=v==='devolucion'||v==='cambio'?'kpd2-hint':'';
-  hint.innerHTML=v==='devolucion'?'↩️ <b>Devolución:</b> la dirección de arriba es donde se <b>recoge</b>. Se entrega en: <b>'+esc(window.__kpDevExtra&&window.__kpDevExtra.direccionDestino||'(dirección del negocio)')+'</b>. Sin cobro salvo que escribas un monto en Total.':v==='cambio'?'🔁 <b>Reenvío:</b> misma orden, <b>sin cobro</b>. Si vas a cobrar algo, escribe el monto en Total.':'';
+  hint.innerHTML=v==='devolucion'?'↩️ <b>Devolución:</b> llena las dos direcciones. Sin cobro salvo que escribas un monto en Total. <br><small>Para crear la guía de Boxful elige entrega <b>Nivel Nacional</b> y llena departamento, municipio y teléfono de destino.</small>':v==='cambio'?'🔁 <b>Reenvío:</b> misma orden, <b>sin cobro</b>. Si vas a cobrar algo, escribe el monto en Total.':'';
+  let db2=document.getElementById('kpDevBox');
+  if(!db2){db2=document.createElement('div');db2.id='kpDevBox';db2.className='kpd2-box';db2.innerHTML=boxHtml();hint.insertAdjacentElement('afterend',db2);}
+  db2.style.display=v==='devolucion'?'grid':'none';
+  if(v==='devolucion')llenarBox();
 }
-/* Al guardar, la orden nueva recuerda de cuál viene */
+/* Al guardar, la orden recuerda de cuál viene y guarda las dos direcciones */
 (function(){
   const prev=window.saveOrder;if(typeof prev!=='function'||prev.__kpd)return;
   const w=async function(){
     const box=document.getElementById('kpOrderType'),v=box&&(box.querySelector('.pill.sel')||{dataset:{}}).dataset.v;
-    const extra=window.__kpDevExtra;
-    if(!extra||(v!=='cambio'&&v!=='devolucion'))return prev.apply(this,arguments);
+    const ex=window.__kpDevExtra,editId=window.editingOrderId;
+    if(v!=='cambio'&&v!=='devolucion')return prev.apply(this,arguments);
+    let extras={};
+    if(ex)extras={ordenOriginalId:ex.ordenOriginalId,ordenOriginalNumero:ex.ordenOriginalNumero};
+    if(v==='devolucion'){
+      const x=devExtras();extras=Object.assign(extras,x,{esDevolucion:true,esReenvio:false});
+      if(x.direccionDestino)guardarDestino({dir:x.direccionDestino,dep:x.destinoDepartamento,mun:x.destinoMunicipio,tel:x.destinoTelefono});
+    }else extras=Object.assign(extras,{esReenvio:true,esDevolucion:false});
+    if(editId){const r=await prev.apply(this,arguments);try{await db.collection('orders').doc(editId).update(extras);}catch(e){console.warn('dev',e);}return r;}
     const orig=db.collection,had=Object.prototype.hasOwnProperty.call(db,'collection');
-    db.collection=function(n){const c=orig.apply(db,arguments);if(n==='orders'){const add=c.add.bind(c);c.add=function(d){return add(Object.assign({},d,{ordenOriginalId:extra.ordenOriginalId,ordenOriginalNumero:extra.ordenOriginalNumero,esDevolucion:v==='devolucion',esReenvio:v==='cambio',direccionRecoleccion:v==='devolucion'?(d.direccion||null):null,direccionDestino:v==='devolucion'?extra.direccionDestino:null}));};}return c;};
+    db.collection=function(n){const c=orig.apply(db,arguments);if(n==='orders'){const add=c.add.bind(c);c.add=function(dd){return add(Object.assign({},dd,extras));};}return c;};
     try{const r=await prev.apply(this,arguments);window.__kpDevExtra=null;return r;}
     finally{if(had)db.collection=orig;else{try{delete db.collection;}catch(e){db.collection=orig;}}}
   };
@@ -19607,6 +19652,83 @@ function btns(){
 }
 new MutationObserver(()=>{if(btns.t)return;btns.t=setTimeout(()=>{btns.t=0;try{btns();}catch(e){}},150);}).observe(document.body,{childList:true,subtree:true});
 setInterval(()=>{try{btns();}catch(e){}},1500);
+})();
+
+/* ===== Guía de Boxful para devoluciones: recoge donde el cliente y entrega en el destino ===== */
+(function(){
+let ctx=null;
+const getO=id=>(window.ORDERS||[]).find(x=>String(x.id)===String(id));
+const esDev=o=>!!o&&o.tipoOrden==='devolucion';
+const fail=e=>alert('Guía de devolución — no se pudo preparar:\n\n'+(e&&e.message||e));
+async function prepararRecolecta(o){
+  let lat=o.recolectaLat,lng=o.recolectaLng;
+  const ok=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
+  if(!(ok(lat)&&ok(lng))){
+    const t=prompt('Pega el link de Google Maps o las coordenadas del lugar de recolecta.\nEj: 15.5042, -88.0250\n(En Google Maps mantén presionado el punto y copia los números de arriba.)',o.recolectaCoordsTexto||'');
+    const c=window.kpParseCoords&&kpParseCoords(t);
+    if(!c)throw new Error('No se pudo leer la ubicación. Pega las coordenadas así: 15.5042, -88.0250');
+    lat=c.lat;lng=c.lng;
+    await db.collection('orders').doc(o.id).update({recolectaLat:lat,recolectaLng:lng,recolectaCoordsTexto:String(t).trim()});
+    o.recolectaLat=lat;o.recolectaLng=lng;
+  }
+  if(o.boxfulReturnPickupId)return String(o.boxfulReturnPickupId);
+  const state=(o.recolectaDepartamento||o.departamento||'').trim(),city=(o.recolectaMunicipio||o.municipio||'').trim();
+  const addr=String(o.direccionRecoleccion||o.direccion||'').trim();
+  if(!state||!city||!addr)throw new Error('Faltan la dirección, el departamento o el municipio de recolecta (botón Editar).');
+  const dest=await resolveBoxfulDestination({state,city},boxfulCfg());
+  if(!dest||!dest.stateId||!dest.cityId)throw new Error('Boxful no reconoció "'+city+', '+state+'". Revisa el municipio y el departamento de recolecta.');
+  let dir=addr,ref=addr;try{const s=splitDireccionReferencia(addr);dir=s.direccion||addr;ref=s.referencia||addr;}catch(e){}
+  const phone=String(o.numero||'').replace(/\D/g,'').slice(-8),area=String(o.codigoArea||'504').replace(/\D/g,'')||'504';
+  const data=await boxfulFetch('/addresses',{method:'POST',body:JSON.stringify({address:dir.slice(0,200),referencePoint:(ref||dir).slice(0,150),latitude:Number(lat),longitude:Number(lng),stateId:dest.stateId,cityId:dest.cityId,addressPhone:phone,addressAreaCode:area})});
+  const created=(data&&(data.address||data.data))||data;
+  if(!created||!created.id)throw new Error('Boxful no devolvió la dirección de recolecta creada.');
+  await db.collection('orders').doc(o.id).update({boxfulReturnPickupId:String(created.id)});o.boxfulReturnPickupId=String(created.id);
+  try{await boxfulLoadAddresses();}catch(e){}
+  return String(created.id);
+}
+async function conCtx(o,fn){
+  try{
+    if(!o.direccionDestino||!o.destinoDepartamento||!o.destinoMunicipio||!o.destinoTelefono)throw new Error('Falta la dirección de destino, su departamento, municipio o teléfono (botón Editar).');
+    const pid=await prepararRecolecta(o);
+    ctx={pickupId:pid,realId:String((boxfulCfg()||{}).recolectionAddressId||''),destAddr:String(o.direccionDestino)};
+    return await fn();
+  }catch(e){fail(e);return false;}
+  finally{ctx=null;}
+}
+function wrap(){
+  if(typeof boxfulAuth!=='function'||boxfulAuth.__kpd||typeof boxfulOrderData!=='function'||typeof boxfulFetch!=='function'||typeof boxfulQuoteOrder!=='function'||typeof boxfulCreateShipment!=='function'||typeof saveBoxfulCfg!=='function')return false;
+  const A=boxfulAuth;
+  boxfulAuth=window.boxfulAuth=function(){const c=A.apply(this,arguments);return ctx?Object.assign({},c,{recolectionAddressId:ctx.pickupId}):c;};
+  boxfulAuth.__kpd=1;
+  const S=saveBoxfulCfg;
+  saveBoxfulCfg=window.saveBoxfulCfg=function(c){if(ctx&&c&&String(c.recolectionAddressId)===String(ctx.pickupId))c=Object.assign({},c,{recolectionAddressId:ctx.realId});return S.call(this,c);};
+  const OD=boxfulOrderData;
+  boxfulOrderData=window.boxfulOrderData=function(o){
+    const d=OD.apply(this,arguments);if(!esDev(o))return d;
+    return Object.assign({},d,{name:(typeof kpNombreEmpresa==='function'&&kpNombreEmpresa())||'Tienda',areaCode:'504',phone:String(o.destinoTelefono||'').replace(/\D/g,'').slice(-8),address:String(o.direccionDestino||''),referencePoint:String(o.direccionDestino||'.'),state:String(o.destinoDepartamento||'').trim(),city:String(o.destinoMunicipio||'').trim(),cashOnDelivery:0,serviceType:'Normal',instructions:('DEVOLUCIÓN: recoger a '+(o.cliente||'')+' · Tel '+(o.numero||'')).slice(0,180),orderId:o.id||''});
+  };
+  const F=boxfulFetch;
+  boxfulFetch=window.boxfulFetch=async function(path,opts){
+    if(ctx&&path==='/shipment'&&opts&&String(opts.method).toUpperCase()==='POST'){
+      let b={};try{b=JSON.parse(opts.body);}catch(e){}
+      if(String(b.recolectionAddressId)!==String(ctx.pickupId)||!String(b.customerAddress||'').includes(ctx.destAddr.slice(0,20)))
+        throw new Error('Bloqueado por seguridad: la guía no llevaba la recolecta del cliente o el destino correcto. No se creó nada.');
+    }
+    return F.apply(this,arguments);
+  };
+  const Q=boxfulQuoteOrder;
+  boxfulQuoteOrder=window.boxfulQuoteOrder=async function(id){const o=getO(id);if(!esDev(o))return Q.apply(this,arguments);const a=arguments,t=this;return conCtx(o,()=>Q.apply(t,a));};
+  const C=boxfulCreateShipment;
+  boxfulCreateShipment=window.boxfulCreateShipment=async function(id){
+    const o=getO(id);if(!esDev(o))return C.apply(this,arguments);
+    const z=(m,d)=>[m,d].filter(Boolean).join(', ');
+    if(!confirm('GUÍA DE DEVOLUCIÓN\n\nRecoger en (cliente):\n'+(o.direccionRecoleccion||o.direccion||'')+'\n'+z(o.recolectaMunicipio||o.municipio,o.recolectaDepartamento||o.departamento)+'\n\nEntregar en (destino):\n'+(o.direccionDestino||'')+'\n'+z(o.destinoMunicipio,o.destinoDepartamento)+'\n\n¿Crear la guía?'))return false;
+    const a=arguments,t=this;return conCtx(o,()=>C.apply(t,a));
+  };
+  return true;
+}
+const iv=setInterval(()=>{try{if(wrap())clearInterval(iv);}catch(e){console.warn('dev wrap',e);}},500);
+window.__kpDevBoxfulCtx=()=>ctx;window.__kpDevConCtx=conCtx;
 })();
 </script>
 </body>
