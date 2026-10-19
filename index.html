@@ -6305,8 +6305,8 @@ function renderAdminEnviosTab(tipo){
         <button class="btn ${packed?'green':'gold'} sm" onclick="marcarEstadoNacional('${o.id}','${packed?'pendiente':'empacado'}')">${packed?'✓ Empacada':'📦 Marcar empacada'}</button>
         ${packed?`<button class="btn sm" onclick="marcarEstadoNacional('${o.id}','pendiente')">↩ Desmarcar</button>`:''}
         ${!esTegus && canGuide ? `
-          <button class="btn primary sm" onclick="boxfulQuoteOrder('${o.id}')">💰 ${quote?'Actualizar cotización':'Cotizar envío'}</button>
-          ${quote&&o.boxfulSelectedQuote&&!guide?`<button class="btn green sm" onclick="boxfulCreateShipment('${o.id}')">🚚 Crear guía</button>`:''}
+          ${activeTab==='boxful'?'':`<button class="btn primary sm" onclick="boxfulQuoteOrder('${o.id}')">💰 ${quote?'Actualizar cotización':'Cotizar envío'}</button>`}
+          ${activeTab!=='boxful'&&quote&&o.boxfulSelectedQuote&&!guide?`<button class="btn green sm" onclick="boxfulCreateShipment('${o.id}')">🚚 Crear guía</button>`:''}
           ${guide?`<button class="btn sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Rastrear</button>`:''}
           ${guide?kpWaClienteBtn(o):''}
         `:''}
