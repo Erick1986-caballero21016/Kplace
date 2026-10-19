@@ -4769,8 +4769,10 @@ function kpBoxfulRenameAccount(id){
 
 // Guarda un accessToken recibido de Boxful. También acepta el JSON completo
 // devuelto por autenticación/refresh para tolerar distintas envolturas de respuesta.
-function boxfulSetTokenFromPaste(raw){
-  raw=(raw||'').trim(); if(!raw) throw new Error('Pegá el token primero.');
+function boxfulSetTokenFromPaste(raw,refreshRaw){
+  raw=(raw||'').trim(); refreshRaw=(refreshRaw||'').trim();
+  if(!raw && !refreshRaw) throw new Error('Pegá el token primero.');
+  if(!raw && refreshRaw){ const c0=boxfulCfg(); c0.refreshToken=refreshRaw.replace(/^"|"$/g,''); c0.accessTokenExpiresAt=1; saveBoxfulCfg(c0); return c0; }
   let parsed=null; try{parsed=JSON.parse(raw);}catch(e){}
   const c=boxfulCfg();
   const token = parsed && (parsed.accessToken||parsed.access_token||parsed.token)
@@ -4778,7 +4780,7 @@ function boxfulSetTokenFromPaste(raw){
   c.accessToken=String(token||'').trim();
   // Si Boxful entrega refreshToken junto con el access token, lo conservamos.
   // Nunca convertimos undefined/null en texto porque la API exige un string real.
-  const refresh = parsed && (parsed.refreshToken||parsed.refresh_token);
+  const refresh = (parsed && (parsed.refreshToken||parsed.refresh_token||(parsed.data&&(parsed.data.refreshToken||parsed.data.refresh_token)))) || refreshRaw.replace(/^"|"$/g,'');
   if(typeof refresh==='string' && refresh.trim()) c.refreshToken=refresh.trim();
   const exp = parsed && (parsed.accessTokenExpiresAt||parsed.access_token_expires_at||parsed.expiresAt||parsed.expires_at);
   c.accessTokenExpiresAt = exp
@@ -4805,7 +4807,10 @@ async function boxfulRefreshAccessToken(force=false){
   if(!c.accessToken) throw new Error('No hay access token de Boxful configurado.');
   const now=Date.now();
   const hasExpiry=Number(c.accessTokenExpiresAt)>0;
-  const isExpired=hasExpiry && now >= Number(c.accessTokenExpiresAt)-120000;
+  // Renovamos con anticipación (6 h antes) para que la sesión nunca llegue a vencer.
+  const REFRESH_AHEAD=6*3600*1000;
+  const isExpired=hasExpiry && now >= Number(c.accessTokenExpiresAt)-REFRESH_AHEAD;
+  const realExpired=hasExpiry && now >= Number(c.accessTokenExpiresAt)-120000;
 
   // Si no conocemos la expiración, NO inventamos un refresh. Muchos access tokens
   // pegados manualmente son JWT válidos o tokens opacos y Boxful solo acepta refresh
@@ -4814,23 +4819,29 @@ async function boxfulRefreshAccessToken(force=false){
 
   const refreshToken=(typeof c.refreshToken==='string' ? c.refreshToken.trim() : '');
   if(!refreshToken){
-    if(!force && !isExpired) return c;
-    throw new Error('El access token venció y esta conexión no tiene refreshToken. Pegá nuevamente las credenciales completas de Boxful.');
+    if(!force && !realExpired) return c;
+    throw new Error('El access token venció y esta conexión no tiene refreshToken. Pegá el refreshToken de Boxful en Integraciones (una sola vez) para que se renueve solo.');
   }
   if(window.__boxfulRefreshPromise) return window.__boxfulRefreshPromise;
 
   window.__boxfulRefreshPromise=(async()=>{
+    // Otro dispositivo pudo haber renovado ya (el refreshToken rota): traemos primero lo de la nube.
+    try{ if(typeof window.kpBoxfulSync==='function') await window.kpBoxfulSync(); }catch(e){}
+    { const c2=boxfulCfg(); if(!force && c2.accessToken && Number(c2.accessTokenExpiresAt)-Date.now()>REFRESH_AHEAD) return c2; if(c2.refreshToken) c.refreshToken=c2.refreshToken; }
     const url=BOXFUL_API_BASE+'/auth/v2/refresh';
     const r=await fetch(url,{
       method:'POST',
       headers:{'Accept':'application/json','Content-Type':'application/json'},
       // Boxful exige refreshToken como string; nunca enviamos undefined/null.
-      body:JSON.stringify({refreshToken})
+      body:JSON.stringify({refreshToken:(typeof c.refreshToken==='string'?c.refreshToken.trim():refreshToken)})
     });
     const raw=await r.text();
     let data={};
     try{ data=raw?JSON.parse(raw):{}; }catch(e){ data={raw}; }
     if(!r.ok){
+      // Si otro dispositivo ya renovó, usamos el token nuevo que quedó en la nube.
+      try{ if(typeof window.kpBoxfulSync==='function') await window.kpBoxfulSync(); }catch(e){}
+      { const c3=boxfulCfg(); if(c3.accessToken && c3.accessToken!==c.accessToken && Number(c3.accessTokenExpiresAt)-Date.now()>120000) return c3; }
       const detalle=data.message||data.error||data.detail||raw||'respuesta no disponible';
       throw new Error('Boxful Refresh respondió HTTP '+r.status+': '+String(detalle).slice(0,800));
     }
@@ -4845,6 +4856,7 @@ async function boxfulRefreshAccessToken(force=false){
     c.accessTokenExpiresAt=exp ? (Number(exp)<1e12?Number(exp)*1000:Number(exp)) : (boxfulDecodeJwtExp(c.accessToken)||0);
     delete c.boxfulCatalog; delete c.boxfulCatalogAt;
     saveBoxfulCfg(c);
+    try{ if(typeof window.kpBoxfulSync==='function') window.kpBoxfulSync(); }catch(e){}
     return c;
   })().finally(()=>{window.__boxfulRefreshPromise=null;});
   return window.__boxfulRefreshPromise;
@@ -4887,7 +4899,9 @@ async function openBoxfulApiConfig(){
       <div id="bfModalDot" class="boxfulApiStatus" style="margin:8px 0"><span class="boxfulApiDot ok"></span><span id="bfModalStatus">${selected.accessToken?'Conectada':'Sin conectar'}</span></div>
       <div id="bfTokenExpiryInfo" class="small"></div>
       <label>🔑 Access token de Boxful (solo conexión inicial)</label>
-      <textarea id="bfTokenPaste" placeholder="Pegá aquí el accessToken de Boxful para esta cuenta"></textarea>
+      <textarea id="bfTokenPaste" placeholder="Pegá aquí el accessToken de Boxful (o el JSON completo con accessToken y refreshToken)"></textarea>
+      <label>♾️ Refresh token de Boxful (necesario para que no venza)</label>
+      <textarea id="bfRefreshPaste" placeholder="Pegá aquí el refreshToken, una sola vez. Con él KPlace se renueva solo para siempre"></textarea>
       <div class="btnrow" style="margin-top:8px"><button class="btn gold sm" onclick="boxfulApplyPastedToken()">Guardar token en esta cuenta</button></div>
       <label>📍 Dirección de recolección</label>
       <select id="bfRecolectionAddress"><option value="">Cargando direcciones...</option></select>
@@ -4904,18 +4918,24 @@ async function openBoxfulApiConfig(){
 function boxfulRenderTokenExpiry(){
   const el=document.getElementById('bfTokenExpiryInfo'); if(!el)return;
   const c=boxfulCfg();
-  if(!c.accessTokenExpiresAt){el.innerHTML='';return;}
+  const auto=c.refreshToken?'<div style="margin-bottom:6px">✅ Renovación automática activa (no hace falta volver a pegar el token).</div>':'<div class="boxfulApiErr" style="margin-bottom:6px">⚠️ Sin refresh token: esta conexión vence en ~24 h. Pega el refreshToken abajo, una sola vez.</div>';
+  if(!c.accessTokenExpiresAt){el.innerHTML=auto;return;}
   const msLeft=Number(c.accessTokenExpiresAt)-Date.now();
   const horas=Math.round(msLeft/3600000);
   el.innerHTML = msLeft<=0
-    ? '<div class="boxfulApiErr">⚠️ El token ya venció. Pedí uno nuevo y pegalo abajo.</div>'
-    : `<div style="margin-bottom:8px">⏳ El token actual vence en ~${horas} hora(s).</div>`;
+    ? auto+(c.refreshToken?'<div class="small">El token venció; se renovará automáticamente.</div>':'<div class="boxfulApiErr">⚠️ El token ya venció. Pega uno nuevo con su refreshToken.</div>')
+    : auto+`<div style="margin-bottom:8px">⏳ El token actual vence en ~${horas} hora(s).</div>`;
 }
 async function boxfulApplyPastedToken(){
   try{
     const raw=document.getElementById('bfTokenPaste')?.value||'';
-    boxfulSetTokenFromPaste(raw);
+    const rraw=document.getElementById('bfRefreshPaste')?.value||'';
+    const saved=boxfulSetTokenFromPaste(raw,rraw);
     const bx=document.getElementById('bfTokenPaste'); if(bx) bx.value='';
+    const bx2=document.getElementById('bfRefreshPaste'); if(bx2) bx2.value='';
+    if(!saved.refreshToken) toast('⚠️ Guardado sin refreshToken: durará solo ~24 h. Pega también el refreshToken.');
+    else if(!raw.trim()){ try{ await boxfulRefreshAccessToken(true); toast('✅ Renovación automática activa'); }catch(e){ toast('Boxful: '+e.message); } }
+    try{ if(typeof window.kpBoxfulSync==='function') window.kpBoxfulSync(); }catch(e){}
     boxfulUpdateStatus(); boxfulRenderTokenExpiry();
     const ms=document.getElementById('bfModalStatus'); if(ms) ms.textContent='Conectada';
     try{ if(typeof activeTab!=='undefined' && /integra/i.test(String(activeTab)) && typeof render==='function') render(); }catch(e){}
@@ -10587,6 +10607,8 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
 (function(){
   async function tick(){ try{ await boxfulEnsureFreshToken(); }catch(e){} }
   window.addEventListener('load',()=>{ tick(); setInterval(tick,5*60*1000); });
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) tick(); });
+  window.addEventListener('online',tick);
 })();
 </script>
 
@@ -19511,6 +19533,7 @@ function waFix(t,o){
     return l;
   });
   let r=out.join('\n');
+  if(o&&o.tipoOrden!=='devolucion'&&(o.esReenvio||o.ordenOriginalId)&&!/ORDEN DE (CAMBIO|REMPLAZO)/.test(r))r=r.replace(/^(\*ORDEN[^\n]*)/m,'$1  (ORDEN DE CAMBIO)');
   if(o&&o.tipoOrden==='devolucion'){
     if(!/DEVOLUCI[ÓO]N/.test(r))r=r.replace(/^(\*ORDEN[^\n]*)/m,'$1  (ORDEN DE DEVOLUCIÓN)');
     r=r.replace(/^Dirección:\s*(.*)$/m,'Recolectar en (dirección del cliente): $1'+(o.direccionDestino?'\nEntregar en: '+clean(o.direccionDestino)+([o.destinoMunicipio,o.destinoDepartamento].filter(Boolean).length?' ('+[o.destinoMunicipio,o.destinoDepartamento].filter(Boolean).join(', ')+')':''):''));
@@ -19556,7 +19579,7 @@ window.kpClonarOrden=async function(id,modo){
   try{window.editingOrderId=null;}catch(e){}
   try{window.draftProducts=JSON.parse(JSON.stringify(b.productos));}catch(e){}
   try{await KP.openEnterpriseOrder(b);}catch(e){console.error(e);toast('No se pudo abrir el formulario');return;}
-  setTimeout(()=>prepararForm(modo),120);
+  [60,300,800,1600].forEach(ms=>setTimeout(()=>{if(window.__kpDevExtra)prepararForm(modo);},ms));
   toast(modo==='devolucion'?'Devolución lista: revisa los datos y guarda. Sin cobro salvo que escribas un monto.':'Reenvío listo: se crea igual que la orden anterior y sin cobro. Si vas a cobrar algo, escribe el monto en Total.');
 };
 /* Agrega los tipos al formulario y deja seleccionado el correcto */
@@ -19610,8 +19633,15 @@ function relabel(){
 (function(){
   const prev=window.saveOrder;if(typeof prev!=='function'||prev.__kpd)return;
   const w=async function(){
-    const box=document.getElementById('kpOrderType'),v=box&&(box.querySelector('.pill.sel')||{dataset:{}}).dataset.v;
+    const box=document.getElementById('kpOrderType');
     const ex=window.__kpDevExtra,editId=window.editingOrderId;
+    // Si el formulario perdió la selección (se re-renderizó), la recuperamos del reenvío/orden que se está guardando.
+    if(box&&!box.querySelector('.pill.sel')){
+      const want=ex?(ex.modo==='devolucion'?'devolucion':'cambio'):((getOrder(editId)||{}).tipoOrden);
+      const pl=want&&box.querySelector('[data-v="'+want+'"]'); if(pl)pl.classList.add('sel');
+    }
+    if(ex&&box){const want=ex.modo==='devolucion'?'devolucion':'cambio';const pl=box.querySelector('[data-v="'+want+'"]');if(pl&&!pl.classList.contains('sel')){box.querySelectorAll('.pill').forEach(x=>x.classList.remove('sel'));pl.classList.add('sel');}}
+    const v=box&&(box.querySelector('.pill.sel')||{dataset:{}}).dataset.v;
     if(v!=='cambio'&&v!=='devolucion')return prev.apply(this,arguments);
     let extras={};
     if(ex)extras={ordenOriginalId:ex.ordenOriginalId,ordenOriginalNumero:ex.ordenOriginalNumero};
