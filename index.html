@@ -3,6 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>
+/* ===== Visor RÁPIDO de fotos (?f=ID): no carga la app completa, lee la foto directo de Firestore ===== */
+(function(){
+  try{
+    var q=new URLSearchParams(location.search),id=q.get('f');
+    if(!id||q.get('full'))return;
+    try{window.stop();}catch(e){}
+    var d=document;
+    function pagina(){d.open();d.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#000"><title>Foto</title><style>html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,sans-serif}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}#m{opacity:.8}</style></head><body><div id="m">Cargando foto…</div></body></html>');d.close();}
+    function mostrar(src){var im=new Image();im.onload=function(){var m=d.getElementById('m');if(m)m.remove();d.body.appendChild(im);};im.onerror=function(){var m=d.getElementById('m');if(m)m.textContent='No se pudo cargar la foto.';};im.src=src;}
+    function msg(t){var m=d.getElementById('m');if(m)m.textContent=t;}
+    function completa(){q.set('full','1');location.replace(location.pathname+'?'+q.toString());}
+    var key='kpf_'+id,c=null;try{c=localStorage.getItem(key);}catch(e){}
+    pagina();
+    if(c){mostrar(c);return;}
+    fetch('https://firestore.googleapis.com/v1/projects/eunoia-ordenes/databases/(default)/documents/fotos_publicas/'+encodeURIComponent(id)+'?key=AIzaSyAkXsYEeP1AdR05JjiyFKTRWCYNGIBf0ZU')
+      .then(function(r){if(r.status===404){msg('La foto ya no está disponible.');return null;}if(!r.ok)throw new Error(r.status);return r.json();})
+      .then(function(j){if(!j)return;var f=j.fields&&j.fields.foto&&j.fields.foto.stringValue;if(!f){msg('La foto ya no está disponible.');return;}
+        try{if(f.length<2500000)localStorage.setItem(key,f);}catch(e){}
+        mostrar(f);})
+      .catch(function(){completa();});
+  }catch(e){}
+})();
+</script>
 <title>KPlace · Gestión de negocios</title>
 <meta name="theme-color" content="#080c16">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -19807,5 +19831,12 @@ window.__kpDevBoxfulCtx=()=>ctx;window.__kpDevConCtx=conCtx;
   }
 })();
 </script>
+<style>
+/* Chips de la tarjeta: que se acomoden en varias líneas y no se corten */
+html body #view .card.card .kp-order-number.kp-order-number{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px!important;width:100%!important;max-width:100%!important;overflow:visible!important;white-space:normal!important}
+html body #view .card.card .kp-order-number.kp-order-number>*{white-space:nowrap!important;margin-left:0!important}
+/* El botón + ya no tapa la última tarjeta */
+html body #view{padding-bottom:120px!important}
+</style>
 </body>
 </html>
