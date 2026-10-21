@@ -19902,7 +19902,7 @@ html body #view{padding-bottom:120px!important}
 if(window.__KP_MIKE_V3__)return;window.__KP_MIKE_V3__=true;
 
 /* ===== Configuración ===== */
-const TEST_KEY='AIzaSyBFBaRooV0bdecRnEBC11BPhMdHfOKVtDY'; /* CLAVE DE PRUEBA: se usa solo si no hay otra guardada (kp_gemini_key / Firestore config/gemini). Revócala al terminar las pruebas. */
+/* La clave NO va en el código: se guarda desde el chat de Mike (localStorage kp_gemini_key + Firestore config/gemini). */
 const API='https://generativelanguage.googleapis.com/v1beta/';
 const TEXT_MODEL='gemini-3.8-flash',LIVE_MODEL='gemini-3.8-live'; /* Solo Gemini 3.8: las otras versiones no funcionan con esta API */
 const $=id=>document.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -19917,7 +19917,7 @@ async function getKey(){
  if(keyCache)return keyCache;let k='';
  try{k=localStorage.getItem('kp_gemini_key')||''}catch(e){}
  if(!k){try{if(window.db){const s=await db.collection('config').doc('gemini').get();k=(s.exists&&s.data()&&String(s.data().key||''))||''}}catch(e){}}
- keyCache=k||TEST_KEY;return keyCache;
+ keyCache=k;return keyCache;
 }
 const textModels=()=>[TEXT_MODEL],liveModels=()=>[LIVE_MODEL];
 
@@ -20068,12 +20068,12 @@ function sysPrompt(live){
 
 /* ===== Llamadas a Gemini (streaming + herramientas) ===== */
 async function gfetch(url,body,signal){
- for(let t=0;t<2;t++){
+ {
   const key=await getKey();
+  if(!key){const er=new Error('API key: todavía no hay una clave de Gemini guardada.');er.status=401;er.noKey=true;throw er}
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal});
   if(r.ok)return r;
   let msg='Gemini respondió '+r.status;try{const j=await r.json();msg=(j.error&&j.error.message)||msg}catch(e){}
-  if(t===0&&key!==TEST_KEY&&/API key|API_KEY/i.test(msg)){keyCache=TEST_KEY;continue}
   const err=new Error(msg);err.status=r.status;err.keyTail=String(key).slice(-4);throw err;
  }
 }
@@ -20105,6 +20105,7 @@ const isKeyErr=e=>/API key|API_KEY|PERMISSION_DENIED|referer|expired|leaked/i.te
 function friendly(e){
  const m=String(e&&e.message||e);
  if(e&&e.status===429||/quota|RESOURCE_EXHAUSTED/i.test(m))return 'Llegué al límite de uso de Gemini por ahora. Espera un minuto y vuelve a intentar.';
+ if(e&&e.noKey)return 'Falta la clave de Gemini. Pégala abajo y listo.';
  if(isKeyErr(e))return 'Google rechazó la clave de Gemini'+(e&&e.keyTail?' (termina en …'+e.keyTail+')':'')+'. Motivo: '+m.replace(/\s+/g,' ').slice(0,140);
  if(/Failed to fetch|NetworkError|Load failed/i.test(m))return 'No pude conectar con Gemini. Revisa tu internet.';
  return 'No pude responder: '+m.slice(0,180);
@@ -20140,10 +20141,10 @@ function saveKey(k){
 }
 function keyCard(){
  const c=cardWrap();c.appendChild(el('h4','','🔑 Pega una clave nueva de Gemini'));
- c.appendChild(el('div','l','Créala gratis en aistudio.google.com/apikey (Create API key). Se guarda en tu cuenta de KPlace y sirve en todos tus dispositivos.'));
+ c.appendChild(el('div','l','Créala en aistudio.google.com/apikey (Create API key). Las claves nuevas de Google empiezan con AQ. y las anteriores con AIza. Se guarda en tu cuenta de KPlace y sirve en todos tus dispositivos.'));
  const inp=el('input');inp.type='text';inp.placeholder='AIza…';inp.autocomplete='off';inp.style.cssText='width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid #49405e;background:#0e1019;color:#fff;font-size:13px';c.appendChild(inp);
  const row=el('div','row'),b=el('button','kpm-btn ok','Guardar clave');b.type='button';
- b.onclick=()=>{const k=inp.value.trim();if(!/^AIza[\w-]{30,}$/.test(k)){addMsg('Esa clave no tiene el formato correcto (empieza con AIza y tiene unos 39 caracteres).','bot');return}saveKey(k);b.textContent='Guardada ✔';b.disabled=true;addMsg('Clave guardada. Escríbeme de nuevo y la pruebo.','bot')};
+ b.onclick=()=>{const k=inp.value.trim();if(!/^[\w.\-]{20,}$/.test(k)){addMsg('Esa clave no se ve completa (sin espacios, mínimo 20 caracteres). Cópiala de nuevo con el botón "Copiar clave" de Google.','bot');return}saveKey(k);b.textContent='Guardada ✔';b.disabled=true;addMsg('Clave guardada. Escríbeme de nuevo y la pruebo.','bot')};
  row.appendChild(b);c.appendChild(row);
 }
 function showError(e){addMsg(friendly(e),'bot');if(isKeyErr(e))keyCard();console.warn('Mike',e)}
@@ -20359,6 +20360,7 @@ async function startLive(){
  live.stopping=false;liveUI(true,'Conectando con Mike…',false);
  try{
   const key=await getKey();
+  if(!key){addMsg('Para la voz en vivo primero necesito la clave de Gemini.','bot');keyCard();stopLive();return}
   live.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
   live.ctx=new AC();await live.ctx.resume();live.out=new AC();await live.out.resume();
   live.models=liveModels();live.buf=[];live.bufLen=0;live.inB=live.outB=null;live.inT=live.outT='';
