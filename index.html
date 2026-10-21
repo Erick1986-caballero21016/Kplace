@@ -20074,7 +20074,7 @@ async function gfetch(url,body,signal){
   if(r.ok)return r;
   let msg='Gemini respondió '+r.status;try{const j=await r.json();msg=(j.error&&j.error.message)||msg}catch(e){}
   if(t===0&&key!==TEST_KEY&&/API key|API_KEY/i.test(msg)){keyCache=TEST_KEY;continue}
-  const err=new Error(msg);err.status=r.status;throw err;
+  const err=new Error(msg);err.status=r.status;err.keyTail=String(key).slice(-4);throw err;
  }
 }
 async function streamOnce(model,contents,sys,onText,signal,think){
@@ -20101,10 +20101,11 @@ async function gStream(contents,sys,onText,signal){
  }
  throw last||new Error('No hay modelo disponible');
 }
+const isKeyErr=e=>/API key|API_KEY|PERMISSION_DENIED|referer|expired|leaked/i.test(String(e&&e.message||e))&&!(e&&e.status===429);
 function friendly(e){
  const m=String(e&&e.message||e);
  if(e&&e.status===429||/quota|RESOURCE_EXHAUSTED/i.test(m))return 'Llegué al límite de uso de Gemini por ahora. Espera un minuto y vuelve a intentar.';
- if(/API key|API_KEY/i.test(m))return 'La clave de Gemini no es válida. Revisa la configuración.';
+ if(isKeyErr(e))return 'Google rechazó la clave de Gemini'+(e&&e.keyTail?' (termina en …'+e.keyTail+')':'')+'. Motivo: '+m.replace(/\s+/g,' ').slice(0,140);
  if(/Failed to fetch|NetworkError|Load failed/i.test(m))return 'No pude conectar con Gemini. Revisa tu internet.';
  return 'No pude responder: '+m.slice(0,180);
 }
@@ -20128,10 +20129,24 @@ async function chat(text){
   }
  }catch(e){
   if(e.name==='AbortError'){tp.end();hist.length=startLen}
-  else{failed=true;hideTyping();tp.end();addMsg(friendly(e),'bot');console.warn('Mike',e);hist.length=startLen}
+  else{failed=true;hideTyping();tp.end();showError(e);hist.length=startLen}
  }finally{hideTyping();setStatus('');tp.end();trimHist()}
  return !failed;
 }
+
+function saveKey(k){
+ keyCache=k;try{localStorage.setItem('kp_gemini_key',k)}catch(e){}
+ try{if(window.db)db.collection('config').doc('gemini').set({key:k,por:U().nombre||'',cuando:new Date().toISOString()},{merge:true})}catch(e){}
+}
+function keyCard(){
+ const c=cardWrap();c.appendChild(el('h4','','🔑 Pega una clave nueva de Gemini'));
+ c.appendChild(el('div','l','Créala gratis en aistudio.google.com/apikey (Create API key). Se guarda en tu cuenta de KPlace y sirve en todos tus dispositivos.'));
+ const inp=el('input');inp.type='text';inp.placeholder='AIza…';inp.autocomplete='off';inp.style.cssText='width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid #49405e;background:#0e1019;color:#fff;font-size:13px';c.appendChild(inp);
+ const row=el('div','row'),b=el('button','kpm-btn ok','Guardar clave');b.type='button';
+ b.onclick=()=>{const k=inp.value.trim();if(!/^AIza[\w-]{30,}$/.test(k)){addMsg('Esa clave no tiene el formato correcto (empieza con AIza y tiene unos 39 caracteres).','bot');return}saveKey(k);b.textContent='Guardada ✔';b.disabled=true;addMsg('Clave guardada. Escríbeme de nuevo y la pruebo.','bot')};
+ row.appendChild(b);c.appendChild(row);
+}
+function showError(e){addMsg(friendly(e),'bot');if(isKeyErr(e))keyCard();console.warn('Mike',e)}
 
 /* ===== Imágenes: producto o datos de cliente ===== */
 const IMG_PROMPT='Mira la imagen y clasifícala. Responde SOLO un JSON con esta forma: {"tipo":"producto"|"datos_cliente"|"otro","resumen":"una frase en español de lo que ves","producto":{"categoria":"","modelo":"","tamano":"","color":"","marca":"","codigo":""},"datos":{"cliente":"","numero":"","numero2":"","direccion":"","metodoPago":"","total":"","productos":[{"producto":"","modelo":"","tamano":"","color":""}]}}. "producto" = foto de un artículo físico (termo, botella, bolso, accesorio, caja o etiqueta). "datos_cliente" = captura de chat, nota o comprobante con nombre, teléfono, dirección o pedido de un cliente. No inventes nada: deja "" lo que no se vea. El teléfono va en 8 dígitos sin +504. Si en un chat aparece el nombre de quien escribe con fecha y hora, ese NO es el cliente.';
@@ -20196,7 +20211,7 @@ async function procesarImagen(b64,mime,text){
   const nota=imageCards(r);
   hist.push({role:'user',parts:[{text:(text||'Te envié una imagen.')+' [Resultado del análisis de la imagen: '+nota+']'}]},{role:'model',parts:[{text:'Listo, ya revisé la imagen: '+nota}]});trimHist();
   if(text&&text.trim().length>3){busy=false;await chatSafe(text+'\n[Contexto de la imagen adjunta: '+nota+']')}
- }catch(e){hideTyping();setStatus('');if(e.name!=='AbortError')addMsg(friendly(e),'bot')}
+ }catch(e){hideTyping();setStatus('');if(e.name!=='AbortError')showError(e)}
 }
 
 /* ===== Tarjeta de guía ===== */
