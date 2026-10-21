@@ -19118,7 +19118,7 @@ function wrap(obj,key){
   const f=obj&&obj[key];if(typeof f!=='function'||f.__kpwa)return;
   const w=async function(){
     const self=this,args=arguments,el=document.getElementById('f_pegado');
-    if(!el||!el.value||!el.value.trim())return f.apply(self,args);
+    if(window.__KP_NOGEM||!el||!el.value||!el.value.trim())return f.apply(self,args);
     el.value=window.kpLimpiarWhatsApp(el.value);
     const btn=document.querySelector('button[onclick*="extraerDatos"]'),label=btn&&btn.textContent;
     try{
@@ -19983,7 +19983,8 @@ const TOOLS=[{functionDeclarations:[
  {name:'detalle_pedido',description:'Detalle completo de un pedido por id, referencia de 5 caracteres o nombre del cliente.',parameters:{type:'OBJECT',properties:{pedido:{type:'STRING'}},required:['pedido']}},
  {name:'buscar_inventario',description:'Busca productos en el inventario y su cantidad disponible.',parameters:{type:'OBJECT',properties:{texto:{type:'STRING'}},required:['texto']}},
  {name:'preparar_guia',description:'Muestra en el chat una tarjeta con botones para cotizar o crear la guía de Boxful de UN pedido nacional. NO crea nada: el usuario confirma tocando el botón.',parameters:{type:'OBJECT',properties:{pedido_id:{type:'STRING',description:'id exacto del pedido'}},required:['pedido_id']}},
- {name:'crear_orden',description:'CREA y guarda una orden nueva en KPlace con los datos del cliente. Úsala cuando el usuario pida crear la orden y ya tengas al menos nombre, teléfono y dirección. Con solo_abrir=true solo abre el formulario relleno sin guardar.',parameters:{type:'OBJECT',properties:{cliente:{type:'STRING'},numero:{type:'STRING',description:'Teléfono, 8 dígitos'},numero2:{type:'STRING'},direccion:{type:'STRING'},tipo_entrega:{type:'STRING',enum:['tegucigalpa','nacional','roatan'],description:'Por defecto tegucigalpa'},departamento:{type:'STRING',description:'Solo envío nacional'},municipio:{type:'STRING',description:'Solo envío nacional'},metodo_pago:{type:'STRING',enum:['efectivo','transferencia','link de pago','mitad']},estado_pago:{type:'STRING',enum:['pagado','pendiente']},total:{type:'NUMBER'},productos:{type:'ARRAY',items:{type:'OBJECT',properties:{producto:{type:'STRING'},modelo:{type:'STRING'},tamano:{type:'STRING'},color:{type:'STRING'}}}},solo_abrir:{type:'BOOLEAN'},plataforma:{type:'STRING',description:'WhatsApp, Instagram, Facebook, TikTok u otra'},banco:{type:'STRING',description:'Banco si es transferencia o link de pago'},nueva:{type:'BOOLEAN',description:'true si es una orden distinta a la que ya se estaba llenando'},metodo_1:{type:'STRING',description:'Pago dividido: método de la primera parte'},monto_1:{type:'NUMBER'},banco_1:{type:'STRING'},metodo_2:{type:'STRING',description:'Pago dividido: método de la segunda parte'},monto_2:{type:'NUMBER'},banco_2:{type:'STRING'}},required:[]}},
+ {name:'crear_orden',description:'CREA y guarda una orden nueva en KPlace con los datos del cliente. Úsala cuando el usuario pida crear la orden y ya tengas al menos nombre, teléfono y dirección. NUNCA usa el cuadro de pegar/extraer datos: llena los campos directo y solo los que están vacíos. Con solo_abrir=true solo abre el formulario relleno sin guardar.',parameters:{type:'OBJECT',properties:{cliente:{type:'STRING'},numero:{type:'STRING',description:'Teléfono, 8 dígitos'},numero2:{type:'STRING'},direccion:{type:'STRING'},tipo_entrega:{type:'STRING',enum:['tegucigalpa','nacional','roatan'],description:'Por defecto tegucigalpa'},departamento:{type:'STRING',description:'Solo envío nacional'},municipio:{type:'STRING',description:'Solo envío nacional'},metodo_pago:{type:'STRING',enum:['efectivo','transferencia','link de pago','mitad']},estado_pago:{type:'STRING',enum:['pagado','pendiente']},total:{type:'NUMBER'},productos:{type:'ARRAY',items:{type:'OBJECT',properties:{producto:{type:'STRING'},modelo:{type:'STRING'},tamano:{type:'STRING'},color:{type:'STRING'},inventario_id:{type:'STRING',description:'id exacto devuelto por elegir_producto'},cantidad:{type:'NUMBER'}}}},solo_abrir:{type:'BOOLEAN'},reemplazar:{type:'BOOLEAN',description:'true SOLO si el usuario pide explícitamente cambiar/sobrescribir lo que ya está escrito en el formulario. Por defecto Mike solo llena lo que está vacío.'},plataforma:{type:'STRING',description:'WhatsApp, Instagram, Facebook, TikTok u otra'},banco:{type:'STRING',description:'Banco si es transferencia o link de pago'},nueva:{type:'BOOLEAN',description:'true si es una orden distinta a la que ya se estaba llenando'},metodo_1:{type:'STRING',description:'Pago dividido: método de la primera parte'},monto_1:{type:'NUMBER'},banco_1:{type:'STRING'},metodo_2:{type:'STRING',description:'Pago dividido: método de la segunda parte'},monto_2:{type:'NUMBER'},banco_2:{type:'STRING'}},required:[]}},
+ {name:'elegir_producto',description:'Selección guiada de producto del inventario, un nivel a la vez: categoría → modelo → color → tamaño. Devuelve la lista NUMERADA de opciones del siguiente nivel (muéstrala tal cual en lista_texto). Cuando el usuario diga "el primero", "el 2", "el negro", llámala con numero (o texto) para elegir. Al completar los 4 niveles el producto queda agregado a la orden (y al formulario si ya está abierto). Sin parámetros = empezar/continuar. reiniciar=true borra la selección en curso.',parameters:{type:'OBJECT',properties:{numero:{type:'NUMBER',description:'Número de la opción elegida en la última lista mostrada'},texto:{type:'STRING',description:'Opción dicha por nombre en vez de número'},cantidad:{type:'NUMBER',description:'Unidades, por defecto 1'},reiniciar:{type:'BOOLEAN'}}}},
  {name:'editar_orden',description:'EDITA el pago u otros datos de una orden ya creada (la última que creaste si no das pedido). Úsala cuando el usuario corrija algo: "no, era transferencia", pago dividido, otro total, etc. Transferencia o link de pago requieren banco. Pago dividido (metodo_pago=mitad) requiere metodo_1, monto_1 y metodo_2.',parameters:{type:'OBJECT',properties:{pedido:{type:'STRING',description:'id, ref de 5 caracteres o cliente; vacío = última orden creada'},metodo_pago:{type:'STRING',enum:['efectivo','transferencia','link de pago','pos','mitad']},estado_pago:{type:'STRING',enum:['pagado','pendiente']},banco:{type:'STRING'},metodo_1:{type:'STRING',enum:['efectivo','transferencia','link de pago','pos']},monto_1:{type:'NUMBER'},banco_1:{type:'STRING'},metodo_2:{type:'STRING',enum:['efectivo','transferencia','link de pago','pos']},monto_2:{type:'NUMBER'},banco_2:{type:'STRING'},total:{type:'NUMBER'},cliente:{type:'STRING'},numero:{type:'STRING'},direccion:{type:'STRING'}}}},
  {name:'resumen_ventas',description:'Historial y totales de ventas de un periodo: total vendido, número de órdenes, cuánto vendió cada vendedor, por método de pago y lo que está sin pagar. Sin fechas = todo el historial.',parameters:{type:'OBJECT',properties:{periodo:{type:'STRING',enum:['hoy','ayer','semana','mes','todo']},desde:{type:'STRING',description:'YYYY-MM-DD'},hasta:{type:'STRING',description:'YYYY-MM-DD'},vendedor:{type:'STRING'},por_dia:{type:'BOOLEAN'}}}},
  {name:'etiquetas_inventario',description:'Lista las etiquetas (categorías) del inventario con variantes y unidades. No incluye códigos QR.'},
@@ -20004,6 +20005,7 @@ async function runTool(name,a){
   guideCard(o);return{tarjeta_mostrada:true,nota:'La tarjeta con los botones Cotizar y Crear guía ya está en el chat. NO digas que la guía fue creada; pídele al usuario que confirme con el botón.'};
  }
  if(name==='crear_orden')return crearOrden(a);
+ if(name==='elegir_producto')return elegirProducto(a);
  if(name==='ir_a_seccion'){const id=SECCIONES[a.seccion];if(!id||typeof setTab!=='function')return{error:'No puedo abrir esa sección.'};try{setTab(id);minimize();return{ok:true}}catch(e){return{error:String(e.message||e)}}}
  if(name==='editar_orden')return editarOrden(a);if(name==='cambiar_estado_entrega')return cambiarEntrega(a);if(name==='resumen_ventas')return toolVentas(a);if(name==='etiquetas_inventario')return toolEtiquetas();if(name==='buscar_en_internet')return buscarWeb(a);
  return{error:'Herramienta desconocida: '+name};
@@ -20019,10 +20021,12 @@ function fillPill(on){let e=$('kpMikeFill');if(!e){e=document.createElement('div
 function resolverProductos(ps){
  const seen=new Set(),inv=(window.INVENTARIO||[]).filter(i=>{const k=[i.categoria,i.modelo,i.tamano,i.colorEs||i.colorEn].map(norm).join('|');if(seen.has(k))return false;seen.add(k);return true}),lista=[],avisos=[];
  (Array.isArray(ps)?ps:[]).forEach(p=>{
-  if(!p)return;const q=[p.producto,p.modelo,p.tamano,p.color].filter(Boolean).join(' '),toks=norm(q).split(/[\s,;]+/).filter(t=>t.length>1);
+  if(!p)return;
+  if(p.inventarioId||p.inventario_id){const ex=(window.INVENTARIO||[]).find(x=>x.id===(p.inventarioId||p.inventario_id));if(ex){lista.push(Object.assign({},p,{inventarioId:ex.id,producto:ex.categoria,modelo:(ex.modelo&&ex.modelo!==ex.categoria)?ex.modelo:'',tamano:ex.tamano||'',color:ex.colorEs||ex.colorEn||''}));return}}
+  const q=[p.producto,p.modelo,p.tamano,p.color].filter(Boolean).join(' '),toks=norm(q).split(/[\s,;]+/).filter(t=>t.length>1);
   if(!toks.length){lista.push(p);return}
   const hit=inv.filter(i=>{const h=norm([i.categoria,i.modelo,i.tamano,i.colorEs,i.colorEn,i.etiqueta].join(' '));return toks.every(t=>h.includes(t)||(t.length>3&&t.endsWith('s')&&h.includes(t.slice(0,-1))))});
-  if(hit.length===1){const i=hit[0];lista.push(Object.assign({},p,{producto:i.categoria||p.producto,modelo:(i.modelo&&i.modelo!==i.categoria)?i.modelo:(p.modelo||''),tamano:i.tamano||p.tamano||'',color:i.colorEs||i.colorEn||p.color||''}))}
+  if(hit.length===1){const i=hit[0];lista.push(Object.assign({},p,{inventarioId:i.id,producto:i.categoria||p.producto,modelo:(i.modelo&&i.modelo!==i.categoria)?i.modelo:(p.modelo||''),tamano:i.tamano||p.tamano||'',color:i.colorEs||i.colorEn||p.color||''}))}
   else{lista.push(p);avisos.push(hit.length?'hay '+hit.length+' opciones para "'+q+'": '+hit.slice(0,5).map(x=>[x.categoria,x.modelo&&x.modelo!==x.categoria?x.modelo:'',x.tamano,x.colorEs||x.colorEn].filter(Boolean).join(' ')).join(' / ')+' (pregunta cuál)':'no encontré "'+q+'" en el inventario (confirma el producto)')}
  });
  return{lista,avisos};
@@ -20040,26 +20044,80 @@ function faltantes(d,tipo,dep,mun){
  if((d.metodo_pago==='transferencia'||d.metodo_pago==='link de pago')&&!d.banco)f.push('banco');
  return f;
 }
-async function llenarForm(d,tipo,dep,mun){
- const pill=(id,v)=>{const p=document.querySelector('#'+id+' .pill[data-v="'+v+'"]');if(p&&typeof selPill==='function'){selPill(id,p);return p}return null};
- const step=async x=>{if(x){try{x.scrollIntoView({block:'center',behavior:'smooth'});const o=x.style.outline;x.style.outline='2px solid #8b5cf6';setTimeout(()=>{x.style.outline=o},900)}catch(e){}}await sleep(650)};
+async function llenarForm(d,tipo,dep,mun,nuevos,force){
+ nuevos=nuevos||new Set();const nu=k=>force||nuevos.has(k);
+ const pill=(id,v)=>{const p=document.querySelector('#'+id+' .pill[data-v="'+v+'"]');if(p&&!p.classList.contains('sel')&&typeof selPill==='function'){selPill(id,p)}return p};
+ const step=async(x,hizo)=>{if(x&&hizo!==false){try{x.scrollIntoView({block:'center',behavior:'smooth'});const o=x.style.outline;x.style.outline='2px solid #8b5cf6';setTimeout(()=>{x.style.outline=o},900)}catch(e){}await sleep(650)}};
  try{
-  await step(pill('f_tipoEntrega',tipo));
-  if(tipo==='nacional'&&dep&&mun){try{poblarDepartamentoSelect(dep);poblarMunicipios(mun)}catch(e){}await step($('f_departamentoInput'))}
-  if(d.plataforma&&window.kpPickPlat){const ps=[...document.querySelectorAll('#f_plataformaPills .pill')],p=ps.find(x=>norm(x.dataset.v)===norm(d.plataforma));
-   if(p){kpPickPlat(p);await step(p)}else{const o=ps.find(x=>x.dataset.v==='Otro');if(o){kpPickPlat(o);const i=$('f_plataformaOtro');if(i){i.value=d.plataforma;i.dispatchEvent(new Event('input',{bubbles:true}))}await step(o)}}}
-  if(d.metodo_pago)await step(pill('f_metodoPago',d.metodo_pago));
-  if(d.metodo_pago==='mitad'){const ss=(id,v)=>{const e=$(id);if(e&&v!=null&&v!==''){e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))}return e},sb=(id,t)=>{const e=$(id);if(!e||!t)return;const n=norm(t),op=[...(e.options||[])].find(x=>norm(x.value).includes(n)||norm(x.text).includes(n));if(op){e.value=op.value;e.dispatchEvent(new Event('change',{bubbles:true}))}};await step(ss('f_metodoMitad1',d.metodo_1));await step(ss('f_montoMitad1',d.monto_1));sb('f_bancoMitad1',d.banco_1);await step(ss('f_metodoMitad2',d.metodo_2));await step(ss('f_montoMitad2',d.monto_2));sb('f_bancoMitad2',d.banco_2)}
-  if(d.banco){const b=$('f_banco');if(b){const n=norm(d.banco),op=[...b.options].find(x=>norm(x.value).includes(n)||norm(x.text).includes(n));if(op){b.value=op.value;b.dispatchEvent(new Event('change',{bubbles:true}));await step(b)}}}
-  if(d.estado_pago)await step(pill('f_estadoPago',d.estado_pago));
-  const me=U().nombre,vs=$('f_vendedor');if(vs&&me){const op=[...vs.options].find(x=>x.value===me||x.text===me);if(op)vs.value=op.value}
-  const ft=$('f_totalPedido');if(ft&&d.total){ft.value=d.total;ft.dispatchEvent(new Event('input',{bubbles:true}));await step(ft)}
+  {const cur=document.querySelector('#f_tipoEntrega .pill.sel'),curV=cur&&cur.dataset.v;
+   if(curV!==tipo&&(nu('tipo_entrega')||(tipo==='nacional'&&dep&&mun))){const pp=pill('f_tipoEntrega',tipo);await step(pp,true)}}
+  if(tipo==='nacional'&&dep&&mun){const de=$('f_departamentoInput'),me=$('f_municipioInput');if(force||!(de&&String(de.value||'').trim())||!(me&&String(me.value||'').trim())){try{poblarDepartamentoSelect(dep);poblarMunicipios(mun)}catch(e){}await step(de,true)}}
+  if(d.plataforma&&nu('plataforma')&&window.kpPickPlat&&(force||!(window.kpPlatVal&&kpPlatVal()))){const ps=[...document.querySelectorAll('#f_plataformaPills .pill')],p=ps.find(x=>norm(x.dataset.v)===norm(d.plataforma));
+   if(p){kpPickPlat(p);await step(p,true)}else{const o=ps.find(x=>x.dataset.v==='Otro');if(o){kpPickPlat(o);const i=$('f_plataformaOtro');if(i){i.value=d.plataforma;i.dispatchEvent(new Event('input',{bubbles:true}))}await step(o,true)}}}
+  if(d.metodo_pago&&nu('metodo_pago')){const sel=document.querySelector('#f_metodoPago .pill.sel'),ms=$('f_metodoPago');const ya=sel?sel.dataset.v===d.metodo_pago:(ms&&ms.value===d.metodo_pago);if(!ya){if(document.querySelector('#f_metodoPago .pill'))await step(pill('f_metodoPago',d.metodo_pago),true);else if(ms){ms.value=d.metodo_pago;ms.dispatchEvent(new Event('change',{bubbles:true}));await step(ms,true)}}}
+  if(d.metodo_pago==='mitad'){const ss=(id,v,k)=>{const e=$(id);if(e&&v!=null&&v!==''&&(nu(k)||force)&&(force||!String(e.value||'').trim()||k.indexOf('metodo')===0)){e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return e}return null},sb=(id,t,k)=>{const e=$(id);if(!e||!t||!nu(k))return;if(!force&&e.value)return;const n=norm(t),op=[...(e.options||[])].find(x=>norm(x.value).includes(n)||norm(x.text).includes(n));if(op){e.value=op.value;e.dispatchEvent(new Event('change',{bubbles:true}))}};
+   await step(ss('f_metodoMitad1',d.metodo_1,'metodo_1'));await step(ss('f_montoMitad1',d.monto_1,'monto_1'));sb('f_bancoMitad1',d.banco_1,'banco_1');await step(ss('f_metodoMitad2',d.metodo_2,'metodo_2'));await step(ss('f_montoMitad2',d.monto_2,'monto_2'));sb('f_bancoMitad2',d.banco_2,'banco_2')}
+  if(d.banco&&nu('banco')){const b=$('f_banco');if(b&&(force||!b.value)){const n=norm(d.banco),op=[...b.options].find(x=>norm(x.value).includes(n)||norm(x.text).includes(n));if(op){b.value=op.value;b.dispatchEvent(new Event('change',{bubbles:true}));await step(b,true)}}}
+  if(d.estado_pago&&nu('estado_pago')){const sel=document.querySelector('#f_estadoPago .pill.sel'),es=$('f_estadoPago');if(document.querySelector('#f_estadoPago .pill')){if(!(sel&&sel.dataset.v===d.estado_pago))await step(pill('f_estadoPago',d.estado_pago),true)}else if(es&&es.value!==d.estado_pago){es.value=d.estado_pago;es.dispatchEvent(new Event('change',{bubbles:true}));await step(es,true)}}
+  const ft=$('f_totalPedido');if(ft&&d.total&&(force||nuevos.has('total')||!Number(ft.value))){ft.value=d.total;ft.dispatchEvent(new Event('input',{bubbles:true}));await step(ft,true)}
  }catch(e){console.warn('Mike llenar',e)}
 }
-async function crearOrden(a){
+
+/* ===== Selección guiada de producto: categoría → modelo → color → tamaño ===== */
+let psel={},pult=null,pcant=1;
+const PNIV=['categoria','modelo','color','tamano'],PNOM={categoria:'categoría',modelo:'modelo',color:'color',tamano:'tamaño'};
+const pval=(i,n)=>n==='categoria'?String(i.categoria||'').trim():n==='modelo'?String(i.modelo||'').trim():n==='color'?String(i.colorEs||i.colorEn||'').trim():String(i.tamano||'Único').trim();
+function pfiltrar(){const inv=Array.isArray(window.INVENTARIO)?window.INVENTARIO:[];return inv.filter(i=>PNIV.every(n=>psel[n]==null||norm(pval(i,n))===norm(psel[n])))}
+function pOpciones(n,base){const m=new Map();base.forEach(i=>{const v=pval(i,n);if(!v)return;const k=norm(v),o=m.get(k)||{nombre:v,stock:0};o.stock+=Number(i.cantidad)||0;m.set(k,o)});return[...m.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'))}
+function pSiguiente(){
+ // avanza solos los niveles con una única opción
+ for(let guard=0;guard<6;guard++){
+  const base=pfiltrar();if(!base.length)return{vacio:true};
+  const n=PNIV.find(x=>psel[x]==null);
+  if(!n)return{completo:true,items:base};
+  const ops=pOpciones(n,base);
+  if(!ops.length){psel[n]='';continue}
+  if(ops.length===1){psel[n]=ops[0].nombre;continue}
+  return{nivel:n,ops};
+ }
+ return{completo:true,items:pfiltrar()};
+}
+function pTexto(){return PNIV.map(n=>psel[n]).filter(Boolean).join(' ')}
+function elegirProducto(a){
  a=a||{};
- if(a.nueva||Date.now()-borrT>6e5)borr={};borrT=Date.now();
- BKEYS.forEach(k=>{if(a[k]!==undefined&&a[k]!==null&&a[k]!=='')borr[k]=a[k]});
+ if(!Array.isArray(window.INVENTARIO)||!window.INVENTARIO.length)return{error:'No tengo el inventario cargado para elegir productos.'};
+ if(a.reiniciar){psel={};pult=null;pcant=1}
+ if(Number(a.cantidad)>0)pcant=Math.round(Number(a.cantidad));
+ if(pult&&(a.numero!=null||a.texto)){
+  let o=null;
+  if(a.numero!=null)o=pult.ops[Math.round(Number(a.numero))-1];
+  else{const t=norm(a.texto),ex=pult.ops.filter(x=>norm(x.nombre)===t),pa=pult.ops.filter(x=>norm(x.nombre).includes(t)||t.includes(norm(x.nombre)));o=ex[0]||(pa.length===1?pa[0]:null);if(!o&&pa.length>1)return{ambiguo:true,nivel:PNOM[pult.nivel],lista_texto:pult.ops.map((x,i)=>(i+1)+'. '+x.nombre).join('\n'),nota:'Hay varias que coinciden; pide que diga el número.'}}
+  if(!o)return{error:'Esa opción no está en la lista. Muestra la lista otra vez y pide el número.',nivel:PNOM[pult.nivel],lista_texto:pult.ops.map((x,i)=>(i+1)+'. '+x.nombre+' ('+x.stock+' disp.)').join('\n')};
+  psel[pult.nivel]=o.nombre;pult=null;
+ }
+ const r=pSiguiente();
+ if(r.vacio){psel={};pult=null;return{error:'No hay productos con esa combinación en el inventario. Empiezo de nuevo.',...elegirProductoInicio()}}
+ if(r.completo){
+  const it=r.items[0],prod={inventarioId:it.id,producto:it.categoria,modelo:(it.modelo&&it.modelo!==it.categoria)?it.modelo:'',tamano:it.tamano||'',color:it.colorEs||it.colorEn||'',cantidad:pcant};
+  const txt=[prod.producto,prod.modelo,prod.color,prod.tamano].filter(Boolean).join(' ');
+  if(!Array.isArray(borr.productos))borr.productos=[];borr.productos.push(prod);borrT=Date.now();
+  if(formAbierto())try{aplicarProductos([prod])}catch(e){console.warn('Mike prod',e)}
+  psel={};pult=null;pcant=1;
+  return{completo:true,producto:txt,cantidad:prod.cantidad,stock:Number(it.cantidad)||0,nota:'Producto agregado a la orden. Confírmalo en una frase y pregunta si lleva otro producto o si seguimos con lo que falte. Cuando todo esté completo llama crear_orden para guardar.'};
+ }
+ pult={nivel:r.nivel,ops:r.ops};
+ return{nivel:PNOM[r.nivel],ya_elegido:pTexto()||undefined,lista_texto:r.ops.map((x,i)=>(i+1)+'. '+x.nombre+(x.stock>0?'':' (agotado)')).join('\n'),nota:'Muestra la lista tal cual, numerada, y pide que diga el número. No elijas por el usuario.'};
+}
+function elegirProductoInicio(){psel={};pult=null;const r=pSiguiente();if(r.nivel){pult={nivel:r.nivel,ops:r.ops};return{nivel:PNOM[r.nivel],lista_texto:r.ops.map((x,i)=>(i+1)+'. '+x.nombre).join('\n')}}return{}}
+let crearBusy=false;
+async function crearOrden(a){
+ if(crearBusy)return{creada:false,error:'Ya estoy llenando una orden; espera a que termine y no repitas la llamada.'};
+ crearBusy=true;try{return await crearOrden2(a)}finally{crearBusy=false}
+}
+async function crearOrden2(a){
+ a=a||{};
+ if(a.nueva||Date.now()-borrT>6e5){borr={};psel={};pult=null}borrT=Date.now();
+ BKEYS.forEach(k=>{if(a[k]!==undefined&&a[k]!==null&&a[k]!==''){if(k==='productos'&&Array.isArray(a[k])&&Array.isArray(borr.productos)){a[k].forEach(p=>{if(p&&!borr.productos.some(q=>(q.inventarioId&&q.inventarioId===(p.inventarioId||p.inventario_id))||(norm([q.producto,q.modelo,q.tamano,q.color].join(' '))===norm([p.producto,p.modelo,p.tamano,p.color].join(' ')))))borr.productos.push(p)})}else borr[k]=a[k]}});
  ['metodo_pago','metodo_1','metodo_2'].forEach(k=>{if(borr[k])borr[k]=nm(borr[k])});
  const d=borr,falta=[];
  if(!String(d.cliente||'').trim())falta.push('nombre del cliente');if(!tel8(d.numero))falta.push('teléfono');if(!String(d.direccion||'').trim())falta.push('dirección');
@@ -20067,14 +20125,15 @@ async function crearOrden(a){
  const rp=resolverProductos(d.productos);if(d.productos)d.productos=rp.lista;
  if(d.metodo_pago==='mitad'){const tt=Number(d.total)||0;if(!Number(d.monto_1)&&tt)d.monto_1=Math.round(tt/2*100)/100;if(!Number(d.monto_2)&&tt&&d.monto_1)d.monto_2=Math.round((tt-d.monto_1)*100)/100}
  const base={cliente:d.cliente,numero:tel8(d.numero),numero2:tel8(d.numero2),direccion:d.direccion,metodoPago:d.metodo_pago,total:d.total,productos:d.productos};
- if(a.solo_abrir){await abrirOrden(etiquetas(base));return{creada:false,ok:true,nota:'Formulario abierto con los datos; el usuario revisa y guarda.'}}
+ if(a.solo_abrir){await abrirOrden(base,false,!!a.reemplazar);return{creada:false,ok:true,nota:'Formulario abierto con los datos; el usuario revisa y guarda.'}}
  if(typeof openNewOrder!=='function'||typeof window.saveOrder!=='function')return{creada:false,error:'No puedo crear órdenes desde aquí.'};
  const tipo=['tegucigalpa','nacional','roatan'].includes(d.tipo_entrega)?d.tipo_entrega:'tegucigalpa';
  let dep=d.departamento,mun=d.municipio;
  if(tipo==='nacional'&&!(dep&&mun)){try{const m=typeof buscarMunicipioEnDireccion==='function'?buscarMunicipioEnDireccion(d.direccion||''):null;if(m){dep=m.departamento;mun=m.municipio}}catch(e){}}
  minimize();fillPill(true);
- await abrirOrden(etiquetas(base),true);
- await llenarForm(d,tipo,dep,mun);
+ const nuevos=new Set(Object.keys(a).filter(k=>a[k]!==undefined&&a[k]!==null&&a[k]!==''));
+ await abrirOrden(Object.assign({},base,{nueva:!!a.nueva}),true,!!a.reemplazar);
+ await llenarForm(d,tipo,dep,mun,nuevos,!!a.reemplazar);
  const fl=faltantes(d,tipo,dep,mun);rp.avisos.forEach(x=>fl.push('producto: '+x));
  if(fl.length)return fillPill(false),open(),setCompact(true),{creada:false,faltan:fl,nota:'La orden NO se guardó. El formulario quedó abierto y el usuario lo está viendo. Pregunta solo lo que falta y vuelve a llamar crear_orden con los datos nuevos (los anteriores se recuerdan).'};
  await sleep(1300);
@@ -20205,7 +20264,7 @@ function sysPrompt(live){
  return 'Eres Mike, compañero de trabajo de KPlace (gestión de órdenes, inventario y envíos en Honduras) y además un asistente general muy capaz: respondes CUALQUIER pregunta (cultura, distancias, clima, cálculos, consejos, redacción) con la calidad de un buen chat general, sin decir que eso no es de KPlace. Hablas español natural de Honduras, cercano y directo, como una persona real, sin sonar a manual. ENTENDER BIEN: entiendes jerga hondureña, errores de ortografía, abreviaturas y audio mal transcrito (tegus = Tegucigalpa, lps = lempiras, la orden de Carlos, el de ayer); usas el contexto de lo que ya dijeron (ese, esa orden, cámbialo); si algo es ambiguo eliges la lectura más probable y la dices en media frase; solo preguntas cuando equivocarte podría crear o cambiar algo mal; nunca contestes solo no entendí: di qué crees que quisieron decir. '+
  (live?'Esta es una conversación por VOZ en tiempo real: responde hablando, en 1 a 3 frases, sin listas ni símbolos, deja que te interrumpan y no leas más de 3 pedidos seguidos. En preguntas que no son de KPlace puedes extenderte hasta unas 5 frases. Si no se entendió el audio, pide que lo repitan en vez de adivinar. ':'Respuestas cortas (1 a 4 frases) en temas de KPlace; en preguntas generales o de otros temas respóndelas completas (lo que haga falta, con datos concretos). Usa **negrita** y guiones solo si ayudan. ')+
  'Usuario: '+(u.nombre||'sin identificar')+' ('+rol+'). Hoy es '+hoy()+'. Cifras al momento: '+JSON.stringify(stats())+'. '+
- 'REGLAS (la 1 a la 12 son para temas de KPlace; en cualquier otro tema respondes libre y completo, sin negarte): 1) Para datos de pedidos o inventario usa SIEMPRE las herramientas (o las cifras de arriba); nunca inventes pedidos, stock, precios ni guías. 2) Si piden crear o cotizar una guía: busca el pedido (buscar_pedidos), si hay duda pregunta cuál, y usa preparar_guia con el id exacto. Esa herramienta solo muestra una tarjeta: la guía la crea el usuario tocando el botón. Nunca digas que ya se creó. 3) CREAR ORDEN: cuando el usuario pida crear una orden, reúne nombre, teléfono y dirección (más producto, forma de pago y total si los da; envío en Tegucigalpa por defecto, y si es nacional pide departamento y municipio). Llama crear_orden en cuanto tengas nombre, teléfono y dirección: el formulario se abre y se va llenando a la vista del usuario y el chat se achica. Si responde creada:false con una lista faltan, la orden NO se guardó: pregunta solo lo que falta (plataforma, producto, forma de pago, total, banco, departamento y municipio) y cuando responda vuelve a llamar crear_orden solo con los datos nuevos (los anteriores se recuerdan). Si no dijo la forma de pago, pregúntala. Pago dividido (mitad, mixto, parte y parte): usa metodo_pago mitad con metodo_1 y metodo_2 (y monto_1/monto_2 si los dice; si dice mitad y mitad, son la mitad del total; banco_1/banco_2 si alguna parte es transferencia). Si creada:true, confírmalo en una frase. 4) Preguntas sobre cómo usar la app: responde con pasos concretos según este manual: '+MANUAL+' Si algo no está en el manual, dilo sin inventar. 5) No muestres claves ni datos de otros vendedores. 6) Haz una sola pregunta a la vez. 7) EDITAR: si el usuario corrige una orden ("no, era transferencia", pago dividido, otro total) usa editar_orden sobre la última orden creada o la que indique; en transferencia o link de pago pide el banco si falta; en pago dividido pide método y monto de cada parte; confirma en una frase. 8) VENTAS: para historial, totales o lo que vendió cada vendedor usa resumen_ventas. 9) SIN PAGAR: buscar_pedidos con estado sin_pagar (devuelve cantidad y monto_total). 10) RETRASO: cada pedido trae dias_retraso; el repartidor asignado viene en el campo repartidor (null si no se ha enviado). 11) PREGUNTAS GENERALES: también puedes responder cosas que no son de KPlace (distancias, clima, cultura general); para clima, distancias o datos que cambian usa buscar_en_internet, asumiendo Honduras si no dicen lugar. 12) INVENTARIO: puedes ver etiquetas (etiquetas_inventario o buscar_inventario) pero nunca hables de códigos QR. 13) ENTREGAS: puedes cambiar el estado con cambiar_estado_entrega: entregado y pendiente se hacen directo; para no_entregado pide el motivo y para qué día se reprograma (así lo hace KPlace). Confirma en una frase. 14) Preguntas que no son de KPlace: respóndelas bien y completas; usa buscar_en_internet para clima, distancias, precios o noticias, y si falla contesta con lo que sepas aclarando que es aproximado.';
+ 'REGLAS (la 1 a la 12 son para temas de KPlace; en cualquier otro tema respondes libre y completo, sin negarte): 1) Para datos de pedidos o inventario usa SIEMPRE las herramientas (o las cifras de arriba); nunca inventes pedidos, stock, precios ni guías. 2) Si piden crear o cotizar una guía: busca el pedido (buscar_pedidos), si hay duda pregunta cuál, y usa preparar_guia con el id exacto. Esa herramienta solo muestra una tarjeta: la guía la crea el usuario tocando el botón. Nunca digas que ya se creó. 3) CREAR ORDEN: cuando el usuario pida crear una orden, reúne nombre, teléfono y dirección (más producto, forma de pago y total si los da; envío en Tegucigalpa por defecto, y si es nacional pide departamento y municipio). Llama crear_orden en cuanto tengas nombre, teléfono y dirección: el formulario se abre y se va llenando a la vista del usuario y el chat se achica. Si responde creada:false con una lista faltan, la orden NO se guardó: NO vuelvas a llamar crear_orden hasta que el usuario responda; pregunta solo lo que falta (plataforma, producto, forma de pago, total, banco, departamento y municipio) y cuando responda vuelve a llamar crear_orden solo con los datos nuevos (los anteriores se recuerdan). Si no dijo la forma de pago, pregúntala. Pago dividido (mitad, mixto, parte y parte): usa metodo_pago mitad con metodo_1 y metodo_2 (y monto_1/monto_2 si los dice; si dice mitad y mitad, son la mitad del total; banco_1/banco_2 si alguna parte es transferencia). Si creada:true, confírmalo en una frase. NO uses ni menciones el cuadro de pegar/extraer datos del formulario: tú llenas los campos directo, SOLO los que están vacíos, y nunca reescribes lo que el usuario ya llenó o corrigió a mano salvo que él te lo pida (entonces crear_orden con reemplazar=true). Si el formulario ya está abierto, se reutiliza tal cual. PRODUCTO (flujo guiado): si piden agregar o falta el producto, usa elegir_producto SIN pedir que lo escriban: primero la CATEGORÍA, luego los MODELOS, luego los COLORES y por último los TAMAÑOS. En cada paso muestra la lista_texto numerada tal cual la devuelve la herramienta (un paso por mensaje) y espera. Cuando el usuario diga "el primero", "el 2", "ese" o el nombre, llama elegir_producto con numero (o texto). Un solo resultado se salta solo. Al completar, el producto queda en la orden; pregunta si lleva otro. Cuando ya esté todo, llama crear_orden para guardar la orden. 4) Preguntas sobre cómo usar la app: responde con pasos concretos según este manual: '+MANUAL+' Si algo no está en el manual, dilo sin inventar. 5) No muestres claves ni datos de otros vendedores. 6) Haz una sola pregunta a la vez. 7) EDITAR: si el usuario corrige una orden ("no, era transferencia", pago dividido, otro total) usa editar_orden sobre la última orden creada o la que indique; en transferencia o link de pago pide el banco si falta; en pago dividido pide método y monto de cada parte; confirma en una frase. 8) VENTAS: para historial, totales o lo que vendió cada vendedor usa resumen_ventas. 9) SIN PAGAR: buscar_pedidos con estado sin_pagar (devuelve cantidad y monto_total). 10) RETRASO: cada pedido trae dias_retraso; el repartidor asignado viene en el campo repartidor (null si no se ha enviado). 11) PREGUNTAS GENERALES: también puedes responder cosas que no son de KPlace (distancias, clima, cultura general); para clima, distancias o datos que cambian usa buscar_en_internet, asumiendo Honduras si no dicen lugar. 12) INVENTARIO: puedes ver etiquetas (etiquetas_inventario o buscar_inventario) pero nunca hables de códigos QR. 13) ENTREGAS: puedes cambiar el estado con cambiar_estado_entrega: entregado y pendiente se hacen directo; para no_entregado pide el motivo y para qué día se reprograma (así lo hace KPlace). Confirma en una frase. 14) Preguntas que no son de KPlace: respóndelas bien y completas; usa buscar_en_internet para clima, distancias, precios o noticias, y si falla contesta con lo que sepas aclarando que es aproximado.';
 }
 
 /* ===== Llamadas a Gemini (streaming + herramientas) ===== */
@@ -20318,12 +20377,50 @@ function etiquetas(d){
  if(s(d.metodoPago))L.push('Método de pago: '+s(d.metodoPago));const tot=parseInt(String(d.total||'').replace(/[^\d]/g,''),10);if(tot)L.push('Total: '+tot);
  return L.join('\n');
 }
-async function abrirOrden(texto,stay){
+/* Mike NO usa el cuadro "Pega aquí el mensaje / Extraer datos". Llena los campos directo y SOLO los que están vacíos
+   (a menos que el usuario pida reemplazar). Si el formulario ya está abierto, lo reutiliza sin borrarle nada. */
+function formAbierto(){const c=$('f_cliente');return !!(c&&c.offsetParent!==null)}
+function setVacio(id,v,force){
+ const e=$(id);if(!e||v==null||String(v).trim()==='')return false;
+ if(!force&&String(e.value||'').trim()!=='')return false;
+ e.value=v;try{e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))}catch(x){}return true;
+}
+function aplicarProductos(lista,force){
+ if(!Array.isArray(lista)||!lista.length||typeof draftProducts==='undefined')return;
+ const inv=Array.isArray(window.INVENTARIO)?window.INVENTARIO:[];
+ lista.forEach(p=>{
+  if(!p)return;
+  const it=(p.inventarioId&&inv.find(x=>x.id===p.inventarioId))||inv.find(x=>norm(x.categoria)===norm(p.producto||p.categoria)&&norm(x.modelo||'')===norm(p.modelo||'')&&norm(x.tamano||'Único')===norm(p.tamano||'Único')&&norm(x.colorEs||x.colorEn||'')===norm(p.color||''));
+  const cat=(it&&it.categoria)||p.producto||p.categoria||'';if(!cat)return;
+  const ya=draftProducts.some(d=>d&&d.categoria&&norm(d.categoria)===norm(cat)&&norm(d.modelo||'')===norm((it&&it.modelo)||p.modelo||'')&&norm(d.tamano||'')===norm((it&&it.tamano)||p.tamano||'')&&norm(d.colorEs||d.colorEn||'')===norm((it&&(it.colorEs||it.colorEn))||p.color||''));
+  if(ya&&!force)return;
+  let idx=draftProducts.findIndex(d=>d&&!d.categoria&&!d.modelo&&!d.colorEn&&!d.colorEs);
+  if(idx<0){addProductRow();idx=draftProducts.length-1}
+  if(it){updateProduct(idx,'categoria',it.categoria);updateProduct(idx,'modelo',it.modelo);updateProduct(idx,'tamano',it.tamano||'');updateProductColor(idx,it.id)}
+  else{Object.assign(draftProducts[idx],{categoria:cat,modelo:p.modelo||'',tamano:p.tamano||'',colorEs:p.color||'',colorEn:p.color||''})}
+  if(Number(p.cantidad)>1)draftProducts[idx].cantidad=Number(p.cantidad);
+ });
+ try{window._renderProdList();if(typeof recalcularTotalDesdeProductos==='function')recalcularTotalDesdeProductos()}catch(e){}
+}
+async function abrirOrden(d,stay,force){
+ d=d||{};
  if(typeof openNewOrder!=='function')throw new Error('No puedo abrir el formulario de orden desde aquí.');
- openNewOrder();for(let i=0;i<40&&!$('f_pegado');i++)await sleep(50);
- const p=$('f_pegado');if(!p)throw new Error('El formulario no abrió.');
- p.value=texto;try{p.dispatchEvent(new Event('input',{bubbles:true}))}catch(e){}
- try{if(window.KP&&KP.extraerDatosOrden)await KP.extraerDatosOrden();else if(typeof extraerDatos==='function')extraerDatos()}catch(e){console.warn('Mike extraer',e)}
+ let editando=false;try{editando=!!editingOrderId}catch(e){}
+ if(!(formAbierto()&&!d.nueva&&!editando)){
+  const prev=$('f_cliente');
+  openNewOrder();
+  for(let i=0;i<20&&(!$('f_cliente')||$('f_cliente')===prev);i++)await sleep(50);
+  await sleep(450);
+  if(!$('f_cliente'))throw new Error('El formulario no abrió.');
+ }
+ const t8=v=>{let x=String(v||'').replace(/\D/g,'');if(x.length>8&&x.indexOf('504')===0)x=x.slice(3);return x};
+ setVacio('f_cliente',String(d.cliente||'').replace(/\s*\n\s*/g,' ').trim(),force);
+ setVacio('f_numero',t8(d.numero),force);
+ if(t8(d.numero2)){try{if(typeof mostrarNumero2==='function')mostrarNumero2()}catch(e){}setVacio('f_numero2',t8(d.numero2),force)}
+ setVacio('f_direccion',String(d.direccion||'').replace(/\s*\n\s*/g,', ').trim().slice(0,200),force);
+ try{if(window.KP&&KP.dirCount)KP.dirCount()}catch(e){}
+ aplicarProductos(d.productos,force);
+ await sleep(200);
  if(!stay)minimize();return true;
 }
 function imageCards(r){
@@ -20342,9 +20439,9 @@ function imageCards(r){
   [['Cliente',d.cliente],['Teléfono',d.numero],['Dirección',d.direccion],['Pago',d.metodoPago],['Total',d.total]].forEach(([k,v])=>{if(v)c.appendChild(el('div','l',k+': '+v))});
   if((d.productos||[]).length)c.appendChild(el('div','l','Productos: '+d.productos.map(p=>[p.producto,p.modelo,p.tamano,p.color].filter(Boolean).join(' ')).join('; ')));
   const row=el('div','row'),b=el('button','kpm-btn ok','✅ Crear orden ahora'),b2=el('button','kpm-btn sec','📝 Abrir en formulario');b.type=b2.type='button';
-  b.onclick=async()=>{b.disabled=b2.disabled=true;try{const r=await crearOrden({cliente:d.cliente,numero:d.numero,numero2:d.numero2,direccion:d.direccion,metodo_pago:d.metodoPago,total:Number(String(d.total||'').replace(/[^\d]/g,''))||undefined,productos:d.productos});
+  b.onclick=async()=>{b.disabled=b2.disabled=true;try{const r=await crearOrden({nueva:true,cliente:d.cliente,numero:d.numero,numero2:d.numero2,direccion:d.direccion,metodo_pago:d.metodoPago,total:Number(String(d.total||'').replace(/[^\d]/g,''))||undefined,productos:d.productos});
     if(r.creada){b.textContent='Orden creada'}else{addMsg(r.error||'No se pudo crear la orden.','bot');b.disabled=b2.disabled=false}}catch(e){addMsg('No pude crear la orden: '+(e.message||e),'bot');b.disabled=b2.disabled=false}};
-  b2.onclick=async()=>{try{await abrirOrden(txt)}catch(e){addMsg('No pude abrir la orden: '+(e.message||e),'bot')}};
+  b2.onclick=async()=>{try{await abrirOrden({cliente:d.cliente,numero:d.numero,numero2:d.numero2,direccion:d.direccion,metodoPago:d.metodoPago,total:d.total,productos:d.productos})}catch(e){addMsg('No pude abrir la orden: '+(e.message||e),'bot')}};
   row.appendChild(b);row.appendChild(b2);c.appendChild(row);
   return 'Son datos de cliente: '+txt.replace(/\n/g,'; ');
  }
