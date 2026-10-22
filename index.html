@@ -21107,6 +21107,75 @@ html body #kpcList .kpc-av.dm .kp-chat-avatar img {
 }
 </style>
 
+
+<script id="kp-separate-channels-dms-and-audio-keyboard-fix">
+(function(){
+  'use strict';
+  function isDirect(c){return !!c && (String(c.tipo||'').toLowerCase()==='dm' || /^dm_/.test(String(c.id||'')) || c.dmOtro!=null);}
+  function isChannel(c){return !!c && !isDirect(c) && !/^channel:/.test(String(c.id||''));}
+  function applyListSeparation(){
+    var C=window.KP&&KP.Channels;if(!C)return;
+    if(typeof C.visibleFor==='function'&&!C.__kpStrictChannelFilter){
+      var oldVisible=C.visibleFor;
+      C.visibleFor=function(){return oldVisible.apply(this,arguments).filter(isChannel);};
+      C.__kpStrictChannelFilter=true;
+    }
+    if(typeof window.paintChannels==='function'&&!window.paintChannels.__kpStrictChannelPaint){
+      var oldPaint=window.paintChannels;
+      var wrapped=function(){
+        if(C.list) C.list=C.list.filter(function(c){return !isDirect(c);});
+        return oldPaint.apply(this,arguments);
+      };
+      wrapped.__kpStrictChannelPaint=true;window.paintChannels=wrapped;
+    }
+    if(typeof window.paintDMs==='function'&&!window.paintDMs.__kpStrictDMpaint){
+      var oldDM=window.paintDMs;
+      var wrappedDM=function(){
+        if(Array.isArray(C.dmList)) C.dmList=C.dmList.filter(function(c){return isDirect(c) && c.dmOtro;});
+        return oldDM.apply(this,arguments);
+      };
+      wrappedDM.__kpStrictDMpaint=true;window.paintDMs=wrappedDM;
+    }
+  }
+  applyListSeparation();
+  // La lista de canales del diseño de chat 2026 también excluye cualquier conversación privada.
+  if(typeof window.renderKPlaceChats2026==='function'&&!window.renderKPlaceChats2026.__kpStrictChannelList){
+    var oldChatRender=window.renderKPlaceChats2026;
+    var newChatRender=function(){
+      try{var C=window.KP&&KP.Channels;if(C&&Array.isArray(C.list))C.list=C.list.filter(function(c){return !isDirect(c);});}catch(e){}
+      return oldChatRender.apply(this,arguments);
+    };
+    newChatRender.__kpStrictChannelList=true;window.renderKPlaceChats2026=newChatRender;
+  }
+  // Mantener el foco del campo si el teclado ya estaba abierto al empezar a grabar/enviar audio.
+  var composeInputWasFocused=false;
+  document.addEventListener('pointerdown',function(e){
+    var b=e.target&&e.target.closest&&e.target.closest('#kpChat26AudioBtn');
+    if(b) composeInputWasFocused=document.activeElement&&document.activeElement.id==='kpChat26Input';
+  },true);
+  document.addEventListener('click',function(e){
+    var b=e.target&&e.target.closest&&e.target.closest('#kpChat26AudioBtn');if(!b)return;
+    // No forzar la apertura del teclado si el usuario ya lo había cerrado.
+    window.__kpChat26KeepKeyboard=composeInputWasFocused;
+    if(b.textContent.indexOf('⏹')>=0) window.__kpChat26AudioBusy=true;
+  },true);
+  document.addEventListener('focusout',function(e){
+    if(e.target&&e.target.id==='kpChat26Input'&&window.__kpChat26AudioBusy&&window.__kpChat26KeepKeyboard){
+      setTimeout(function(){var i=document.getElementById('kpChat26Input');if(i&&document.activeElement!==i){try{i.focus({preventScroll:true});}catch(_){i.focus();}}},0);
+    }
+  },true);
+  // La grabación termina al tocar detener; conservar el teclado durante el envío y soltarlo al finalizar.
+  var mo=new MutationObserver(function(){
+    var b=document.getElementById('kpChat26AudioBtn');
+    if(b&&b.textContent.indexOf('⏹')>=0)window.__kpChat26AudioBusy=true;
+    var toastEls=Array.from(document.querySelectorAll('.toast,[role="status"]'));
+    if(toastEls.some(function(x){return /Audio enviado|No se pudo enviar el audio/i.test(x.textContent||'');})){
+      window.__kpChat26AudioBusy=false;window.__kpChat26KeepKeyboard=false;
+    }
+  });
+  try{mo.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});}catch(e){}
+})();
+</script>
 </body>
 </html>
 
