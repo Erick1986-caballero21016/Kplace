@@ -21109,3 +21109,26 @@ html body #kpcList .kpc-av.dm .kp-chat-avatar img {
 
 </body>
 </html>
+
+<style id="kp-fix-real-dm-list-avatar">
+/* Corrección específica: foto que aparece junto a cada conversación bajo “Mensajes directos”. */
+html body #kpcDM .kpc-row > .kpc-av.dm {
+  width:52px!important;height:52px!important;min-width:52px!important;min-height:52px!important;
+  max-width:52px!important;max-height:52px!important;flex:0 0 52px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  padding:0!important;box-sizing:border-box!important;border-radius:50%!important;
+  overflow:hidden!important;aspect-ratio:1/1!important;line-height:0!important;
+}
+html body #kpcDM .kpc-row > .kpc-av.dm > .kp-chat-avatar,
+html body #kpcDM .kpc-row > .kpc-av.dm > div,
+html body #kpcDM .kpc-row > .kpc-av.dm > img {
+  width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;
+  max-width:100%!important;max-height:100%!important;box-sizing:border-box!important;
+  border-radius:50%!important;overflow:hidden!important;margin:0!important;padding:0!important;
+}
+html body #kpcDM .kpc-row > .kpc-av.dm img {
+  display:block!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;
+  max-width:100%!important;max-height:100%!important;object-fit:cover!important;
+  object-position:center!important;border-radius:50%!important;margin:0!important;transform:none!important;
+}
+</style>
