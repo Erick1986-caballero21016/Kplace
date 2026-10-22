@@ -18482,20 +18482,24 @@ setTimeout(hideLegacySidebar,500);
     var provider=new firebase.auth.GoogleAuthProvider();
     var mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
     try{
-      if(mobile){
-        await auth.signInWithRedirect(provider);
-        return;
-      }
+      /* Popup también en móvil: signInWithRedirect pierde la sesión en Brave/Safari (authDomain distinto a github.io) */
       await auth.signInWithPopup(provider);
     }catch(e){
-      if(!mobile&&e&&e.code==='auth/popup-blocked'){
+      if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')){
         try{await auth.signInWithRedirect(provider);return;}catch(redirectError){e=redirectError;}
       }
       showError(authError(e));
     }
   };
   if(auth&&typeof auth.getRedirectResult==='function'){
-    auth.getRedirectResult().catch(function(e){
+    auth.getRedirectResult().then(function(r){
+      if(r&&r.user)return;
+      var hadInv=false;try{hadInv=!!localStorage.getItem('kp_inv');}catch(x){}
+      if(hadInv&&!auth.currentUser){
+        var show=function(){setTimeout(function(){if(!auth.currentUser&&!window.CURRENT_USER)showError('El navegador no guardó la sesión de Google. Toca "Continuar con Google" otra vez o abre el enlace en Chrome/Safari.');},2500);};
+        if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show,{once:true});else show();
+      }
+    }).catch(function(e){
       var display=function(){showError(authError(e));};
       if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',display,{once:true});
       else display();
