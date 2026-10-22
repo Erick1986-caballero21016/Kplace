@@ -20919,7 +20919,7 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-mic.recording.can
   function setLockUI(h){
     const b=$('kpChatMicBtn'),bar=$('kpRecBar');
     if(!bar)return;
-    if(b)b.classList.remove('cancel');
+    if(b){b.classList.remove('cancel');b.innerHTML='<span aria-hidden="true">■</span>';b.title='Detener y enviar audio';b.setAttribute('aria-label','Detener y enviar audio');}
     bar.classList.remove('cancel');
     bar.classList.add('locked');
     bar.innerHTML='<i class="dot"></i><b id="kpRecT">0:00</b><span id="kpRecHint">🔒 Grabación bloqueada</span><button type="button" class="kp-rec-action kp-rec-delete">Borrar</button><button type="button" class="kp-rec-action kp-rec-send">Enviar</button>';
@@ -20985,7 +20985,14 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-mic.recording.can
   }
   document.addEventListener('pointerdown',e=>{
     const b=e.target&&e.target.closest?e.target.closest('#kpChatMicBtn'):null;
-    if(!b||b.dataset.kpmode==='send'||hold)return;
+    if(!b||b.dataset.kpmode==='send')return;
+    if(hold&&hold.locked){
+      e.preventDefault();e.stopImmediatePropagation();
+      const h=hold;h.cancel=false;h.released=true;
+      if(h.rec&&h.rec.state==='recording')h.rec.stop();else h.pendingStop='send';
+      return;
+    }
+    if(hold)return;
     if(e.pointerType==='mouse'&&e.button!==0)return;
     const m=(b.getAttribute('onclick')||'').match(/'([^']+)'/);
     if(!m)return;
@@ -21326,6 +21333,12 @@ html body .kp-chat-enterprise .kp-wa-composer.kp-recording .kp-wa-message-wrap #
 .kp-contact-media-cats{display:flex;gap:7px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none}
 .kp-contact-media-cats button{flex:none;display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid #26343b;border-radius:12px;background:#111c22;color:#e9edef;font-size:12px}
 .kp-contact-media-cats button span{color:#86979f}
+/* En modo bloqueado, sacar Enviar/Borrar de la barra angosta y ponerlos en una tarjeta de ancho completo. */
+html body .kp-chat-enterprise .kp-wa-composer{position:relative!important}
+html body .kp-chat-enterprise #kpRecBar.locked{position:absolute;left:8px;right:8px;bottom:calc(100% + 8px);width:auto;height:54px;min-width:0;flex:none;z-index:40;overflow:visible!important;white-space:normal;background:#211b22;border-color:rgba(239,68,68,.6);box-shadow:0 8px 24px rgba(0,0,0,.42);gap:8px;padding:0 10px}
+html body .kp-chat-enterprise #kpRecBar.locked span{flex:1;min-width:0;margin:0;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+html body .kp-chat-enterprise #kpRecBar.locked .kp-rec-action{height:38px;min-width:66px;padding:0 12px;font-size:13px}
+html body .kp-chat-enterprise .kp-wa-mic.recording{font-size:22px!important}
 </style>
 <script id="kp-contact-chat-fixes-js">
 (function(){
