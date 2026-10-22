@@ -21271,14 +21271,54 @@ html body #kpcDM .kpc-row > .kpc-av.dm img {
   // Render de mensajes con acciones en los tres puntos, contenido categorizable y estado de carga de imágenes.
   window.kpChat26Listen=function(sel){if(window.KPCHAT26?.unsub)window.KPCHAT26.unsub();const box=$('kpChat26Msgs');if(!box)return;box.innerHTML='<div class="kp-chat26-empty">Cargando conversación…</div>';window.KPCHAT26.unsub=db.collection(selPath(sel)).orderBy('ts','asc').limitToLast(300).onSnapshot(snap=>{box.innerHTML=snap.docs.map(d=>{const m={id:d.id,...d.data()},mine=m.autor===CURRENT_USER.nombre||String(m.autorUsuario||'')===String(CURRENT_USER.usuario||'');let body='';if(m.imagenUrl){body=`<div class="kp-img-loading" role="status">Cargando imagen…</div><img loading="lazy" alt="Imagen del chat" src="${esc(m.imagenUrl)}" onload="this.previousElementSibling?.remove()" onerror="this.style.display='none';if(this.previousElementSibling)this.previousElementSibling.textContent='No se pudo cargar la imagen'">`;}else if(m.videoUrl)body=`<video controls preload="metadata" src="${esc(m.videoUrl)}"></video>`;else if(m.audioUrl)body=`<audio controls preload="metadata" src="${esc(m.audioUrl)}"></audio>`;else if(m.tipo==='documento'&&m.url)body=`<a href="${esc(m.url)}" target="_blank" rel="noopener">📄 ${esc(m.nombreArchivo||'Documento')}</a>`;else body=esc(m.texto||'').replace(/\n/g,'<br>');const t=m.ts?.toDate?m.ts.toDate().toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'}):'';return `<div class="kp-chat26-bubble ${mine?'mine':'theirs'}" data-message-id="${esc(m.id)}">${!mine&&sel.type==='channel'?`<div class="kp-chat26-author">${esc(m.autorUsuario||m.autor||'Usuario')}</div>`:''}<div class="kp-chat26-message-body">${body}</div><div class="kp-chat26-time">${t}${m.editado?' · editado':''}</div>${mine?`<button class="kp-msg-three" title="Opciones del mensaje" onclick="kpChat26MessageMenu('${esc(m.id)}',true)">⋮</button>`:''}</div>`;}).join('')||'<div class="kp-chat26-empty"><h3>Sin mensajes todavía</h3><p>Empieza la conversación.</p></div>';box.scrollTop=box.scrollHeight;},e=>{console.error(e);box.innerHTML='<div class="kp-chat26-empty">No se pudo cargar la conversación.</div>';});};
   // Cámara reconocible sin quitar la opción de adjuntar fotos, vídeos, audios y documentos.
-  const fixComposer=()=>{const b=$('kpChat26AudioBtn');if(b){b.onclick=null;b.textContent='🎙';b.title='Mantén pulsado para grabar; desliza hacia arriba para bloquear';}const row=document.querySelector('.kp-chat26-compose');if(row){const attach=row.querySelector('button[onclick="kpChat26Attach()"]');if(attach){attach.innerHTML='<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7.5h3l1.6-2h6.8l1.6 2h3A1.5 1.5 0 0 1 21.5 9v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.2" r="3.5"/></svg>';attach.title='Adjuntar foto, vídeo o archivo';attach.setAttribute('aria-label','Adjuntar foto, vídeo o archivo');}}};
+  const fixComposer=()=>{
+    const b=$('kpChat26AudioBtn');
+    if(b){
+      b.onclick=null;
+      if(!rec&&!starting){
+        if(b.textContent!=='🎙')b.textContent='🎙';
+        const title='Mantén pulsado para grabar; desliza hacia arriba para bloquear';
+        if(b.title!==title)b.title=title;
+      }
+    }
+    const row=document.querySelector('.kp-chat26-compose');
+    if(row){
+      const attach=row.querySelector('button[onclick="kpChat26Attach()"]');
+      if(attach){
+        if(!attach.querySelector('svg'))attach.innerHTML='<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7.5h3l1.6-2h6.8l1.6 2h3A1.5 1.5 0 0 1 21.5 9v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.2" r="3.5"/></svg>';
+        attach.title='Adjuntar foto, vídeo o archivo';attach.setAttribute('aria-label','Adjuntar foto, vídeo o archivo');
+      }
+    }
+  };
   // Audio estilo WhatsApp: mantener pulsado, deslizar hacia arriba para bloquear; luego enviar o borrar.
   let rec=null,stream=null,chunks=[],locked=false,startY=0,pointerDown=false,starting=false,releasePending=false,selAtStart=null,cancelled=false,keyboardWasOpen=false;
   async function startRec(){if(starting||rec)return;starting=true;selAtStart=window.KPCHAT26?.selected;if(!selAtStart){starting=false;return;}try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(x=>MediaRecorder.isTypeSupported(x))||'';rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);chunks=[];locked=false;cancelled=false;rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};rec.onstop=async()=>{const blob=new Blob(chunks,{type:rec?.mimeType||'audio/webm'});const wasCancelled=cancelled;const s=stream;stream=null;if(s)s.getTracks().forEach(t=>t.stop());rec=null;chunks=[];restoreAudioButton();if(!wasCancelled&&blob.size){const ext=blob.type.includes('mp4')?'m4a':'webm';const file=new File([blob],`nota_${Date.now()}.${ext}`,{type:blob.type||'audio/webm'});try{const url=await subirArchivoStorage('chat_audios',file);await db.collection(selPath(selAtStart)).add({autor:CURRENT_USER.nombre,autorUsuario:CURRENT_USER.usuario||CURRENT_USER.nombre,audioUrl:url,audioMime:file.type,tipo:'audio',ts:firebase.firestore.FieldValue.serverTimestamp()});toast('Audio enviado ✓');}catch(e){console.error(e);toast('No se pudo enviar el audio.');}finally{if(keyboardWasOpen){const inp=$('kpChat26Input');if(inp){setTimeout(()=>{try{inp.focus({preventScroll:true});}catch(_){inp.focus();}},80);}}}}else if(wasCancelled)toast('Audio eliminado');};rec.start(200);const b=$('kpChat26AudioBtn');if(b){b.classList.add('kp-recording');b.textContent='● Grabando';b.title='Desliza hacia arriba para bloquear';}showAudioControls(false);if(releasePending&&!locked){releasePending=false;pointerDown=false;setTimeout(()=>{if(rec&&rec.state!=='inactive')rec.stop();},0);}}catch(e){console.error(e);toast('Permite el micrófono para grabar audio.');restoreAudioButton();}finally{starting=false;}}
-  function restoreAudioButton(){const b=$('kpChat26AudioBtn');if(b){b.classList.remove('kp-recording');b.textContent='🎙';b.title='Mantén pulsado para grabar; desliza hacia arriba para bloquear';}const c=$('kpAudioLockControls');if(c)c.remove();}
-  function showAudioControls(isLocked){let c=$('kpAudioLockControls');if(!c){c=document.createElement('div');c.id='kpAudioLockControls';c.className='kp-audio-lock-controls';const row=document.querySelector('.kp-chat26-compose');if(row)row.appendChild(c);}c.innerHTML=isLocked?'<span>🔒 Grabación bloqueada</span><button type="button" id="kpAudioCancel">🗑 Borrar</button><button type="button" id="kpAudioSend">➤ Enviar</button>':'<span>↑ Desliza para bloquear</span><button type="button" id="kpAudioCancel">Cancelar</button>';const cancel=$('kpAudioCancel');if(cancel)cancel.onclick=()=>{cancelled=true;if(rec&&rec.state!=='inactive')rec.stop();};const send=$('kpAudioSend');if(send)send.onclick=()=>{if(rec&&rec.state!=='inactive')rec.stop();};}
-  document.addEventListener('pointerdown',async e=>{const b=e.target.closest?.('#kpChat26AudioBtn');if(!b)return;keyboardWasOpen=document.activeElement?.id==='kpChat26Input'||!!window.__kpChat26KeepKeyboard;e.preventDefault();e.stopPropagation();pointerDown=true;releasePending=false;startY=e.clientY;await startRec();},{capture:true});
-  document.addEventListener('pointermove',e=>{if(!pointerDown||!rec||locked)return;if(startY-e.clientY>58){locked=true;pointerDown=false;showAudioControls(true);const b=$('kpChat26AudioBtn');if(b){b.textContent='🔒';b.title='Grabación bloqueada';}}else{const b=$('kpChat26AudioBtn');if(b)b.title='Suelta para enviar · desliza arriba para bloquear';}},{capture:true});
+  function restoreAudioButton(){const b=$('kpChat26AudioBtn');if(b){b.classList.remove('kp-recording');b.textContent='🎙';b.title='Mantén pulsado para grabar; desliza hacia arriba para bloquear';b.setAttribute('aria-label','Mantén pulsado para grabar');}const c=$('kpAudioLockControls');if(c)c.remove();}
+  function showAudioControls(isLocked){
+    let c=$('kpAudioLockControls');
+    if(!isLocked){if(c)c.remove();return;}
+    if(!c){c=document.createElement('div');c.id='kpAudioLockControls';const row=document.querySelector('.kp-chat26-compose');if(row)row.appendChild(c);}
+    c.className='kp-audio-lock-controls locked';c.setAttribute('role','group');c.setAttribute('aria-label','Controles de grabación');
+    c.innerHTML='<span>🔒 Grabación bloqueada</span><button type="button" id="kpAudioCancel">🗑 Borrar</button><button type="button" id="kpAudioSend">➤ Enviar</button>';
+    const cancel=$('kpAudioCancel');if(cancel)cancel.onclick=e=>{e.preventDefault();e.stopPropagation();cancelled=true;if(rec&&rec.state!=='inactive')rec.stop();};
+    const send=$('kpAudioSend');if(send)send.onclick=e=>{e.preventDefault();e.stopPropagation();if(rec&&rec.state!=='inactive')rec.stop();};
+  }
+  document.addEventListener('pointerdown',async e=>{
+    const b=e.target.closest?.('#kpChat26AudioBtn');if(!b)return;
+    if(locked&&rec){
+      e.preventDefault();e.stopPropagation();pointerDown=false;
+      if(rec.state!=='inactive')rec.stop();
+      return;
+    }
+    keyboardWasOpen=document.activeElement?.id==='kpChat26Input'||!!window.__kpChat26KeepKeyboard;
+    e.preventDefault();e.stopPropagation();pointerDown=true;releasePending=false;startY=e.clientY;await startRec();
+  },{capture:true});
+  document.addEventListener('click',e=>{
+    const b=e.target.closest?.('#kpChat26AudioBtn');if(!b||!locked||!rec)return;
+    e.preventDefault();e.stopImmediatePropagation();pointerDown=false;
+    if(rec.state!=='inactive')rec.stop();
+  },{capture:true});
+  document.addEventListener('pointermove',e=>{if(!pointerDown||!rec||locked)return;if(startY-e.clientY>58){locked=true;pointerDown=false;showAudioControls(true);const b=$('kpChat26AudioBtn');if(b){b.textContent='⏹';b.title='Toca para detener y enviar';b.setAttribute('aria-label','Detener y enviar audio');}}else{const b=$('kpChat26AudioBtn');if(b)b.title='Suelta para enviar · desliza arriba para bloquear';}},{capture:true});
   document.addEventListener('pointerup',e=>{if(!pointerDown)return;if(starting||!rec){releasePending=true;return;}pointerDown=false;if(rec&&!locked&&rec.state!=='inactive')rec.stop();},{capture:true});
   document.addEventListener('pointercancel',()=>{if(pointerDown){pointerDown=false;cancelled=true;if(rec&&rec.state!=='inactive')rec.stop();}},{capture:true});
   // No desplazar ni cerrar el teclado por enfocar el botón del micrófono.
@@ -21298,6 +21338,10 @@ html body #kpcDM .kpc-row > .kpc-av.dm img {
 .kp-img-loading{min-height:58px;display:flex;align-items:center;justify-content:center;gap:8px;color:#64748b;background:#e9eef5;border-radius:10px;padding:14px}
 .kp-chat26-bubble img{display:block;max-height:360px;border-radius:10px;margin-top:4px}
 .kp-chat26-compose #kpAudioLockControls{flex-basis:100%;order:10}
+html body .kp-chat26-compose{position:relative!important}
+html body .kp-chat26-compose #kpAudioLockControls.locked{position:absolute!important;left:8px;right:8px;bottom:calc(100% + 8px);z-index:100120;display:flex!important;align-items:center;gap:8px;flex-wrap:nowrap;min-height:54px;box-sizing:border-box;padding:7px 10px;border:1px solid rgba(239,68,68,.55);border-radius:16px;background:#171c29;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+html body .kp-chat26-compose #kpAudioLockControls.locked span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;font-size:12px}
+html body .kp-chat26-compose #kpAudioLockControls.locked button{flex:none;width:auto!important;min-width:76px;height:40px!important;padding:0 12px!important;border-radius:12px!important;font-size:13px!important;touch-action:manipulation}
 </style>
 <style id="kp-contact-chat-fixes">
 /* Mantener el campo enfocado y visible durante la grabación para que Android no cierre el teclado. */
