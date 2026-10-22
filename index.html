@@ -21086,10 +21086,25 @@ html body #kpCanalesList .kp-channel-user .kp-chat-avatar img,
 html body #kpcList .kpc-av.dm .kp-chat-avatar img {
   width:100%!important; height:100%!important; min-width:100%!important; min-height:100%!important;
   max-width:none!important; max-height:none!important; display:block!important;
-  object-fit:cover!important; object-position:50% 42%!important; border-radius:inherit!important;
+  object-fit:cover!important; object-position:center center!important; border-radius:inherit!important;
   margin:0!important; padding:0!important; background:transparent!important;
 }
-html body .kpmem .kpmem-hero > .kp-chat-avatar img { object-position:50% 45%!important; }
+html body .kpmem .kpmem-hero > .kp-chat-avatar img { object-position:center center!important; }
+/* Mensajes directos: avatar perfectamente circular, centrado y sin deformación */
+html body .kp-dm-card .kp-chat-avatar,
+html body .kp-dmpick-row .kp-chat-avatar,
+html body #kpcList .kpc-av.dm .kp-chat-avatar {
+  width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;
+  max-width:48px!important;max-height:48px!important;flex:0 0 48px!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;border-radius:50%!important;overflow:hidden!important;
+}
+html body .kp-dm-card .kp-chat-avatar img,
+html body .kp-dmpick-row .kp-chat-avatar img,
+html body #kpcList .kpc-av.dm .kp-chat-avatar img {
+  width:100%!important;height:100%!important;object-fit:cover!important;
+  object-position:50% 50%!important;transform:none!important;
+}
 </style>
 
 </body>
