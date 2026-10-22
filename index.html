@@ -21615,3 +21615,49 @@ html body #kpCanalesList .kp-chat-avatar.kp-channel-avatar .kp-channel-mark{widt
 html body #kpChat26 .kp-chat26-avatar:has(.kp-channel-mark){display:grid;place-items:center;background:linear-gradient(145deg,#172d3b,#172033);border:1px solid rgba(125,211,252,.3);color:#7dd3fc}
 html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;color:#7dd3fc}
 </style>
+
+
+<style id="kp-mike-modern-close-fix-v3">
+/* Mike moderno: el panel solo debe existir visualmente cuando está abierto. */
+#kpMikePanel:not(.open){display:none!important;pointer-events:none!important}
+#kpMikePanel.open{display:flex!important;pointer-events:auto!important}
+#kpMikePanel{background:radial-gradient(ellipse at 50% 100%,#1b1033 0%,#0b0b17 48%,#070811 100%)!important;border:1px solid #3e2863!important;border-radius:28px!important;box-shadow:0 24px 90px #000b,0 0 36px #7c3aed12!important}
+#kpMikePanel .kpm-head{background:linear-gradient(115deg,#100d1d,#151026 70%,#100d1d)!important;border-bottom:1px solid #34234c!important;padding:14px 13px!important}
+#kpMikePanel .kpm-title{font-size:17px!important;letter-spacing:-.35px!important}
+#kpMikePanel .kpm-sub{font-size:11px!important;color:#aa9bc5!important}
+#kpMikePanel .kpm-close{min-width:42px!important;min-height:42px!important;border:1px solid #ffffff0d!important;border-radius:15px!important;background:linear-gradient(145deg,#211a31,#171321)!important;color:#f3e8ff!important;display:grid!important;place-items:center!important;cursor:pointer!important;touch-action:manipulation!important;position:relative!important;z-index:5!important}
+#kpMikePanel #kpMikeClose{font-size:0!important}
+#kpMikePanel #kpMikeClose::before{content:'×';font-size:29px!important;line-height:1!important;font-weight:300!important}
+#kpMikePanel #kpMikeCompact{font-size:22px!important}
+#kpMikePanel .kpm-msg{border-radius:20px!important;box-shadow:0 8px 24px #0002!important}
+#kpMikePanel .kpm-msg.user,#kpMikePanel .kpm-msg.me{background:linear-gradient(135deg,#4c1d95,#6d28d9 60%,#7e22ce)!important;border:1px solid #8b5cf655!important}
+#kpMikePanel .kpm-msg.bot{background:linear-gradient(145deg,#1b1929,#21182f)!important;border:1px solid #4c3565!important}
+#kpMikePanel .kpm-voice-stage{background:linear-gradient(180deg,#17102600,#170d2a 100%)!important}
+@media(max-width:600px){#kpMikePanel{right:5px!important;bottom:5px!important;width:calc(100vw - 10px)!important;height:calc(100dvh - 10px)!important;border-radius:26px!important}}
+</style>
+<script id="kp-mike-close-reliable-v3">
+(function(){
+  function wireMikeClose(){
+    const panel=document.getElementById('kpMikePanel');
+    const close=document.getElementById('kpMikeClose');
+    if(!panel||!close||close.dataset.reliableClose==='1')return;
+    close.dataset.reliableClose='1';
+    close.setAttribute('type','button');
+    close.setAttribute('aria-label','Minimizar a Mike');
+    close.title='Minimizar a Mike';
+    close.addEventListener('click',function(ev){
+      ev.preventDefault();ev.stopPropagation();
+      panel.classList.remove('open');
+      panel.setAttribute('aria-hidden','true');
+      panel.style.setProperty('display','none','important');
+      const fab=document.getElementById('kpMikeFab');
+      if(fab&&window.CURRENT_USER){fab.style.removeProperty('display');fab.style.display='block';}
+      const dock=document.getElementById('kpMikeDock');
+      if(dock&&window.CURRENT_USER&&localStorage.getItem('kp_mike_fab')){
+        try{const pos=JSON.parse(localStorage.getItem('kp_mike_fab'));if(pos.docked){if(fab)fab.style.display='none';dock.style.display='block';}}catch(_){}
+      }
+    },true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wireMikeClose);else wireMikeClose();
+})();
+</script>
