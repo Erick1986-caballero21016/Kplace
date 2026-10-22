@@ -19979,7 +19979,7 @@ html body #view{padding-bottom:120px!important}
 @keyframes kpmVoiceWave{from{transform:scaleY(.25);opacity:.55}to{transform:scaleY(1.25);opacity:1}}
 .kpm-voice-hint{font-size:15px;font-weight:650;color:#f3e8ff;margin-bottom:12px;min-height:22px}
 .kpm-mic-main{width:76px;height:76px;border-radius:50%;border:1px solid #e9d5ff;background:linear-gradient(145deg,#c084fc,#6d28d9);color:white;display:grid;place-items:center;box-shadow:0 0 0 8px #a855f71c,0 0 30px #9333ea55;cursor:pointer;touch-action:manipulation;transition:transform .15s,box-shadow .15s}
-.kpm-mic-main:active{transform:scale(.95)}.kpm-mic-symbol{font-size:31px;line-height:1}
+.kpm-mic-main:active{transform:scale(.95)}.kpm-mic-symbol{width:31px;height:31px;display:block;line-height:1;stroke:currentColor}
 #kpMikePanel.voice-listening .kpm-mic-main{background:linear-gradient(145deg,#a855f7,#6d28d9);border-color:#e9d5ff;box-shadow:0 0 0 9px #a855f71c,0 0 32px #9333ea66;animation:kpmMicPulse 1.6s infinite}
 @keyframes kpmMicPulse{50%{box-shadow:0 0 0 16px #a855f70b,0 0 35px #9333ea66}}
 .kpm-voice-caption{color:#a99abf;font-size:11px;margin-top:14px;max-width:290px;line-height:1.4}
@@ -20002,7 +20002,7 @@ html body #view{padding-bottom:120px!important}
  <div class="kpm-voice-stage" id="kpMikeVoiceStage">
   <div class="kpm-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="kpm-voice-hint" id="kpMikeVoiceHint">Toca el micrófono y habla con Mike</div>
-  <button id="kpMikeVoiceMain" class="kpm-mic-main" type="button" aria-label="Empezar a hablar con Mike"><span class="kpm-mic-symbol">🎙</span></button>
+  <button id="kpMikeVoiceMain" class="kpm-mic-main" type="button" aria-label="Empezar a hablar con Mike"><svg class="kpm-mic-symbol" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <div class="kpm-voice-caption">No necesitas escribir. Tu conversación aparecerá aquí abajo.</div>
  </div>
  <div class="kpm-compose"><div class="kpm-preview" id="kpMikePreview"><img id="kpMikePreviewImg" alt="Vista previa"><span id="kpMikePreviewName"></span><button class="kpm-tool" id="kpMikeRemoveImage" aria-label="Quitar foto">×</button></div><div class="kpm-tools"><button class="kpm-tool" id="kpMikeAttach" title="Adjuntar imagen" aria-label="Adjuntar imagen">📎</button><button class="kpm-tool" id="kpMikeVoice" title="Hablar con Mike en vivo" aria-label="Hablar en vivo">🎙️</button><textarea id="kpMikeInput" class="kpm-input" rows="1" placeholder="Escríbele a Mike…"></textarea><button class="kpm-send" id="kpMikeSend" aria-label="Enviar">➤</button></div><input id="kpMikeFile" type="file" accept="image/*" hidden></div>
@@ -20670,7 +20670,7 @@ function readImage(file){
 /* ===== Voz en vivo (Gemini Live) ===== */
 const live={ws:null,ready:false,stopping:false,stream:null,ctx:null,out:null,node:null,src:null,nextT:0,sources:[],inB:null,inT:'',outB:null,outT:'',buf:[],bufLen:0,speakT:0,idx:0,models:[]};
 const AC=window.AudioContext||window.webkitAudioContext;
-function liveUI(on,txt,speak){liveBar.classList.toggle('on',!!on);liveBar.classList.toggle('speak',!!speak);if(txt)liveTxt.textContent=txt;voiceBtn.textContent=on?'⏹️':'🎙️';fab.classList.toggle('live',!!on);dock.classList.toggle('live',!!on);const hint=document.getElementById('kpMikeVoiceHint');if(hint&&txt)hint.textContent=txt;panel.classList.toggle('voice-listening',!!on&&!speak);panel.classList.toggle('voice-speaking',!!on&&!!speak);const vm=document.getElementById('kpMikeVoiceMain');if(vm){vm.setAttribute('aria-label',on?'Terminar conversación por voz':'Empezar a hablar con Mike');const icon=vm.querySelector('.kpm-mic-symbol');if(icon)icon.textContent=on?'■':'🎙';}}
+function liveUI(on,txt,speak){liveBar.classList.toggle('on',!!on);liveBar.classList.toggle('speak',!!speak);if(txt)liveTxt.textContent=txt;voiceBtn.textContent=on?'⏹️':'🎙️';fab.classList.toggle('live',!!on);dock.classList.toggle('live',!!on);const hint=document.getElementById('kpMikeVoiceHint');if(hint&&txt)hint.textContent=txt;panel.classList.toggle('voice-listening',!!on&&!speak);panel.classList.toggle('voice-speaking',!!on&&!!speak);const vm=document.getElementById('kpMikeVoiceMain');if(vm){vm.setAttribute('aria-label',on?'Terminar conversación por voz':'Empezar a hablar con Mike');const icon=vm.querySelector('.kpm-mic-symbol');if(icon){if(on){icon.setAttribute('viewBox','0 0 24 24');icon.innerHTML='<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>';icon.setAttribute('aria-hidden','true');}else{icon.setAttribute('viewBox','0 0 24 24');icon.innerHTML='<rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';}}}}
 const b64=u8=>{let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s)};
 function resample(x,from){if(from===16000)return x;const r=from/16000,n=Math.max(1,Math.floor(x.length/r)),o=new Float32Array(n);for(let i=0;i<n;i++){const s=Math.floor(i*r),e=Math.min(x.length,Math.floor((i+1)*r));let a=0,c=0;for(let j=s;j<e;j++){a+=x[j];c++}o[i]=c?a/c:x[s]||0}return o}
 function pcm16(f){const o=new Int16Array(f.length);for(let i=0;i<f.length;i++){const v=Math.max(-1,Math.min(1,f[i]));o[i]=v<0?v*32768:v*32767}return b64(new Uint8Array(o.buffer))}
@@ -20823,6 +20823,26 @@ visibility();setInterval(visibility,1200);
 window.KPMike={stats,buscar:toolBuscar,runTool,open,minimize};
 })();
 </script>
+
+<style id="kp-mike-layout-order-fix-v2">
+/* Orden explícito: encabezado arriba, conversación en medio y controles de voz abajo. */
+#kpMikePanel.open{display:flex!important;flex-direction:column!important}
+#kpMikePanel>.kpm-head{order:0!important;flex:0 0 auto!important}
+#kpMikePanel>#kpMikeMessages{order:1!important;flex:1 1 0!important;min-height:0!important;max-height:none!important;overflow-y:auto!important}
+#kpMikePanel>#kpMikeStatus{order:2!important;flex:0 0 auto!important}
+#kpMikePanel>#kpMikeLive{order:3!important;flex:0 0 auto!important}
+#kpMikePanel>#kpMikeVoiceStage{order:4!important;flex:0 0 auto!important;min-height:172px!important;padding:8px 14px 14px!important;background:linear-gradient(180deg,#171025 0%,#100b1c 100%)!important;border-top:1px solid #38224f!important}
+#kpMikePanel>#kpMikeVoiceStage .kpm-wave{margin:0 0 8px!important;height:48px!important}
+#kpMikePanel>#kpMikeVoiceStage .kpm-voice-hint{margin:0 0 8px!important;color:#d8b4fe!important}
+#kpMikePanel>#kpMikeVoiceStage .kpm-mic-main{width:66px!important;height:66px!important;background:linear-gradient(145deg,#c084fc 0%,#9333ea 48%,#6d28d9 100%)!important;border-color:#e9d5ff!important;box-shadow:0 0 0 7px #a855f71c,0 0 28px #9333ea66!important}
+#kpMikePanel>#kpMikeVoiceStage .kpm-voice-caption{margin-top:8px!important;color:#a99abf!important}
+#kpMikePanel>.kpm-compose{display:none!important;order:5!important}
+#kpMikePanel>.kpm-foot{order:6!important;flex:0 0 auto!important}
+#kpMikePanel .kpm-msg.user,#kpMikePanel .kpm-msg.me{background:linear-gradient(135deg,#7e22ce,#6d28d9,#9333ea)!important;border-color:#a855f7!important}
+#kpMikePanel .kpm-msg.bot{background:linear-gradient(135deg,#21172f,#241a35)!important;border-color:#49315f!important}
+@media(max-width:600px){#kpMikePanel>#kpMikeVoiceStage{min-height:164px!important;padding:6px 12px 10px!important}#kpMikePanel>#kpMikeVoiceStage .kpm-wave{height:42px!important}}
+</style>
+
 <!-- FIN MIKE -->
 
 <style id="kp-avatar-round-fix">
