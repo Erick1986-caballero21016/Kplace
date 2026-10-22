@@ -13479,7 +13479,18 @@ async function blobUrl(id){
   if(!m)throw new Error('no existe');
   const ps=await Promise.all(Array.from({length:m.partes},(_,i)=>ref.collection('p').doc(String(i)).get()));
   const arr=ps.map(x=>Uint8Array.from(atob(x.data().d),c=>c.charCodeAt(0)));
-  return cache[id]=URL.createObjectURL(new Blob(arr,{type:m.tipo}));
+  let tipo=m.tipo;
+  try{
+    const h=arr[0]||[];
+    if(/^audio\//.test(String(tipo||''))){
+      if(String.fromCharCode(h[4],h[5],h[6],h[7])==='ftyp')tipo='audio/mp4';
+      else if(h[0]===0x1A&&h[1]===0x45&&h[2]===0xDF&&h[3]===0xA3)tipo='audio/webm';
+      else if(String.fromCharCode(h[0],h[1],h[2])==='ID3'||(h[0]===0xFF&&(h[1]&0xE0)===0xE0))tipo='audio/mpeg';
+      else if(String.fromCharCode(h[0],h[1],h[2],h[3])==='RIFF')tipo='audio/wav';
+      else if(String.fromCharCode(h[0],h[1],h[2],h[3])==='OggS')tipo='audio/ogg';
+    }
+  }catch(e){}
+  return cache[id]=URL.createObjectURL(new Blob(arr,{type:tipo}));
 }
 function scan(root){
   if(!root.querySelectorAll)return;
@@ -20740,5 +20751,137 @@ window.KPMike={stats,buscar:toolBuscar,runTool,open,minimize};
 })();
 </script>
 <!-- FIN MIKE -->
+
+<style id="kp-avatar-round-fix">
+/* Fotos de perfil: siempre círculo perfecto, sin forma de huevo */
+html body .kpw-av{width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-width:44px!important;max-height:44px!important;aspect-ratio:1/1;border-radius:50%!important;overflow:hidden!important;position:relative!important;flex:0 0 44px!important;box-sizing:border-box}
+html body .kpw-av img{position:absolute!important;top:0;left:0;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;border-radius:50%!important;display:block}
+html body .kp-chat-avatar{aspect-ratio:1/1;flex:none!important;overflow:hidden!important}
+html body .kp-chat-avatar img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;display:block;border-radius:inherit}
+html body .kpc-av.dm,html body .kpc-av.dm .kp-chat-avatar,html body #kpCanalesList .kpc-av.dm .kp-chat-avatar,html body #kpcList .kpc-av.dm .kp-chat-avatar{border-radius:50%!important;overflow:hidden!important}
+html body .kpc-av.dm{aspect-ratio:1/1}
+html body .kp-chat26-avatar,html body .kp-avatar,html body .kp-profile-photo{aspect-ratio:1/1}
+html body .kp-chat26-avatar img,html body .kp-avatar img,html body .kp-profile-photo img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important}
+/* Botón enviar (cuando hay texto escrito) */
+html body .kp-chat-enterprise .kp-wa-mic.kp-send-mode{background:linear-gradient(135deg,#8b5cf6,#6d28d9)!important;color:#fff!important}
+html body .kp-chat-enterprise .kp-wa-mic.kp-send-mode svg{width:22px;height:22px;display:block;margin-left:2px}
+</style>
+<script id="kp-chat-send-audio-fix">
+(function(){
+  if(typeof KP==='undefined')return;
+  const $=id=>document.getElementById(id);
+
+  /* ---------- 1) Micrófono <-> Enviar según haya texto ---------- */
+  const SEND_SVG='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z"/></svg>';
+  function sync(){
+    const inp=$('kpChatText'),b=$('kpChatMicBtn');
+    if(!inp||!b)return;
+    const rec=KP._recorder&&KP._recorder.state==='recording';
+    const has=inp.value.trim().length>0&&!rec;
+    if(has&&b.dataset.kpmode!=='send'){
+      b.dataset.kpmode='send';b.classList.add('kp-send-mode');b.innerHTML=SEND_SVG;
+      b.title='Enviar';b.setAttribute('aria-label','Enviar');
+    }else if(!has&&b.dataset.kpmode==='send'){
+      b.dataset.kpmode='mic';b.classList.remove('kp-send-mode');b.textContent=rec?'⏹':'🎤';
+      b.title='Nota de voz';b.setAttribute('aria-label','Nota de voz');
+    }
+  }
+  document.addEventListener('input',e=>{if(e.target&&e.target.id==='kpChatText')sync();},true);
+  /* En modo enviar, el toque envía el mensaje en vez de grabar */
+  document.addEventListener('click',e=>{
+    const b=e.target&&e.target.closest?e.target.closest('#kpChatMicBtn'):null;
+    if(!b||b.dataset.kpmode!=='send')return;
+    e.preventDefault();e.stopImmediatePropagation();
+    const inp=$('kpChatText');if(!inp)return;
+    inp.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+    [60,250,700].forEach(ms=>setTimeout(sync,ms));
+    try{inp.focus({preventScroll:true});}catch(x){}
+  },true);
+  setInterval(sync,300);
+
+  /* ---------- 2) Grabación compatible con iPhone y Android ---------- */
+  function pickMime(){
+    if(!window.MediaRecorder||!MediaRecorder.isTypeSupported)return '';
+    return ['audio/mp4;codecs=mp4a.40.2','audio/mp4','audio/webm;codecs=opus','audio/webm'].find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch(e){return false;}})||'';
+  }
+  async function decode(blob){
+    const ab=await blob.arrayBuffer();
+    const AC=window.AudioContext||window.webkitAudioContext;const ctx=new AC();
+    try{return await new Promise((res,rej)=>{const pr=ctx.decodeAudioData(ab,res,rej);if(pr&&pr.then)pr.then(res,rej);});}
+    finally{try{ctx.close();}catch(e){}}
+  }
+  async function toMono(buf,rate){
+    const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+    const off=new OAC(1,Math.max(1,Math.ceil(buf.duration*rate)),rate);
+    const src=off.createBufferSource();src.buffer=buf;src.connect(off.destination);src.start(0);
+    const out=await new Promise((res,rej)=>{const pr=off.startRendering();if(pr&&pr.then)pr.then(res,rej);else off.oncomplete=ev=>res(ev.renderedBuffer);});
+    return out.getChannelData(0);
+  }
+  function toInt16(f){const o=new Int16Array(f.length);for(let i=0;i<f.length;i++){const v=Math.max(-1,Math.min(1,f[i]));o[i]=v<0?v*32768:v*32767;}return o;}
+  function wav(i16,rate){
+    const b=new ArrayBuffer(44+i16.length*2),d=new DataView(b);
+    const w=(o,t)=>{for(let i=0;i<t.length;i++)d.setUint8(o+i,t.charCodeAt(i));};
+    w(0,'RIFF');d.setUint32(4,36+i16.length*2,true);w(8,'WAVE');w(12,'fmt ');d.setUint32(16,16,true);d.setUint16(20,1,true);d.setUint16(22,1,true);
+    d.setUint32(24,rate,true);d.setUint32(28,rate*2,true);d.setUint16(32,2,true);d.setUint16(34,16,true);w(36,'data');d.setUint32(40,i16.length*2,true);
+    new Int16Array(b,44).set(i16);return new Blob([b],{type:'audio/wav'});
+  }
+  function loadLame(){return new Promise(res=>{
+    if(window.lamejs)return res(true);
+    const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';
+    s.onload=()=>res(!!window.lamejs);s.onerror=()=>res(false);document.head.appendChild(s);
+  });}
+  /* webm/ogg (Chrome Android) no suena en Safari: se convierte a MP3 (o WAV si no carga el codificador) */
+  async function universal(blob){
+    const rate=22050,pcm=toInt16(await toMono(await decode(blob),rate));
+    if(await loadLame()){
+      const enc=new lamejs.Mp3Encoder(1,rate,48),parts=[];
+      for(let i=0;i<pcm.length;i+=1152){const c=enc.encodeBuffer(pcm.subarray(i,i+1152));if(c.length)parts.push(new Uint8Array(c));}
+      const f=enc.flush();if(f.length)parts.push(new Uint8Array(f));
+      return {blob:new Blob(parts,{type:'audio/mpeg'}),ext:'mp3'};
+    }
+    return {blob:wav(pcm,rate),ext:'wav'};
+  }
+  KP.chatToggleRecording=async function(path){
+    if(KP._recorder&&KP._recorder.state==='recording'){KP._recorder.stop();return;}
+    if(!window.MediaRecorder||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Tu navegador no permite grabar audio');return;}
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime=pickMime(),chunks=[];
+      const rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+      rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+      rec.onstop=async()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        const btn=$('kpChatMicBtn');if(btn){btn.classList.remove('recording');btn.dataset.kpmode='mic';btn.textContent='🎤';}
+        const type=String(rec.mimeType||mime||(chunks[0]&&chunks[0].type)||'audio/mp4').split(';')[0];
+        let blob=new Blob(chunks,{type});
+        if(blob.size<500){toast('Nota de voz muy corta');return;}
+        let ext=/webm/.test(type)?'webm':/ogg/.test(type)?'ogg':'m4a';
+        if(/webm|ogg/.test(type)){
+          try{toast('Preparando audio…');const r=await universal(blob);blob=r.blob;ext=r.ext;}catch(e){console.warn('No se pudo convertir el audio',e);}
+        }
+        try{
+          toast('Enviando nota de voz…');
+          const file=new File([blob],'nota_'+Date.now()+'.'+ext,{type:blob.type});
+          const url=await subirArchivoStorage('chat_kp',file);
+          await db.collection(path).add({autor:CURRENT_USER.nombre,autorUsuario:CURRENT_USER.usuario||CURRENT_USER.nombre,rol:window.kpRoleOf(CURRENT_USER),sucursalId:window.kpUserBranch(CURRENT_USER),tipo:'audio',url,audioMime:blob.type,ts:firebase.firestore.FieldValue.serverTimestamp()});
+        }catch(e){console.error(e);toast('No se pudo enviar la nota de voz');}
+      };
+      KP._recorder=rec;rec.start();
+      const btn=$('kpChatMicBtn');if(btn){btn.classList.add('recording');btn.textContent='⏹';}
+      toast('Grabando… toca otra vez para enviar');
+    }catch(e){console.error(e);toast('No se pudo acceder al micrófono');}
+  };
+
+  /* ---------- 3) iPhone: reproducir audio en línea ---------- */
+  function fixAudio(root){
+    if(!root||!root.querySelectorAll)return;
+    const l=root.matches&&root.matches('audio')?[root]:[];
+    root.querySelectorAll('audio').forEach(a=>l.push(a));
+    l.forEach(a=>{a.setAttribute('playsinline','');a.setAttribute('webkit-playsinline','');if(!a.getAttribute('preload'))a.setAttribute('preload','metadata');});
+  }
+  new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>n.nodeType===1&&fixAudio(n)))).observe(document.documentElement,{childList:true,subtree:true});
+  fixAudio(document);
+})();
+</script>
 </body>
 </html>
