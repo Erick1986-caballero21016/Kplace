@@ -19956,33 +19956,35 @@ html body #view{padding-bottom:120px!important}
 .kpm-foot{padding:0 12px 8px;color:#918aa7;font-size:10px;background:#151622}.kpm-msg a{color:#c4b5fd}
 </style>
 <style id="kp-mike-voice-only">
-#kpMikePanel{width:min(460px,calc(100vw - 16px));height:min(820px,calc(100dvh - 16px));right:8px;bottom:8px;border-radius:28px;background:radial-gradient(ellipse at 50% 28%,#102a38 0%,#0b1720 38%,#080e15 78%);border:1px solid #203a49}
-#kpMikePanel .kpm-head{background:#0b141c;border-bottom:1px solid #20313c;padding:15px 14px}
-#kpMikePanel .kpm-avatar{border-color:#19b9ed;box-shadow:0 0 18px #12b9ee38}
+#kpMikePanel{display:flex;flex-direction:column;overflow:hidden;width:min(460px,calc(100vw - 16px));height:min(820px,calc(100dvh - 16px));right:8px;bottom:8px;border-radius:28px;background:radial-gradient(ellipse at 50% 78%,#24143f 0%,#11101f 42%,#080a12 82%);border:1px solid #49316d}
+#kpMikePanel .kpm-head{background:#100d1c;border-bottom:1px solid #302144;padding:15px 14px}
+#kpMikePanel .kpm-avatar{border-color:#a78bfa;box-shadow:0 0 18px #8b5cf638}
 #kpMikePanel .kpm-title{color:#f1f8fc}
-#kpMikePanel .kpm-sub{color:#91a9b7}
+#kpMikePanel .kpm-sub{color:#b4a6c9}
 #kpMikePanel .kpm-chips,#kpMikePanel .kpm-compose{display:none!important}
 #kpMikePanel.compact .kpm-voice-stage{display:none}
-#kpMikePanel #kpMikeMessages{flex:1;min-height:100px;background:transparent;padding:12px 14px 18px;overflow:auto;scroll-behavior:smooth}
+#kpMikePanel #kpMikeMessages{flex:1 1 auto;min-height:80px;background:transparent;padding:12px 14px 18px;overflow:auto;scroll-behavior:smooth}
 #kpMikePanel .kpm-msg{max-width:92%;font-size:14px;line-height:1.5}
-#kpMikePanel .kpm-status{background:transparent;color:#8fa8b6;padding:4px 16px}
-#kpMikePanel .kpm-live{margin:0 14px 10px;border:1px solid #214858;border-radius:14px;background:#0c202a;color:#a9d7e8}
-.kpm-voice-stage{flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px 14px 14px;min-height:245px;background:linear-gradient(180deg,#0b1821aa,#0b131c00)}
-.kpm-wave{height:86px;width:min(300px,90%);display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:15px}
-.kpm-wave i{display:block;width:7px;height:16px;border-radius:99px;background:linear-gradient(180deg,#38d7ff,#4877ff 55%,#a36bff);opacity:.88;box-shadow:0 0 12px #278aff36;transform:scaleY(.6);transition:height .2s}
+#kpMikePanel .kpm-msg.user,#kpMikePanel .kpm-msg.me{background:linear-gradient(135deg,#6d28d9,#7c3aed);border-color:#8b5cf6;color:#fff}
+#kpMikePanel .kpm-msg.bot{background:#211a30;border-color:#3b2b52;color:#f1eaff}
+#kpMikePanel .kpm-status{background:transparent;color:#b4a6c9;padding:4px 16px}
+#kpMikePanel .kpm-live{margin:0 14px 8px;border:1px solid #49316d;border-radius:14px;background:#1b142b;color:#d8c7ff}
+.kpm-voice-stage{flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 14px 14px;min-height:205px;background:linear-gradient(180deg,#20133388,#100d1c00)}
+.kpm-wave{height:66px;width:min(300px,90%);display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:15px}
+.kpm-wave i{display:block;width:7px;height:16px;border-radius:99px;background:linear-gradient(180deg,#e0c7ff,#a855f7 55%,#6d28d9);opacity:.92;box-shadow:0 0 12px #a855f736;transform:scaleY(.6);transition:height .2s}
 .kpm-wave i:nth-child(3n){height:34px}.kpm-wave i:nth-child(4n){height:52px}.kpm-wave i:nth-child(5n){height:24px}.kpm-wave i:nth-child(7n){height:68px}
 #kpMikePanel.voice-listening .kpm-wave i{animation:kpmVoiceWave .72s ease-in-out infinite alternate}
 #kpMikePanel.voice-listening .kpm-wave i:nth-child(2n){animation-delay:-.35s}#kpMikePanel.voice-listening .kpm-wave i:nth-child(3n){animation-delay:-.52s}
-#kpMikePanel.voice-speaking .kpm-wave i{animation:kpmVoiceWave .42s ease-in-out infinite alternate;background:linear-gradient(180deg,#c4a5ff,#4c8dff)}
+#kpMikePanel.voice-speaking .kpm-wave i{animation:kpmVoiceWave .42s ease-in-out infinite alternate;background:linear-gradient(180deg,#f0abfc,#a855f7)}
 @keyframes kpmVoiceWave{from{transform:scaleY(.25);opacity:.55}to{transform:scaleY(1.25);opacity:1}}
-.kpm-voice-hint{font-size:15px;font-weight:650;color:#e5f6ff;margin-bottom:15px;min-height:22px}
-.kpm-mic-main{width:76px;height:76px;border-radius:50%;border:1px solid #8ee9ff;background:linear-gradient(145deg,#13bde8,#1678c9);color:white;display:grid;place-items:center;box-shadow:0 0 0 8px #12a9df17,0 0 30px #11bce955;cursor:pointer;touch-action:manipulation;transition:transform .15s,box-shadow .15s}
+.kpm-voice-hint{font-size:15px;font-weight:650;color:#f3e8ff;margin-bottom:12px;min-height:22px}
+.kpm-mic-main{width:76px;height:76px;border-radius:50%;border:1px solid #e9d5ff;background:linear-gradient(145deg,#c084fc,#6d28d9);color:white;display:grid;place-items:center;box-shadow:0 0 0 8px #a855f71c,0 0 30px #9333ea55;cursor:pointer;touch-action:manipulation;transition:transform .15s,box-shadow .15s}
 .kpm-mic-main:active{transform:scale(.95)}.kpm-mic-symbol{font-size:31px;line-height:1}
-#kpMikePanel.voice-listening .kpm-mic-main{background:linear-gradient(145deg,#f05273,#bd2855);border-color:#ff9ab0;box-shadow:0 0 0 9px #f052731c,0 0 32px #f0527355;animation:kpmMicPulse 1.6s infinite}
-@keyframes kpmMicPulse{50%{box-shadow:0 0 0 16px #f052730b,0 0 35px #f0527366}}
-.kpm-voice-caption{color:#7794a4;font-size:11px;margin-top:14px;max-width:290px;line-height:1.4}
-#kpMikePanel .kpm-foot{background:#081119;color:#607d8c;padding:8px 12px 10px;text-align:center;border-top:1px solid #182d39}
-@media(max-width:600px){#kpMikePanel{width:calc(100vw - 10px);height:calc(100dvh - 10px);right:5px;bottom:5px;border-radius:24px}.kpm-voice-stage{min-height:225px;padding-top:12px}.kpm-wave{height:68px}}
+#kpMikePanel.voice-listening .kpm-mic-main{background:linear-gradient(145deg,#a855f7,#6d28d9);border-color:#e9d5ff;box-shadow:0 0 0 9px #a855f71c,0 0 32px #9333ea66;animation:kpmMicPulse 1.6s infinite}
+@keyframes kpmMicPulse{50%{box-shadow:0 0 0 16px #a855f70b,0 0 35px #9333ea66}}
+.kpm-voice-caption{color:#a99abf;font-size:11px;margin-top:14px;max-width:290px;line-height:1.4}
+#kpMikePanel .kpm-foot{background:#0d0a16;color:#87769f;padding:8px 12px 10px;text-align:center;border-top:1px solid #2a1c3d}
+@media(max-width:600px){#kpMikePanel{width:calc(100vw - 10px);height:calc(100dvh - 10px);right:5px;bottom:5px;border-radius:24px}.kpm-voice-stage{min-height:190px;padding-top:8px}.kpm-wave{height:54px}}
 </style>
 <button id="kpMikeFab" type="button" aria-label="Abrir a Mike" title="Hablar con Mike"></button>
 <section id="kpMikePanel" aria-label="Chat con Mike" aria-hidden="true">
@@ -19994,15 +19996,15 @@ html body #view{padding-bottom:120px!important}
   <button class="kpm-chip" data-kpm-attach="1">📷 Enviar imagen</button>
   <button class="kpm-chip" data-kpm-prompt="Necesito ayuda con la app. Pregúntame qué estoy tratando de hacer.">🛠 Ayuda</button>
  </div>
+ <div id="kpMikeMessages" aria-live="polite"></div>
+ <div class="kpm-status" id="kpMikeStatus"></div>
+ <div class="kpm-live" id="kpMikeLive"><span class="kpm-orb"></span><span id="kpMikeLiveTxt">Conectando…</span><button class="kpm-end" id="kpMikeLiveEnd">Terminar</button></div>
  <div class="kpm-voice-stage" id="kpMikeVoiceStage">
   <div class="kpm-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="kpm-voice-hint" id="kpMikeVoiceHint">Toca el micrófono y habla con Mike</div>
   <button id="kpMikeVoiceMain" class="kpm-mic-main" type="button" aria-label="Empezar a hablar con Mike"><span class="kpm-mic-symbol">🎙</span></button>
   <div class="kpm-voice-caption">No necesitas escribir. Tu conversación aparecerá aquí abajo.</div>
  </div>
- <div id="kpMikeMessages" aria-live="polite"></div>
- <div class="kpm-status" id="kpMikeStatus"></div>
- <div class="kpm-live" id="kpMikeLive"><span class="kpm-orb"></span><span id="kpMikeLiveTxt">Conectando…</span><button class="kpm-end" id="kpMikeLiveEnd">Terminar</button></div>
  <div class="kpm-compose"><div class="kpm-preview" id="kpMikePreview"><img id="kpMikePreviewImg" alt="Vista previa"><span id="kpMikePreviewName"></span><button class="kpm-tool" id="kpMikeRemoveImage" aria-label="Quitar foto">×</button></div><div class="kpm-tools"><button class="kpm-tool" id="kpMikeAttach" title="Adjuntar imagen" aria-label="Adjuntar imagen">📎</button><button class="kpm-tool" id="kpMikeVoice" title="Hablar con Mike en vivo" aria-label="Hablar en vivo">🎙️</button><textarea id="kpMikeInput" class="kpm-input" rows="1" placeholder="Escríbele a Mike…"></textarea><button class="kpm-send" id="kpMikeSend" aria-label="Enviar">➤</button></div><input id="kpMikeFile" type="file" accept="image/*" hidden></div>
  <div class="kpm-foot">Mike puede equivocarse. Las guías solo se crean cuando tú confirmas con el botón.</div>
 </section>
