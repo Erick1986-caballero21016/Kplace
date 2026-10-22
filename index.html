@@ -9996,6 +9996,14 @@ KP.Channels.refreshMentionBadge = async function(){
   }catch(e){ console.error('refreshMentionBadge', e); }
 };
 
+window.kpChannelIconHtml = function(c){
+  const tipo=String(c&&c.tipo||'').toLowerCase(),nombre=String(c&&c.nombre||'');
+  if(tipo==='general'||(!tipo&&/general/i.test(nombre)))return '<svg class="kp-channel-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><circle cx="32" cy="32" r="24"/><ellipse cx="32" cy="32" rx="11" ry="24"/><path d="M9 25h46M9 39h46M32 8c7 7 11 15 11 24S39 49 32 56M32 8c-7 7-11 15-11 24s4 17 11 24"/></svg>';
+  if(tipo==='repartidores')return '<svg class="kp-channel-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><circle cx="17" cy="47" r="6"/><circle cx="48" cy="47" r="6"/><path d="M23 46h15l8-15h-9l-6-9H21l-5 11h15M37 31l-5 15M42 20h8l5 7M10 36h7"/></svg>';
+  if(c&&c.soloLectura)return '<svg class="kp-channel-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M9 27h14l26-13v36L23 37H9z"/><path d="M23 37l5 15h12l-6-12M55 24l5-5M55 39l5 5"/></svg>';
+  return '<span class="kp-channel-mark kp-channel-mark-text" aria-hidden="true">#</span>';
+};
+
 KP.Channels.render = async function(){
   const v=document.getElementById('view'); if(!v) return;
   KP.Channels._currentOpenId = null;
@@ -10022,7 +10030,7 @@ KP.Channels.render = async function(){
     const ico = c.tipo==='general'?'🌐':c.tipo==='repartidores'?'🛵':c.soloLectura?'📢':'#';
     const sub = (c.miembros||[]).length ? (c.miembros.length+' integrantes') : 'Todo el equipo';
     const lockTag = c.soloLectura ? ' · solo lectura' : '';
-    const firstMember=(VENDEDORES||[]).find(u=>(c.miembros||[]).includes(KP.Channels._memberId(u))); const channelAvatar=c.tipo==='general'?'<span class="kp-chat-avatar" style="width:40px;height:40px">🌐</span>':c.tipo==='repartidores'?'<span class="kp-chat-avatar" style="width:40px;height:40px">🛵</span>':'<span class="kp-chat-avatar" style="width:40px;height:40px">'+(/sucursal/i.test(c.nombre||'')?'🏬':'#')+'</span>'; return `<div class="card" data-name="${esc((c.nombre||'').toLowerCase())}" style="cursor:pointer;max-width:420px" onclick="KP.Channels.open('${c.id}')"><div class="row"><div class="kp-channel-user">${channelAvatar}<div><div class="name" style="font-family:inherit;font-size:15px">${ico} ${esc(c.nombre)}</div><div class="meta">${esc(sub)}${lockTag}</div></div></div><div style="display:flex;gap:5px;align-items:center">${mentions?`<span class="badge" style="background:linear-gradient(135deg,#ffb648,#f0932b)">@${mentions}</span>`:''}${unread?`<span class="badge">${unread}</span>`:''}</div></div></div>`;
+    const firstMember=(VENDEDORES||[]).find(u=>(c.miembros||[]).includes(KP.Channels._memberId(u))); const channelAvatar='<span class="kp-chat-avatar kp-channel-avatar" aria-hidden="true">'+window.kpChannelIconHtml(c)+'</span>'; return `<div class="card" data-name="${esc((c.nombre||'').toLowerCase())}" style="cursor:pointer;max-width:420px" onclick="KP.Channels.open('${c.id}')"><div class="row"><div class="kp-channel-user">${channelAvatar}<div><div class="name" style="font-family:inherit;font-size:15px">${ico} ${esc(c.nombre)}</div><div class="meta">${esc(sub)}${lockTag}</div></div></div><div style="display:flex;gap:5px;align-items:center">${mentions?`<span class="badge" style="background:linear-gradient(135deg,#ffb648,#f0932b)">@${mentions}</span>`:''}${unread?`<span class="badge">${unread}</span>`:''}</div></div></div>`;
   }));
   box.innerHTML = rows.join('') || '<div class="kp-empty">No hay canales disponibles todavía.</div>';
 };
@@ -10738,13 +10746,15 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
         if(visibles&&visibles.length) return visibles.map(c=>({
           id:'channel:'+c.id,
           canalId:c.id,
-          nombre:c.nombre||'Canal',
-          sub:(c.miembros||[]).length?((c.miembros||[]).length+' integrantes'):'Todo el equipo',
-          icon:c.tipo==='general'?'🌐':c.tipo==='repartidores'?'🛵':c.soloLectura?'📢':'#',
+           nombre:c.nombre||'Canal',
+           tipo:c.tipo,
+           soloLectura:!!c.soloLectura,
+           sub:(c.miembros||[]).length?((c.miembros||[]).length+' integrantes'):'Todo el equipo',
+           icon:window.kpChannelIconHtml(c),
           path:'canalMensajes_'+c.id
         }));
       }catch(e){}
-      return [{id:'channel:general',canalId:'general',nombre:'General',sub:'Canal de toda la empresa',icon:'🌐',path:'canalMensajes_general'}];
+       return [{id:'channel:general',canalId:'general',tipo:'general',nombre:'General',sub:'Canal de toda la empresa',icon:window.kpChannelIconHtml({tipo:'general',nombre:'General'}),path:'canalMensajes_general'}];
     })();
     const view=document.getElementById('view');
     const selected=KPCHAT26.selected;
@@ -16992,7 +17002,7 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-composer,html bod
   KP.Channels.showMembers=function(id){
     var c=(KP.Channels.list||[]).find(function(x){return x.id===id;});if(!c)return;
     var L=miembros(c).sort(function(a,b){return (b.yo?1:0)-(a.yo?1:0)||String(a.u.nombre||'').localeCompare(String(b.u.nombre||''));});
-    var ico=c.tipo==='general'?'\uD83C\uDF10':c.tipo==='repartidores'?'\uD83D\uDEF5':c.soloLectura?'\uD83D\uDCE2':String(c.nombre||'#').slice(0,2).toUpperCase();
+    var ico=window.kpChannelIconHtml(c);
     var mods=c.moderadores||[];
     var rows=L.map(function(m){
       var u=m.u,av=(typeof window.kpAvatarHtml==='function')?window.kpAvatarHtml(u,u.nombre,46):'<span class="kp-chat-avatar" style="width:46px;height:46px">'+esc(String(u.nombre||'?').slice(0,1))+'</span>';
@@ -17000,7 +17010,7 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-composer,html bod
       return '<div class="kpmem-row" data-id="'+esc(m.id)+'" data-nm="'+esc(u.nombre||'')+'">'+av+'<div><div class="nm">'+esc(u.nombre||'')+(m.yo?' (T\u00fa)':'')+'</div><div class="sb">'+esc(cargo)+'</div></div>'+(mods.indexOf(m.id)>=0?'<span class="tag">Moderador</span>':'')+(m.yo?'':'<span class="kpmem-dm" role="button" aria-label="Enviar mensaje privado">\u2709\uFE0F</span>')+'</div>';
     }).join('');
     var o=document.createElement('div');o.className='kpmem';
-    o.innerHTML='<div class="kpmem-top"><button class="kpw-ic" aria-label="Volver" id="kpmemX"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><b>Info. del canal</b></div><div class="kpmem-body"><div class="kpmem-hero"><div class="kpmem-big">'+esc(ico)+'</div><h2>'+esc(c.nombre||'Canal')+'</h2><small>Canal \u00b7 '+L.length+' integrante'+(L.length===1?'':'s')+(c.soloLectura?' \u00b7 solo lectura':'')+'</small></div><div class="kpmem-h">'+L.length+' integrante'+(L.length===1?'':'s')+'</div><div class="kpmem-list">'+(rows||'<div class="kpmem-row"><span class="sb">Sin integrantes</span></div>')+'</div></div>';
+    o.innerHTML='<div class="kpmem-top"><button class="kpw-ic" aria-label="Volver" id="kpmemX"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><b>Info. del canal</b></div><div class="kpmem-body"><div class="kpmem-hero"><div class="kpmem-big">'+ico+'</div><h2>'+esc(c.nombre||'Canal')+'</h2><small>Canal \u00b7 '+L.length+' integrante'+(L.length===1?'':'s')+(c.soloLectura?' \u00b7 solo lectura':'')+'</small></div><div class="kpmem-h">'+L.length+' integrante'+(L.length===1?'':'s')+'</div><div class="kpmem-list">'+(rows||'<div class="kpmem-row"><span class="sb">Sin integrantes</span></div>')+'</div></div>';
     document.body.appendChild(o);
     o.querySelector('#kpmemX').onclick=function(){o.remove();};
   };
@@ -21528,3 +21538,22 @@ html body .kp-chat-enterprise .kp-wa-mic.recording{font-size:22px!important}
   }
 })();
 </script>
+<style id="kp-channel-icon-polish">
+html body .kpmem .kpmem-big{
+  background:radial-gradient(circle at 34% 26%,rgba(56,189,248,.2),transparent 54%),linear-gradient(145deg,#172d3b,#111b25)!important;
+  border:1px solid rgba(56,189,248,.28);box-shadow:0 10px 30px rgba(2,8,23,.4),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.kp-channel-mark{display:block;width:34px;height:34px;box-sizing:border-box}
+.kp-channel-mark[viewBox]{stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.kp-channel-mark-text{display:grid;place-items:center;font-size:25px;font-weight:800;line-height:1;color:currentColor}
+html body .kpmem .kpmem-big .kp-channel-mark{width:58px;height:58px;color:#38bdf8;stroke-width:3}
+html body .kpmem .kpmem-big .kp-channel-mark-text{font-size:46px;color:#7dd3fc}
+html body #kpCanalesList .kp-chat-avatar.kp-channel-avatar{
+  display:grid!important;place-items:center!important;overflow:hidden!important;
+  background:linear-gradient(145deg,#172d3b,#172033)!important;border:1px solid rgba(125,211,252,.3);
+  box-shadow:0 5px 14px rgba(2,8,23,.35)!important;color:#7dd3fc!important;
+}
+html body #kpCanalesList .kp-chat-avatar.kp-channel-avatar .kp-channel-mark{width:30px;height:30px;color:#7dd3fc}
+html body #kpChat26 .kp-chat26-avatar:has(.kp-channel-mark){display:grid;place-items:center;background:linear-gradient(145deg,#172d3b,#172033);border:1px solid rgba(125,211,252,.3);color:#7dd3fc}
+html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;color:#7dd3fc}
+</style>
