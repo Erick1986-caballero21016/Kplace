@@ -10020,7 +10020,7 @@ KP.Channels.open = function(canalId){
   const me = KP.Channels._me();
   const puedeEscribir = !c.soloLectura || KP.Channels._isModerator(c, me);
   const inputRow = puedeEscribir
-    ? `<div class="chatInputRow kp-wa-composer"><div class="kp-wa-message-wrap"><div id="kpMentionSuggest" class="kpMentionBox"></div><button type="button" class="kp-wa-emoji" title="Emojis" aria-label="Emojis" onclick="KP.Channels.toggleComposerEmoji();event.stopPropagation()">😊</button><input id="kpChatText" placeholder="Mensaje" oninput="KP.Channels._onTyping('${canalId}');KP.Channels._onMentionInput(this,'${canalId}')" onkeydown="if(event.key==='Enter')KP.Channels.send('${path}','${canalId}')"><button class="kp-wa-inline-action kp-wa-attach" title="Adjuntar" aria-label="Adjuntar" onclick="KP.Channels.attach('${path}')">📎</button><button class="kp-wa-inline-action kp-wa-camera" title="Cámara" aria-label="Cámara" onclick="KP.Channels.camera('${path}')">📷</button></div><button class="kp-wa-circle kp-wa-mic" id="kpChatMicBtn" title="Nota de voz" aria-label="Nota de voz" onclick="KP.chatToggleRecording('${path}')">🎤</button></div><input type="file" id="kpChatFileInput" accept="image/*" style="display:none" onchange="KP.chatSendImage(this,'${path}')"><input type="file" id="kpChatDocInput" style="display:none" onchange="KP.chatSendDoc(this,'${path}')">`
+    ? `<div class="chatInputRow kp-wa-composer"><div class="kp-wa-message-wrap"><div id="kpMentionSuggest" class="kpMentionBox"></div><button type="button" class="kp-wa-emoji" title="Emojis" aria-label="Emojis" onclick="KP.Channels.toggleComposerEmoji();event.stopPropagation()">😊</button><textarea id="kpChatText" rows="1" placeholder="Mensaje" oninput="KP.Channels._onTyping('${canalId}');KP.Channels._onMentionInput(this,'${canalId}');this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea><button class="kp-wa-inline-action kp-wa-attach" title="Adjuntar" aria-label="Adjuntar" onclick="KP.Channels.attach('${path}')">📎</button><button class="kp-wa-inline-action kp-wa-camera" title="Cámara" aria-label="Cámara" onclick="KP.Channels.camera('${path}')">📷</button></div><button class="kp-wa-circle kp-wa-mic" id="kpChatMicBtn" title="Nota de voz" aria-label="Nota de voz" onclick="KP.chatToggleRecording('${path}')">🎤</button></div><input type="file" id="kpChatFileInput" accept="image/*" style="display:none" onchange="KP.chatSendImage(this,'${path}')"><input type="file" id="kpChatDocInput" style="display:none" onchange="KP.chatSendDoc(this,'${path}')">`
     : `<div class="kp-empty" style="margin-top:8px">📢 Este canal es de solo lectura. Solo un administrador o moderador puede publicar.</div>`;
   v.innerHTML = `<div class="kp-chat-enterprise"><div class="kp-enterprise-head"><div><div class="kp-kicker">CANAL</div><h2>${(c.tipo==='general'?'🌐':c.tipo==='repartidores'?'🛵':c.soloLectura?'📢':'#')} ${esc(c.nombre)}</h2><p>${(c.miembros||[]).length?(c.miembros.length+' integrantes'):'Visible para todo el equipo'}</p></div><button class="btn" onclick="KP.Channels.render()">← Canales</button></div>
     <input id="kpChatSearch" placeholder="🔎 Buscar en este canal…" oninput="KP.Channels._searchInChat(this.value)" style="margin-top:10px">
@@ -21012,5 +21012,34 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-mic.recording.can
   setInterval(function(){if(!document.hidden&&document.getElementById('kpcDM'))full();},12000);
 })();
 </script>
+
+<style id="kp-chat-avatar-composer-fix">
+/* Fotos de perfil consistentes: círculos reales, recorte centrado y sin deformación. */
+html body .kp-chat-row{display:flex!important;align-items:flex-end!important;gap:7px!important;min-width:0}
+html body .kp-chat-row .kp-chat-avatar{display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;flex:0 0 30px!important;width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;max-width:30px!important;max-height:30px!important;aspect-ratio:1/1!important;border-radius:50%!important;overflow:hidden!important;line-height:1!important;font-size:11px!important;align-self:flex-end!important;border:1.5px solid rgba(196,181,253,.8)!important;background:#17152b!important}
+html body .kp-chat-row .kp-chat-avatar img{display:block!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center center!important;border-radius:50%!important;margin:0!important;padding:0!important}
+html body .kp-chat-row .bubble{min-width:0;max-width:min(82%,520px);overflow-wrap:anywhere}
+html body .kp-wa-message-wrap{align-items:center!important}
+html body .kp-wa-message-wrap #kpChatText{display:block!important;flex:1 1 auto!important;width:100%!important;min-width:0!important;min-height:41px!important;max-height:120px!important;height:41px;box-sizing:border-box!important;resize:none!important;overflow-y:auto!important;padding:10px 2px!important;margin:0!important;border:0!important;outline:none!important;background:transparent!important;color:inherit!important;font:inherit!important;line-height:21px!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;box-shadow:none!important}
+@media(max-width:520px){html body .kp-chat-row .kp-chat-avatar{flex-basis:28px!important;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;max-width:28px!important;max-height:28px!important}}
+</style>
+<script id="kp-chat-enter-newline-fix">
+(function(){
+  document.addEventListener('keydown',function(e){
+    var t=e.target;
+    if(!t||t.id!=='kpChatText'||t.tagName!=='TEXTAREA')return;
+    /* Enter crea una nueva línea; el botón de enviar es la única acción de envío. */
+    if(e.key==='Enter'&&!e.shiftKey){
+      e.stopImmediatePropagation();
+      var start=t.selectionStart,end=t.selectionEnd,val=t.value;
+      t.value=val.slice(0,start)+'\n'+val.slice(end);
+      t.selectionStart=t.selectionEnd=start+1;
+      t.dispatchEvent(new Event('input',{bubbles:true}));
+      e.preventDefault();
+    }
+  },true);
+})();
+</script>
+
 </body>
 </html>
