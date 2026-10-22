@@ -20883,5 +20883,26 @@ html body .kp-chat-enterprise .kp-wa-mic.kp-send-mode svg{width:22px;height:22px
   fixAudio(document);
 })();
 </script>
+
+<script id="kp-dm-click-fix">
+(function(){
+  /* Mensajes directos: el toque en la fila abre el chat (la lista de DMs no tenía el evento conectado) */
+  document.addEventListener('click',function(e){
+    var t=e.target;if(!t||!t.closest)return;
+    if(!t.closest('#kpcDM'))return;
+    var C=window.KP&&KP.Channels;if(!C)return;
+    var del=t.closest('.kpc-del');
+    if(del){
+      e.stopImmediatePropagation();e.preventDefault();
+      try{if(C.deleteDM)C.deleteDM(del.dataset.del);}catch(err){console.error(err);}
+      return;
+    }
+    var row=t.closest('.kpc-row[data-id]');if(!row)return;
+    e.stopImmediatePropagation();e.preventDefault();
+    try{C.open(row.dataset.id);}
+    catch(err){console.error(err);if(window.toast)toast('No se pudo abrir el chat: '+(err&&err.message||'error'));}
+  },true);
+})();
+</script>
 </body>
 </html>
