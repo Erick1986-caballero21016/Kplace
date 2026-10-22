@@ -21975,3 +21975,72 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
   setInterval(sync,1200);
 })();
 </script>
+<script id="kp-bulk-guide-ux">
+(function(){
+  'use strict';
+
+  function guideCourierControl(order, jsId){
+    const options=order.boxfulQuote?boxfulGetQuoteOptions(order.boxfulQuote):[];
+    if(!options.length){
+      return `<div class="kp-guide-courier kp-guide-courier-empty">⚠️ ${order.boxfulQuote?'Esta ruta no devolvió empresas con tarifa.':'No se pudo cotizar esta orden; revisá cobertura o volvé a cotizar.'}</div>`;
+    }
+    const chosen=order.boxfulSelectedQuote;
+    const chosenId=chosen?String(boxfulQuoteCourierId(chosen)||''):'';
+    const chosenName=chosen?String(boxfulQuoteName(chosen,0)||''):'';
+    const chosenPrice=chosen?Number(boxfulQuotePrice(chosen)||0):NaN;
+    const selectedIndex=chosen?options.findIndex((option,index)=>
+      String(boxfulQuoteCourierId(option)||'')===chosenId &&
+      String(boxfulQuoteName(option,index)||'')===chosenName &&
+      Math.abs(Number(boxfulQuotePrice(option)||0)-chosenPrice)<0.01
+    ):-1;
+    const sorted=options.map((option,index)=>({option,index,price:Number(boxfulQuotePrice(option)||0)}))
+      .sort((a,b)=>a.price-b.price);
+    return `<div class="kp-guide-courier">
+      <label for="kpGuideCourier_${escapeHtml(String(order.id))}">Empresa para esta orden</label>
+      <select id="kpGuideCourier_${escapeHtml(String(order.id))}" aria-label="Empresa de envío para ${escapeHtml(order.cliente||'esta orden')}" onchange="if(this.value!=='')boxfulSelectQuote(${jsId},Number(this.value))">
+        <option value="">${selectedIndex<0?'Seleccionar empresa…':'Elegir otra empresa…'}</option>
+        ${sorted.map(({option,index,price})=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${escapeHtml(boxfulQuoteName(option,index))} · ${kpMoneda()} ${price.toFixed(2)}${option.serviceName||option.service?` · ${escapeHtml(option.serviceName||option.service)}`:''}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+
+  // En modo de guías, solo la casilla selecciona la orden. Tocar el resto de
+  // la tarjeta deja disponibles los controles/detalles y nunca marca la orden.
+  const originalRenderBoxfulCards=renderBoxfulCards;
+  if(typeof originalRenderBoxfulCards==='function'){
+    renderBoxfulCards=function(list){
+      if(!boxfulGuideMode)return originalRenderBoxfulCards.apply(this,arguments);
+      return list.map(order=>{
+        const id=String(order.id);
+        const jsId=escapeHtml(JSON.stringify(id));
+        const selected=boxfulGuiaSeleccion.has(order.id);
+        const canCreate=selected&&!!order.boxfulSelectedQuote&&!(order.boxfulShipmentNumber||order.boxfulGuideNumber||order.boxfulShipment);
+        return `<div class="kp-guide-order-wrap ${selected?'kp-selected':''}">
+          <label class="kp-guide-select">
+            <input type="checkbox" ${selected?'checked':''} onchange="toggleBoxfulGuiaSel(${jsId},this.checked)">
+            <span>Seleccionar esta guía</span>
+          </label>
+          ${orderCard(order)}
+          ${selected?guideCourierControl(order,jsId):''}
+          ${canCreate?`<div class="kp-guide-ready">✓ Cotización lista para crear guía</div>`:''}
+        </div>`;
+      }).join('');
+    };
+  }
+
+  const style=document.createElement('style');
+  style.id='kp-bulk-guide-ux-style';
+  style.textContent=`
+    #view .kp-guide-order-wrap{margin:0 auto 12px;max-width:410px;padding:7px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+    #view .kp-guide-order-wrap.kp-selected{border-color:#31a24c;box-shadow:0 0 0 2px rgba(49,162,76,.12)}
+    #view .kp-guide-select{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;color:var(--ink);font-size:13px;font-weight:800;cursor:pointer}
+    #view .kp-guide-select input{width:19px;height:19px;margin:0;accent-color:#168b5d;flex:none}
+    #view .kp-guide-courier{display:grid;gap:6px;margin:0 7px 8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--cream)}
+    #view .kp-guide-courier label{font-size:12px;font-weight:800;color:var(--ink)}
+    #view .kp-guide-courier select{width:100%;min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);font:inherit}
+    #view .kp-guide-courier-empty{display:block;color:#a34b00;font-size:12px;font-weight:700}
+    #view .kp-guide-ready{margin:0 7px 8px;color:#168b5d;font-size:12px;font-weight:800}
+  `;
+  document.head.appendChild(style);
+})();
+</script>
