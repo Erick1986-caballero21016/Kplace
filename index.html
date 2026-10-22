@@ -21830,3 +21830,91 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
 #kpMikeFab:active{cursor:grabbing!important}
 #kpMikeDock{z-index:100200!important;touch-action:manipulation!important}
 </style>
+
+
+<!-- KPlace Mike: launcher visibility/position hardening v3 -->
+<style id="kp-mike-launcher-hardening-v3">
+  #kpMikeFab {
+    position:fixed!important; right:auto!important; bottom:auto!important;
+    z-index:2147483000!important; touch-action:none!important;
+    pointer-events:auto!important; opacity:1!important; visibility:visible;
+  }
+  #kpMikeDock { z-index:2147483000!important; pointer-events:auto!important; }
+  #kpMikeTarget { z-index:2147482999!important; }
+</style>
+<script id="kp-mike-launcher-hardening-v3-script">
+(function(){
+  if (window.__kpMikeLauncherHardeningV3) return;
+  window.__kpMikeLauncherHardeningV3 = true;
+  const get = id => document.getElementById(id);
+  let dragging = false;
+  let lastPanelOpen = null;
+  function readPos(){
+    try { return JSON.parse(localStorage.getItem('kp_mike_fab') || '{}') || {}; }
+    catch(e){ return {}; }
+  }
+  function placeFab(x,y){
+    const fab=get('kpMikeFab'); if(!fab) return;
+    const w=fab.offsetWidth||64, h=fab.offsetHeight||64;
+    x=Math.max(6,Math.min(window.innerWidth-w-6,x));
+    y=Math.max(6,Math.min(window.innerHeight-h-6,y));
+    fab.style.setProperty('left',x+'px','important');
+    fab.style.setProperty('top',y+'px','important');
+    fab.style.setProperty('right','auto','important');
+    fab.style.setProperty('bottom','auto','important');
+  }
+  function sync(){
+    const panel=get('kpMikePanel'), fab=get('kpMikeFab'), dock=get('kpMikeDock');
+    if(!panel||!fab) return;
+    const logged=!!window.CURRENT_USER;
+    const open=panel.classList.contains('open') && getComputedStyle(panel).display!=='none';
+    const pos=readPos();
+    if(open){
+      fab.style.setProperty('display','none','important');
+      if(dock) dock.style.setProperty('display','none','important');
+      lastPanelOpen=true; return;
+    }
+    lastPanelOpen=false;
+    if(!logged){
+      fab.style.setProperty('display','none','important');
+      if(dock) dock.style.setProperty('display','none','important');
+      return;
+    }
+    if(pos.docked){
+      fab.style.setProperty('display','none','important');
+      if(dock){
+        dock.style.setProperty('display','block','important');
+        dock.style.setProperty('position','fixed','important');
+        dock.style.setProperty('right','12px','important');
+        dock.style.setProperty('left','auto','important');
+        dock.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 12px)','important');
+        dock.style.setProperty('bottom','auto','important');
+      }
+      return;
+    }
+    if(dock) dock.style.setProperty('display','none','important');
+    if(!dragging){
+      if(Number.isFinite(pos.x) && Number.isFinite(pos.y)) placeFab(pos.x,pos.y);
+      else placeFab(window.innerWidth-(fab.offsetWidth||64)-18, window.innerHeight-(fab.offsetHeight||64)-105);
+    }
+    fab.style.setProperty('display','grid','important');
+    fab.style.setProperty('visibility','visible','important');
+    fab.style.setProperty('opacity','1','important');
+    fab.style.setProperty('pointer-events','auto','important');
+  }
+  document.addEventListener('pointerdown',e=>{if(e.target&&e.target.closest&&e.target.closest('#kpMikeFab')) dragging=true;},true);
+  document.addEventListener('pointerup',()=>{dragging=false;setTimeout(sync,80);},true);
+  document.addEventListener('pointercancel',()=>{dragging=false;setTimeout(sync,80);},true);
+  document.addEventListener('click',e=>{
+    if(e.target&&e.target.closest&&e.target.closest('#kpMikeClose')) setTimeout(sync,30);
+    if(e.target&&e.target.closest&&e.target.closest('#kpMikeDock')) setTimeout(sync,30);
+  },true);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync();});
+  window.addEventListener('resize',sync);
+  // Keep the launcher in sync with the panel without overriding a drag in progress.
+  sync();
+  let tries=0;
+  const boot=setInterval(()=>{sync();if(++tries>=30)clearInterval(boot);},350);
+  setInterval(sync,1200);
+})();
+</script>
