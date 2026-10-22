@@ -20295,7 +20295,7 @@ async function crearOrden2(a){
  try{await window.saveOrder();for(let i=0;i<10&&!captured;i++)await sleep(150)}catch(e){console.warn('Mike saveOrder',e)}
  finally{window.kpOfrecerEnviarWhatsApp=orig}
  if(!captured)return fillPill(false),open(),setCompact(true),{creada:false,error:'La orden no se guardó: el formulario sigue abierto porque algún dato está mal o falta (por ejemplo el banco). Dile al usuario que lo revise en pantalla.'};
- borr={};fillPill(false);open();setCompact(false);
+ borr={};fillPill(false);setCompact(false);minimize();
  const c=cardWrap();c.appendChild(el('h4','','✅ Orden creada · '+(captured.cliente||d.cliente)));
  c.appendChild(el('div','l','Entrega: '+tipo+((captured.municipio||mun)?' · '+(captured.municipio||mun):'')));
  if(prodTxt(captured))c.appendChild(el('div','l','Productos: '+prodTxt(captured)));
@@ -20805,7 +20805,7 @@ try{const z=JSON.parse(localStorage.getItem(FABK)||'{}');docked=!!z.docked;if(z.
 const saveF=()=>{try{localStorage.setItem(FABK,JSON.stringify({docked,x:fpos&&fpos.x,y:fpos&&fpos.y}))}catch(e){}};
 function placeDock(){const h=document.querySelector('.topbar');dock.style.top=h?Math.max(4,h.getBoundingClientRect().top+(h.offsetHeight-44)/2)+'px':'calc(env(safe-area-inset-top,0px) + 12px)'}
 function fabSet(on){fab.style.display=on&&!docked?'block':'none';dock.style.display=on&&docked?'block':'none';if(on&&docked)placeDock()}
-function placeFab(x,y){const w=fab.offsetWidth||64,h=fab.offsetHeight||64;x=Math.max(4,Math.min(innerWidth-w-4,x));y=Math.max(4,Math.min(innerHeight-h-4,y));fab.style.left=x+'px';fab.style.top=y+'px';fab.style.right='auto';fab.style.bottom='auto';return{x,y}}
+function placeFab(x,y){const w=fab.offsetWidth||64,h=fab.offsetHeight||64;x=Math.max(4,Math.min(innerWidth-w-4,x));y=Math.max(4,Math.min(innerHeight-h-4,y));fab.style.setProperty('left',x+'px','important');fab.style.setProperty('top',y+'px','important');fab.style.setProperty('right','auto','important');fab.style.setProperty('bottom','auto','important');return{x,y}}
 function restoreFab(){if(fpos){const was=fab.style.display;if(was==='none')fab.style.visibility='hidden',fab.style.display='block';fpos=placeFab(fpos.x,fpos.y);if(was==='none'){fab.style.display='none';fab.style.visibility=''}}}
 let dr=null;
 fab.addEventListener('pointerdown',e=>{if(e.button>0)return;const r=fab.getBoundingClientRect();dr={id:e.pointerId,sx:e.clientX,sy:e.clientY,ox:r.left,oy:r.top,on:false};try{fab.setPointerCapture(e.pointerId)}catch(x){}});
@@ -21788,19 +21788,32 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
   #kpMikePanel>#kpMikeVoiceStage .kpm-voice-caption{margin-top:8px!important;}
 }
 </style>
-<script id="kp-mike-mobile-fab-restore-v1">
+<script id="kp-mike-mobile-fab-restore-v2">
 (function(){
   function restoreLauncher(){
     var panel=document.getElementById('kpMikePanel'),fab=document.getElementById('kpMikeFab'),dock=document.getElementById('kpMikeDock');
-    if(!panel||!fab)return;
-    if(panel.classList.contains('open'))return;
-    if(!window.CURRENT_USER)return;
-    try{localStorage.setItem('kp_mike_fab',JSON.stringify({docked:false}));}catch(e){}
+    if(!panel||!fab||panel.classList.contains('open')||!window.CURRENT_USER)return;
+    var pos={};
+    try{pos=JSON.parse(localStorage.getItem('kp_mike_fab')||'{}')||{};}catch(e){}
+    if(pos.docked){
+      fab.style.setProperty('display','none','important');
+      if(dock){dock.style.setProperty('display','block','important');}
+      return;
+    }
     if(dock)dock.style.setProperty('display','none','important');
-    fab.style.removeProperty('left');fab.style.removeProperty('top');
-    fab.style.setProperty('right','18px','important');fab.style.setProperty('bottom','calc(22px + env(safe-area-inset-bottom, 0px))','important');
-    fab.style.setProperty('display','grid','important');fab.style.setProperty('visibility','visible','important');
-    fab.style.setProperty('opacity','1','important');fab.style.setProperty('pointer-events','auto','important');
+    if(Number.isFinite(Number(pos.x))&&Number.isFinite(Number(pos.y))&&pos.x!==null&&pos.y!==null){
+      fab.style.setProperty('left',pos.x+'px','important');
+      fab.style.setProperty('top',pos.y+'px','important');
+      fab.style.setProperty('right','auto','important');
+      fab.style.setProperty('bottom','auto','important');
+    }else if(!fab.style.left||fab.style.left==='auto'){
+      fab.style.setProperty('left','auto','important');fab.style.setProperty('top','auto','important');
+      fab.style.setProperty('right','18px','important');fab.style.setProperty('bottom','calc(22px + env(safe-area-inset-bottom, 0px))','important');
+    }
+    fab.style.setProperty('display','grid','important');
+    fab.style.setProperty('visibility','visible','important');
+    fab.style.setProperty('opacity','1','important');
+    fab.style.setProperty('pointer-events','auto','important');
   }
   document.addEventListener('click',function(e){
     var close=e.target&&e.target.closest&&e.target.closest('#kpMikeClose');
@@ -21811,3 +21824,9 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
   var n=0,watch=setInterval(function(){restoreLauncher();if(++n>12)clearInterval(watch);},500);
 })();
 </script>
+
+<style id="kp-mike-floating-button-drag-fix-v2">
+#kpMikeFab{touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;cursor:grab!important;z-index:100200!important;will-change:left,top!important;}
+#kpMikeFab:active{cursor:grabbing!important}
+#kpMikeDock{z-index:100200!important;touch-action:manipulation!important}
+</style>
