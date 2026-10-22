@@ -18476,10 +18476,13 @@ cleanOldLogin();setTimeout(cleanOldLogin,300);setTimeout(cleanOldLogin,1200);
 var oldUpload=window.subirArchivoStorage;
 if(typeof oldUpload==='function'&&!oldUpload.__kpLoading){
   var wrapped=async function(folder,file){
-    if((file&&String(file.type||'').toLowerCase().startsWith('audio/'))||String(folder||'')==='chat_audios')return oldUpload.apply(this,arguments);
+    var mime=String(file&&file.type||'').toLowerCase(),name=String(file&&file.name||'').toLowerCase(),dest=String(folder||'').toLowerCase();
+    var isAudio=mime.indexOf('audio/')===0||/audio|voice|nota/.test(dest)||/\.(mp3|m4a|wav|ogg|opus|webm|aac|3gp)$/.test(name);
+    if(isAudio)return oldUpload.apply(this,arguments);
     var host=document.querySelector('.kp-chat-enterprise')||document.querySelector('.chatFeedWrap');
     var el=null;
-    if(host){el=document.createElement('div');el.className='kp-chat-uploading';el.innerHTML='<span class="spin"></span><span>Subiendo imagen…</span>';host.prepend(el);}
+    var label=mime.indexOf('video/')===0?'Subiendo video…':mime.indexOf('image/')===0?'Subiendo imagen…':'Subiendo archivo…';
+    if(host){el=document.createElement('div');el.className='kp-chat-uploading';el.innerHTML='<span class="spin"></span><span></span>';el.lastElementChild.textContent=label;host.prepend(el);}
     try{return await oldUpload.apply(this,arguments);}finally{if(el)el.remove();}
   };
   wrapped.__kpLoading=true;window.subirArchivoStorage=wrapped;
@@ -20902,15 +20905,36 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-mic.recording.can
     b.classList.add('recording');b.dataset.kpmode='rec';
     comp.classList.add('kp-recording');
     const bar=document.createElement('div');bar.id='kpRecBar';
-    bar.innerHTML='<i class="dot"></i><b id="kpRecT">0:00</b><span id="kpRecHint">‹ Desliza para cancelar</span>';
+    bar.innerHTML='<i class="dot"></i><b id="kpRecT">0:00</b><span id="kpRecHint">↑ Desliza para bloquear · ‹ cancelar</span>';
     comp.insertBefore(bar,b);
     h.timer=setInterval(()=>{const t=$('kpRecT');if(t)t.textContent=fmt(Date.now()-(h.t1||h.t0));},250);
   }
   function setCancelUI(on){
     const b=$('kpChatMicBtn'),bar=$('kpRecBar'),hint=$('kpRecHint');
+    if(hold&&hold.locked)return;
     if(b)b.classList.toggle('cancel',on);
     if(bar)bar.classList.toggle('cancel',on);
-    if(hint)hint.textContent=on?'Suelta para cancelar':'‹ Desliza para cancelar';
+    if(hint)hint.textContent=on?'Suelta para cancelar':'↑ Desliza para bloquear · ‹ cancelar';
+  }
+  function setLockUI(h){
+    const b=$('kpChatMicBtn'),bar=$('kpRecBar');
+    if(!bar)return;
+    if(b)b.classList.remove('cancel');
+    bar.classList.remove('cancel');
+    bar.classList.add('locked');
+    bar.innerHTML='<i class="dot"></i><b id="kpRecT">0:00</b><span id="kpRecHint">🔒 Grabación bloqueada</span><button type="button" class="kp-rec-action kp-rec-delete">Borrar</button><button type="button" class="kp-rec-action kp-rec-send">Enviar</button>';
+    bar.querySelector('.kp-rec-delete').onclick=function(ev){
+      ev.preventDefault();ev.stopPropagation();
+      if(hold!==h)return;
+      h.cancel=true;
+      if(h.rec&&h.rec.state==='recording')h.rec.stop();else h.pendingStop='cancel';
+    };
+    bar.querySelector('.kp-rec-send').onclick=function(ev){
+      ev.preventDefault();ev.stopPropagation();
+      if(hold!==h)return;
+      h.cancel=false;h.released=true;
+      if(h.rec&&h.rec.state==='recording')h.rec.stop();else h.pendingStop='send';
+    };
   }
   function resetUI(h){
     if(h&&h.timer)clearInterval(h.timer);
@@ -20956,7 +20980,8 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-mic.recording.can
     };
     h.t1=Date.now();rec.start();
     h.cap=setTimeout(()=>{if(rec.state==='recording'){toast('Límite de 3 minutos');rec.stop();}},180000);
-    if(h.released&&rec.state==='recording')rec.stop();
+     if(h.pendingStop){h.cancel=h.pendingStop==='cancel';rec.stop();}
+     else if(h.released&&!h.locked&&rec.state==='recording')rec.stop();
   }
   document.addEventListener('pointerdown',e=>{
     const b=e.target&&e.target.closest?e.target.closest('#kpChatMicBtn'):null;
@@ -20966,17 +20991,23 @@ html body.kp-chat-open.kp-chat-open .kp-chat-enterprise .kp-wa-mic.recording.can
     if(!m)return;
     e.preventDefault();
     try{b.setPointerCapture(e.pointerId);}catch(x){}
-    const h={path:m[1],x:e.clientX,pid:e.pointerId,released:false,cancel:false,t0:Date.now()};
+    const h={path:m[1],x:e.clientX,y:e.clientY,pid:e.pointerId,released:false,cancel:false,locked:false,t0:Date.now()};
     hold=h;showUI(h);startRecording(h);
   },true);
   document.addEventListener('pointermove',e=>{
     if(!hold||e.pointerId!==hold.pid)return;
+    const dy=e.clientY-(hold.y==null?e.clientY:hold.y);
+    if(dy < -72 && !hold.locked){
+      hold.locked=true;hold.pid=null;setLockUI(hold);return;
+    }
+    if(hold.locked)return;
     const c=(e.clientX-hold.x)<-80;
     if(c!==hold.cancel){hold.cancel=c;setCancelUI(c);}
   },true);
   function release(e){
     if(!hold||e.pointerId!==hold.pid)return;
     const h=hold;h.released=true;
+    if(h.locked){h.pid=null;return;}
     if(e.type==='pointercancel')h.cancel=true;
     if(h.rec&&h.rec.state==='recording')h.rec.stop();
   }
@@ -21261,3 +21292,182 @@ html body #kpcDM .kpc-row > .kpc-av.dm img {
 .kp-chat26-bubble img{display:block;max-height:360px;border-radius:10px;margin-top:4px}
 .kp-chat26-compose #kpAudioLockControls{flex-basis:100%;order:10}
 </style>
+<style id="kp-contact-chat-fixes">
+/* Mantener el campo enfocado y visible durante la grabación para que Android no cierre el teclado. */
+html body .kp-chat-enterprise .kp-wa-composer.kp-recording .kp-wa-message-wrap{display:flex!important;opacity:.55}
+html body .kp-chat-enterprise .kp-wa-composer.kp-recording .kp-wa-message-wrap #kpChatText{visibility:visible!important}
+#kpRecBar.locked{gap:7px;padding:0 8px}
+#kpRecBar .kp-rec-action{flex:none;border:0;border-radius:16px;padding:7px 11px;background:#334155;color:#fff;font:700 12px system-ui;cursor:pointer}
+#kpRecBar .kp-rec-send{background:#16a34a}
+#kpRecBar .kp-rec-delete{background:#991b1b}
+.kp-chat-enterprise .kp-wa-camera svg{width:21px;height:21px;display:block}
+.kp-chat-image-loading{display:flex;min-height:72px;align-items:center;justify-content:center;padding:14px;border-radius:9px;background:#ffffff12;color:#d1d5db;font-size:12px}
+.kp-contact-media-overlay{position:fixed;inset:0;z-index:100120;background:rgba(3,7,12,.82);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.kp-contact-media-panel{width:min(620px,100%);max-height:86vh;overflow:auto;border:1px solid #27343b;border-radius:20px;background:#101a20;color:#e9edef;padding:16px;box-shadow:0 20px 60px #0009}
+.kp-contact-media-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.kp-contact-media-head h3{font-size:18px}
+.kp-contact-media-close{width:36px;height:36px;border:0;border-radius:50%;background:#26343b;color:#e9edef;font-size:23px}
+.kp-contact-media-tabs{display:flex;gap:7px;overflow-x:auto;padding:13px 0 10px;scrollbar-width:none}
+.kp-contact-media-tabs button{flex:none;border:1px solid #30414a;border-radius:999px;background:#172329;color:#d7e0e4;padding:8px 11px;font-size:12px}
+.kp-contact-media-tabs button.active{background:#075e54;border-color:#128c7e;color:white}
+.kp-contact-media-tabs span{opacity:.75;margin-left:3px}
+.kp-contact-media-item{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid #ffffff14;min-width:0}
+.kp-contact-media-item img{width:58px;height:58px;object-fit:cover;border-radius:9px}
+.kp-contact-media-item video{width:100px;max-height:75px;border-radius:8px;background:#000}
+.kp-contact-media-item audio{width:min(220px,45vw);height:36px}
+.kp-contact-media-preview{width:58px;min-width:58px;height:58px;display:grid;place-items:center;border-radius:9px;background:#1d2c32;color:#cbd5e1;font-size:22px}
+.kp-contact-media-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.kp-contact-media-copy b{font-size:12px;overflow-wrap:anywhere}
+.kp-contact-media-copy small{color:#91a1a9;font-size:11px}
+.kp-contact-media-item>a{color:#66d7c8;text-decoration:none;font-size:12px;flex:none}
+.kp-contact-media-loading{font-size:12px;color:#b6c2c8;padding:18px;text-align:center}
+.kp-contact-media-section{padding:14px 16px 16px;background:#0c1317;border-bottom:1px solid #ffffff10}
+.kp-contact-media-section h3{font-size:13px;color:#aab7bd;margin:0 0 10px}
+.kp-contact-media-cats{display:flex;gap:7px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none}
+.kp-contact-media-cats button{flex:none;display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid #26343b;border-radius:12px;background:#111c22;color:#e9edef;font-size:12px}
+.kp-contact-media-cats button span{color:#86979f}
+</style>
+<script id="kp-contact-chat-fixes-js">
+(function(){
+  'use strict';
+  var C=window.KP&&window.KP.Channels;
+  if(!C)return;
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  var categories=['Fotos','Enlaces','Videos','Documentos','Audios'];
+  var icons={Fotos:'🖼️',Enlaces:'🔗',Videos:'🎬',Documentos:'📄',Audios:'🎤'};
+  function dmId(id){return /^dm_/.test(String(id||''));}
+
+  /* El chat actual usa el compositor kp-wa; reemplazar el emoji por un SVG de cámara limpio. */
+  function polishCamera(){
+    document.querySelectorAll('.kp-wa-camera').forEach(function(b){
+      if(b.dataset.kpCameraPolished)return;
+      b.dataset.kpCameraPolished='1';
+      b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7.5h3l1.6-2h6.8l1.6 2h3A1.8 1.8 0 0 1 21 9.3v8.2a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 17.5V9.3a1.8 1.8 0 0 1 1-1.8Z"/><circle cx="12" cy="13.4" r="3.5"/></svg>';
+      b.title='Tomar una foto';b.setAttribute('aria-label','Tomar una foto');
+    });
+  }
+  new MutationObserver(polishCamera).observe(document.documentElement,{childList:true,subtree:true});
+  polishCamera();
+
+  /* Mostrar un estado visible hasta que cada foto del chat termine de cargar. */
+  var oldBubble=C.bubble;
+  if(typeof oldBubble==='function'&&!oldBubble.__kpContactImageLoader){
+    var bubbleWithImageState=function(x,path,id,c){
+      var html=oldBubble.apply(this,arguments);
+      if(!x||x.tipo!=='imagen'||x.eliminado||!x.url)return html;
+      var original='<img src="'+esc(x.url)+'" alt="Foto">';
+      var loaded='<span class="kp-chat-image-loading" role="status">Cargando imagen…</span><img src="'+esc(x.url)+'" alt="Foto" loading="lazy" onload="if(this.previousElementSibling)this.previousElementSibling.remove()" onerror="this.style.display=\'none\';if(this.previousElementSibling)this.previousElementSibling.textContent=\'No se pudo cargar la imagen\'">';
+      return html.replace(original,loaded);
+    };
+    bubbleWithImageState.__kpContactImageLoader=true;C.bubble=bubbleWithImageState;
+  }
+
+  /* Edición de mensajes propios: la ruta y el ID vienen del menú del mensaje. */
+  C.editTextMessage=async function(path,canalId,msgId){
+    var m=(C._msgCache[canalId]||{})[msgId];
+    if(!m||m.eliminado)return window.toast&&toast('El mensaje ya no está disponible');
+    if(m.autorUsuario!==C._me())return window.toast&&toast('Solo puedes editar tus mensajes');
+    if(m.tipo!=='texto')return window.toast&&toast('Solo se pueden editar mensajes de texto');
+    var next=window.prompt('Editar mensaje',m.texto||'');
+    if(next===null)return;
+    next=String(next).trim();
+    if(!next)return window.toast&&toast('El mensaje no puede quedar vacío');
+    try{
+      await db.collection(path).doc(msgId).update({texto:next,editado:true,editadoEn:firebase.firestore.FieldValue.serverTimestamp()});
+      if(window.toast)toast('Mensaje editado');
+    }catch(e){console.error('Editar mensaje',e);if(window.toast)toast('No se pudo editar el mensaje');}
+  };
+  var oldMenu=C._msgMenu;
+  if(typeof oldMenu==='function'&&!oldMenu.__kpTextEdit){
+    var menuWithEdit=function(ev,path,canalId,msgId){
+      oldMenu.apply(this,arguments);
+      var m=(C._msgCache[canalId]||{})[msgId],wrap=document.querySelector('.kpMsgCtxWrap'),menu=wrap&&wrap.querySelector('.kpMsgCtxMenu');
+      if(!m||m.eliminado||m.tipo!=='texto'||m.autorUsuario!==C._me()||!menu)return;
+      var overlay=document.querySelector('.kpMsgCtxOverlay'),item=document.createElement('div');
+      item.className='item';item.dataset.act='edit';item.innerHTML='✏️ <span>Editar mensaje</span>';
+      item.onclick=function(e){e.stopPropagation();if(overlay)overlay.remove();wrap.remove();C.editTextMessage(path,canalId,msgId);};
+      menu.insertBefore(item,menu.firstChild);
+    };
+    menuWithEdit.__kpTextEdit=true;C._msgMenu=menuWithEdit;
+  }
+  var bubbleForEditLabel=C.bubble;
+  if(typeof bubbleForEditLabel==='function'&&!bubbleForEditLabel.__kpEditLabel){
+    var markedBubble=function(x){
+      var html=bubbleForEditLabel.apply(this,arguments);
+      if(x&&x.editado)html=html.replace(/(<span class="bubbleHora">[^<]*)(<\/span>)/,'$1 · editado$2');
+      return html;
+    };
+    markedBubble.__kpEditLabel=true;C.bubble=markedBubble;
+  }
+
+  async function readMedia(id){
+    var out={'Fotos':[],'Enlaces':[],'Videos':[],'Documentos':[],'Audios':[]};
+    var snap=await db.collection('canalMensajes_'+id).orderBy('ts','asc').limitToLast(500).get();
+    snap.docs.forEach(function(d){
+      var m={id:d.id};Object.assign(m,d.data()||{});if(m.eliminado)return;
+      var type=String(m.tipo||'').toLowerCase(),url=m.url||m.imagenUrl||m.videoUrl||m.audioUrl||'';
+      var text=String(m.texto||''),link=(text.match(/https?:\/\/[^\s<>"']+/i)||[])[0]||'';
+      var cat=type==='imagen'||m.imagenUrl?'Fotos':type==='video'||m.videoUrl?'Videos':type==='audio'||m.audioUrl?'Audios':type==='documento'?'Documentos':link?'Enlaces':'';
+      if(!cat)return;
+      if(cat==='Enlaces')url=link;
+      var date=m.ts&&m.ts.toDate?m.ts.toDate().toLocaleDateString('es-HN'):'';
+      out[cat].push({url:url,label:m.nombreArchivo||text||url||cat,date:date});
+    });
+    return out;
+  }
+  function mediaListHtml(cat,items){
+    if(!items.length)return '<div class="kp-contact-media-loading">No hay '+esc(cat.toLowerCase())+' compartidos todavía.</div>';
+    return items.slice().reverse().map(function(m){
+      var url=esc(m.url||''),label=esc(String(m.label||cat).slice(0,130)),preview='';
+      if(cat==='Fotos'&&m.url)preview='<div class="kp-contact-media-preview"><span class="kp-contact-media-loading">Cargando imagen…</span><img src="'+url+'" alt="Foto compartida" onload="if(this.previousElementSibling)this.previousElementSibling.remove()" onerror="this.style.display=\'none\';if(this.previousElementSibling)this.previousElementSibling.textContent=\'No se pudo cargar\'"></div>';
+      else if(cat==='Videos'&&m.url)preview='<video controls preload="metadata" src="'+url+'"></video>';
+      else if(cat==='Audios'&&m.url)preview='<audio controls preload="metadata" src="'+url+'"></audio>';
+      else preview='<div class="kp-contact-media-preview">'+(cat==='Enlaces'?'🔗':cat==='Documentos'?'📄':'📎')+'</div>';
+      return '<div class="kp-contact-media-item">'+preview+'<div class="kp-contact-media-copy"><b>'+label+'</b><small>'+esc(m.date||'')+'</small></div>'+(m.url?'<a href="'+url+'" target="_blank" rel="noopener noreferrer">Abrir</a>':'')+'</div>';
+    }).join('');
+  }
+  async function showContactMedia(id,initial){
+    var overlay=document.createElement('div');overlay.className='kp-contact-media-overlay';
+    overlay.innerHTML='<div class="kp-contact-media-panel" role="dialog" aria-modal="true" aria-label="Contenido del chat"><div class="kp-contact-media-head"><h3>Contenido del chat</h3><button type="button" class="kp-contact-media-close" aria-label="Cerrar">×</button></div><div class="kp-contact-media-tabs"></div><div class="kp-contact-media-list"><div class="kp-contact-media-loading">Cargando contenido…</div></div></div>';
+    document.body.appendChild(overlay);
+    var close=function(){overlay.remove();};
+    overlay.querySelector('.kp-contact-media-close').onclick=close;
+    overlay.addEventListener('click',function(e){if(e.target===overlay)close();});
+    try{
+      var groups=await readMedia(id),tabs=overlay.querySelector('.kp-contact-media-tabs'),list=overlay.querySelector('.kp-contact-media-list');
+      tabs.innerHTML=categories.map(function(cat){return '<button type="button" data-cat="'+cat+'">'+icons[cat]+' '+cat+' <span>'+groups[cat].length+'</span></button>';}).join('');
+      function draw(cat){
+        tabs.querySelectorAll('button').forEach(function(b){b.classList.toggle('active',b.dataset.cat===cat);});
+        list.innerHTML=mediaListHtml(cat,groups[cat]||[]);
+      }
+      tabs.addEventListener('click',function(e){var b=e.target.closest('button[data-cat]');if(b)draw(b.dataset.cat);});
+      draw(categories.indexOf(initial)>=0?initial:'Fotos');
+    }catch(e){console.error('Contenido del chat',e);overlay.querySelector('.kp-contact-media-list').innerHTML='<div class="kp-contact-media-loading">No se pudo cargar el contenido del chat.</div>';}
+  }
+
+  /* Poner categorías en la pantalla Info. del contacto, justo antes de “Eliminar conversación”. */
+  var oldShowMembers=C.showMembers;
+  if(typeof oldShowMembers==='function'&&!oldShowMembers.__kpContactMedia){
+    var showMembersWithMedia=function(id){
+      var result=oldShowMembers.apply(this,arguments);
+      if(!dmId(id))return result;
+      setTimeout(function(){
+        var panels=document.querySelectorAll('.kpmem'),panel=panels[panels.length-1];
+        if(!panel||panel.dataset.kpContactMedia)return;
+        var list=panel.querySelector('.kpmem-list'),del=panel.querySelector('#kpDmDel');if(!list||!del)return;
+        panel.dataset.kpContactMedia='1';
+        var section=document.createElement('div');section.className='kp-contact-media-section';
+        section.innerHTML='<h3>Archivos y enlaces del chat</h3><div class="kp-contact-media-cats">'+categories.map(function(cat){return '<button type="button" data-cat="'+cat+'">'+icons[cat]+' '+cat+' <span>…</span></button>';}).join('')+'</div>';
+        list.insertBefore(section,del);
+        section.addEventListener('click',function(e){var b=e.target.closest('button[data-cat]');if(b)showContactMedia(id,b.dataset.cat);});
+        readMedia(id).then(function(groups){
+          section.querySelectorAll('button[data-cat]').forEach(function(b){var cat=b.dataset.cat,span=b.querySelector('span');if(span)span.textContent=String((groups[cat]||[]).length);});
+        }).catch(function(){section.querySelectorAll('span').forEach(function(s){s.textContent='—';});});
+      },0);
+      return result;
+    };
+    showMembersWithMedia.__kpContactMedia=true;C.showMembers=showMembersWithMedia;
+  }
+})();
+</script>
