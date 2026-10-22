@@ -2137,7 +2137,7 @@ function renderTutorial(){
     ['🚚','Nivel Nacional (Boxful)','Administra los envíos nacionales: cotización, selección de paquetería y creación de guías con Boxful.',null,[
       'Para cada pedido nacional puedes Cotizar el envío antes de generar la guía.',
       'Una vez cotizado y con paquetería elegida, aparece el botón Crear guía.',
-      '🚚 "Crear guías múltiples" activa un modo de selección: marca varias órdenes ya cotizadas y crea todas sus guías juntas en un solo botón (creación en lote).',
+      '🚚 "Seleccionar guías" activa un modo de selección: marca varias órdenes, toca "Cotizar guías" y, cuando todas estén cotizadas con paquetería, "Crear guías" las crea una por una.',
       'Una guía creada muestra el número de guía, el enlace de descarga del PDF y, si aplica, un botón de WhatsApp para enviar el rastreo al cliente.',
       '✕ Cancelar guía anula una guía ya creada (queda marcada como "Guía cancelada").'
     ]],
@@ -2237,7 +2237,7 @@ function renderTutorial(){
             ['🏷️ Etiquetas','Genera un PDF de etiquetas de producto (63×38mm, 3 por fila) listo para imprimir.'],
             ['▣ Código de barras','Identifica productos mediante su código de barras.'],
             ['▦ QR','Genera o lee un código QR asociado al producto.'],
-            ['🚚 Crear guías múltiples','Selecciona varios pedidos cotizados y crea todas sus guías Boxful de una vez.'],
+            ['🚚 Seleccionar guías','Marca varios pedidos, cotízalos juntos y, si todos se pueden, crea todas sus guías Boxful con un botón.'],
             ['💬 WhatsApp','Envía el número de rastreo de una guía directo al cliente por WhatsApp.'],
             ['🔄 Sincronizar','Actualiza la información/token con el servicio conectado (ej. Boxful).'],
             ['🗑️ Eliminar','Quita una conexión o registro después de confirmar la acción.']
@@ -2262,7 +2262,7 @@ function renderTutorial(){
           ['¿Cómo agrego mercancía recibida al inventario?','Usa "📥 Registrar entrada por escaneo" dentro de Inventario: cada escaneo suma unidades automáticamente.'],
           ['¿Cómo importo un catálogo de Excel?','En Inventario, usa la opción de importar Excel: la IA lee SKU, código de barras y precio por ti y arma el borrador para que solo confirmes.'],
           ['¿Cómo imprimo etiquetas de producto?','Genera el código QR o de barras del producto y usa "🏷️ Etiquetas" para exportar el PDF en formato 63×38mm listo para imprimir.'],
-          ['¿Cómo creo varias guías de Boxful al mismo tiempo?','En Nivel Nacional, activa "🚚 Crear guías múltiples", marca las órdenes ya cotizadas y crea todas sus guías en un solo botón.'],
+          ['¿Cómo creo varias guías de Boxful al mismo tiempo?','En Nivel Nacional, activa "🚚 Seleccionar guías", marca las órdenes, toca "Cotizar guías" y luego "Crear guías".'],
           ['¿Cómo conecto o reviso Boxful?','Entra a ☰ → Integraciones. El estado de conexión se muestra como texto; desde ahí cotizás, elegís paquetería y generás guías.'],
           ['¿Por qué no veo Usuarios y equipo, Reportes o Integraciones?','Esas secciones son solo para Administrador. Si necesitas acceso, pídeselo a un administrador.'],
           ['¿Puedo cambiar mis datos de usuario?','Sí. Desde tu perfil (o Configuración) puedes actualizar la información permitida de tu cuenta.'],
@@ -2340,7 +2340,7 @@ function render(){
         <button class="btn green sm" onclick="setTab('rastreosNacionales')">📍 Rastreos Envíos Nacionales</button>
         <button class="btn sm ${boxfulExcelMode?'activeAction':''}" onclick="toggleBoxfulExcelMode()">📤 ${boxfulExcelMode?'Descargar Excel seleccionado':'Seleccionar para Excel'}</button>
         ${boxfulExcelMode?`<button class="btn sm cancelSelectBtn" onclick="cancelBoxfulExcelSelection(event)">✕ Cancelar selección</button><button class="btn sm" onclick="boxfulSeleccionarTodo(true)">✓ Seleccionar todo</button><button class="btn sm" onclick="boxfulSeleccionarTodo(false)">□ Quitar todo</button>`:''}
-        <button class="btn sm ${boxfulGuideMode?'activeAction':''}" onclick="toggleBoxfulGuideMode()">🚚 ${boxfulGuideMode?'Ocultar selección de guías':'Crear guías múltiples'}</button>
+        <button class="btn sm ${boxfulGuideMode?'activeAction':''}" onclick="toggleBoxfulGuideMode()">🚚 ${boxfulGuideMode?'Cerrar selección de guías':'Seleccionar guías'}</button>
         <details class="boxfulAdvanced"><summary>Avanzado</summary><div class="btnrow" style="margin-top:8px;"><button class="btn sm" onclick="boxfulLoadAddresses()">📍 Actualizar dirección</button><button class="btn sm" onclick="boxfulRefreshCatalog()">🗺️ Actualizar ciudades</button><button class="btn sm" onclick="boxfulTestConnection()">✓ Probar conexión</button><button class="btn sm" onclick="boxfulDebugCatalog()">🔍 Buscar municipio</button></div></details>
       </div>
     </div>`;
@@ -2558,7 +2558,7 @@ function orderActions(o){
       ${o.boxfulGuideUrl?` · <a href="${escapeHtml(o.boxfulGuideUrl)}" target="_blank" rel="noopener">Descargar guía PDF</a>`:''}
       ${(()=>{const wa=boxfulTrackingWhatsAppUrl(o,o.boxfulShipmentNumber||o.boxfulGuideNumber,o.boxfulTrackingUrl);return wa?`<div class="btnrow" style="margin-top:8px"><a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener">💬 Enviar Guía al Cliente</a>${!o.boxfulCancelled?`<button class="btn red sm" onclick="cancelarGuia('${o.id}')">✕ Cancelar guía</button>`:''}</div>`:(!o.boxfulCancelled?`<div class="btnrow" style="margin-top:8px"><button class="btn red sm" onclick="cancelarGuia('${o.id}')">✕ Cancelar guía</button></div>`:'');})()}
     </div>`:''}
-    ${cotizada ? boxfulQuoteSummaryHtml(o) : ''}`;
+    ${cotizada ? (boxfulGuideMode ? boxfulQuoteCompactHtml(o) : boxfulQuoteSummaryHtml(o)) : ''}`;
   }
   if(!CURRENT_USER.esRepartidor){
     btns += `<div class="btnrow">
@@ -4677,7 +4677,7 @@ async function boxfulCrearGuiasEnLote(){
     const o=ORDERS.find(x=>String(x.id)===String(id));
     const nombre=o?.cliente||id;
     try{
-      const ok=await boxfulCreateShipment(id,{silencioso:true});
+      const ok=await boxfulCreateShipment(id,{silencioso:true,tarjeta:true,etiqueta:`${idx} de ${ids.length}`});
       resultados.push({id,cliente:nombre,ok:!!ok,mensaje:ok?'Guía creada':'No se pudo crear (ver detalle abajo)'});
     }catch(e){
       resultados.push({id,cliente:nombre,ok:false,mensaje:e.message||'Error desconocido'});
@@ -5410,6 +5410,24 @@ function boxfulCourierIdCandidates(q){
 // rechazando courierId cuando llega como string, así que la creación usa un modo de diagnóstico
 // con varias representaciones/campos hasta encontrar el contrato que Boxful acepte.
 const BOXFUL_COURIER_ID_KEYS=['courierId'];
+window.boxfulTarifasAbiertas=window.boxfulTarifasAbiertas||new Set();
+function boxfulToggleTarifas(id){
+  id=String(id);
+  if(boxfulTarifasAbiertas.has(id)) boxfulTarifasAbiertas.delete(id); else boxfulTarifasAbiertas.add(id);
+  render();
+}
+function boxfulQuoteCompactHtml(o){
+  const opts=boxfulGetQuoteOptions(o.boxfulQuote);
+  const abierto=boxfulTarifasAbiertas.has(String(o.id));
+  let resumen;
+  if(!opts.length) resumen='⚠️ Sin paqueterías disponibles';
+  else{
+    const min=Math.min(...opts.map(boxfulQuotePrice));
+    resumen=`✓ Cotizada · ${opts.length} paquetería(s) desde ${kpMoneda()} ${min.toFixed(2)}`;
+    if(o.boxfulSelectedQuote) resumen+=` · Elegida: ${escapeHtml(boxfulQuoteName(o.boxfulSelectedQuote,0))} ${kpMoneda()} ${boxfulQuotePrice(o.boxfulSelectedQuote).toFixed(2)}`;
+  }
+  return `<div class="boxfulQuote"><div class="small"><b>${resumen}</b></div>${opts.length?`<div class="btnrow" style="margin-top:6px"><button type="button" class="btn sm" onclick="boxfulToggleTarifas('${o.id}')">${abierto?'Ocultar tarifas':'Ver tarifas'}</button></div>`:''}</div>${abierto?boxfulQuoteSummaryHtml(o):''}`;
+}
 function boxfulQuoteSummaryHtml(o){
   const opts=boxfulGetQuoteOptions(o.boxfulQuote);
   if(!opts.length) return `<div class="boxfulQuote"><b>Boxful devolvió la cotización, pero no encontré las opciones de paquetería.</b><pre class="small" style="white-space:pre-wrap;word-break:break-word">${escapeHtml(JSON.stringify(o.boxfulQuote,null,2).slice(0,1800))}</pre></div>`;
@@ -5468,8 +5486,11 @@ async function boxfulQuoteOrder(id){
     if(!data)throw new Error(lastErr||'No se pudo cotizar el envío.'+(lastErrs.length?' Detalle: '+lastErrs.join(' | '):''));
     const opts=boxfulGetQuoteOptions(data);if(!opts.length)throw new Error('Boxful respondió, pero no devolvió paqueterías para esta ruta.');
     await db.collection('orders').doc(id).update({boxfulQuote:data,boxfulQuoteAt:new Date().toISOString(),boxfulRecolectionAddressId:c.recolectionAddressId,boxfulCustomerCityId:dest.cityId,boxfulCustomerStateId:dest.stateId,boxfulRecolectionCityId:dest.recolectionCityId,boxfulRecolectionStateId:dest.recolectionStateId||'',boxfulSelectedQuote:null});
-    toast(`Cotización lista · ${opts.length} paquetería(s) disponibles`);render();
-  }catch(e){console.error(e);toast('Boxful: '+e.message);}
+    if(!window.__kpQuoteQuiet){toast(`Cotización lista · ${opts.length} paquetería(s) disponibles`);render();}
+    return true;
+  }catch(e){console.error(e);
+    if(window.__kpQuoteQuiet){window.__kpQuoteError=e.message||String(e);return false;}
+    toast('Boxful: '+e.message);return false;}
 }
 async function boxfulSelectQuote(id,index){
   const o=ORDERS.find(x=>String(x.id)===String(id));if(!o||!o.boxfulQuote)return;
@@ -6558,7 +6579,7 @@ function renderBoxfulSelectionToolbar(){
   const selected=mode==='excel'?list.filter(o=>!boxfulExcluidos.has(o.id)).length:list.filter(o=>boxfulGuiaSeleccion.has(o.id)).length;
   const chosen=mode==='guide'?[...boxfulGuiaSeleccion].map(id=>ORDERS.find(o=>String(o.id)===String(id))).filter(Boolean):[];
   const canCreate=chosen.length>0&&chosen.every(o=>!!o.boxfulSelectedQuote&&!(o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment));
-  const bulkCreate=mode==='guide'?`<div class="kp-bulk-create-guides"><button class="btn primary" ${canCreate?'':'disabled title="Primero cotizá y elegí una tarifa para cada orden seleccionada"'} onclick="boxfulCrearGuiasEnLote()">🚚 Crear guías múltiples (${selected})</button><div class="kp-bulk-hint">${canCreate?'Se crearán las guías de todas las órdenes seleccionadas.':'Seleccioná órdenes cotizadas y elegí una tarifa para cada una.'}</div></div>`:'';
+  const bulkCreate=mode==='guide'?`<div class="kp-bulk-create-guides"><button class="btn primary" ${canCreate?'':'disabled title="Primero cotizá y elegí una tarifa para cada orden seleccionada"'} onclick="boxfulCrearGuiasEnLote()">🚚 Crear guías (${selected})</button><div class="kp-bulk-hint">${canCreate?'Se crearán las guías de todas las órdenes seleccionadas.':'Seleccioná órdenes cotizadas y elegí una tarifa para cada una.'}</div></div>`:'';
   return `<div class="kp-selection-panel">
     <div class="kp-selection-toolbar">
       <div class="kp-selection-heading"><div class="kp-selection-title">${mode==='excel'?'Seleccionar para Excel':'Seleccionar órdenes para crear guías'}</div><div class="kp-selection-count">${selected} seleccionada(s) de ${list.length}</div></div>
@@ -6603,7 +6624,7 @@ function kpRenderOrdersTab(tab){
       <div class="btnrow" style="margin-top:0">
         <button class="btn green sm" onclick="setTab('rastreosNacionales')">📍 Rastreo de pedidos</button>
         <button class="btn sm" onclick="toggleBoxfulExcelMode()">📤 ${boxfulExcelMode?'Finalizar Excel':'Seleccionar para Excel'}</button>
-        ${kpCanManageShipping()?`<button class="btn sm" onclick="toggleBoxfulGuideMode()">🚚 ${boxfulGuideMode?'Cerrar selección de guías':'Crear guías múltiples'}</button>`:''}
+        ${kpCanManageShipping()?`<button class="btn sm" onclick="toggleBoxfulGuideMode()">🚚 ${boxfulGuideMode?'Cerrar selección de guías':'Seleccionar guías'}</button>`:''}
       </div>
     </div>`;
     view.innerHTML=renderSearchBar()+extra+renderBoxfulSelectionToolbar()+renderBoxfulCards(list);
@@ -17752,9 +17773,9 @@ C.open=function(id){
     window.boxfulCreateShipment=async function(id,opts){
       opts=opts||{};
       var o=(typeof ORDERS!=='undefined'?ORDERS:[]).find(function(x){return x.id===id;});
-      if(opts.silencioso||!o||o.boxfulShipmentNumber||o.boxfulGuideNumber||!o.boxfulSelectedQuote)return B0.apply(this,arguments);
-      var el=document.createElement('div');el.id='kpGuiaProg';
-      el.innerHTML='<div class="gp-card"><div class="gp-spin"></div><b class="gp-t">Creando guía…</b><span class="gp-s">Verificando los datos del envío</span><div class="gp-bar"><i></i></div></div>';
+      if((opts.silencioso&&!opts.tarjeta)||!o||o.boxfulShipmentNumber||o.boxfulGuideNumber||!o.boxfulSelectedQuote)return B0.apply(this,arguments);
+      var el=document.createElement('div');var prevCard=document.getElementById('kpGuiaProg');if(prevCard)prevCard.remove();el.id='kpGuiaProg';
+      el.innerHTML='<div class="gp-card"><div class="gp-spin"></div><b class="gp-t">Creando guía'+(opts.etiqueta?' '+opts.etiqueta:'')+'…</b><span class="gp-s">Verificando los datos del envío</span><div class="gp-bar"><i></i></div></div>';
       document.body.appendChild(el);
       var sub=el.querySelector('.gp-s'),bar=el.querySelector('.gp-bar i'),timers=[];
       requestAnimationFrame(function(){requestAnimationFrame(function(){bar.style.width='90%';});});
@@ -18624,6 +18645,7 @@ setTimeout(hideLegacySidebar,500);
   const oldQuote=boxfulQuoteOrder;
   if(typeof oldQuote==='function'){
     boxfulQuoteOrder=async function(id){
+      if(window.__kpQuoteQuiet)return oldQuote.apply(this,arguments);
       const btns=[...document.querySelectorAll('#view button')].filter(b=>String(b.getAttribute('onclick')||'').includes(`boxfulQuoteOrder('${id}')`));
       btns.forEach(b=>{b.dataset.kpQuoteLabel=b.textContent;b.disabled=true;b.textContent='⏳ Cotizando…'});
       try{
@@ -18654,16 +18676,30 @@ setTimeout(hideLegacySidebar,500);
       if(boxfulGuideMode&&boxfulGuiaSeleccion&&boxfulGuiaSeleccion.size){
         const ids=[...boxfulGuiaSeleccion];
         const selected=ids.map(id=>ORDERS.find(o=>String(o.id)===String(id))).filter(Boolean);
-        const allQuoted=selected.length>0&&selected.every(o=>o.boxfulQuote);
+        const hasOpts=o=>!!(o.boxfulQuote&&boxfulGetQuoteOptions(o.boxfulQuote).length);
+        const sinCotizar=selected.filter(o=>!o.boxfulQuote);
+        const allQuoted=selected.length>0&&selected.every(hasOpts);
+        const allChosen=selected.length>0&&selected.every(o=>!!o.boxfulSelectedQuote);
+        const fallos=((window.boxfulLoteEstado&&window.boxfulLoteEstado.fail)||[]).filter(f=>boxfulGuiaSeleccion.has(f.id));
         const names=new Map();
         if(allQuoted) selected.forEach(o=>boxfulGetQuoteOptions(o.boxfulQuote).forEach((q,i)=>{const name=boxfulQuoteName(q,i);if(name&&name!=='Paquetería')names.set(name,name);}));
-        const quoteBtn=`<button class="btn primary sm" onclick="kpCotizarSeleccionadas()">💰 Cotizar seleccionadas (${ids.length})</button>`;
-        const courierControl=allQuoted&&names.size?`<div class="kp-filter-panel" style="margin-top:10px"><div class="kp-filter-title">🚚 Elegí la paquetería para las órdenes seleccionadas</div><div class="kp-filter-row"><select id="kpBulkCourierSelect" style="flex:1"><option value="">Seleccionar empresa…</option>${[...names.keys()].sort().map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}</select><button class="btn green sm" onclick="kpAplicarPaqueteriaSeleccionada()">Aplicar donde haya cobertura</button></div><div class="small" style="margin-top:8px">Las órdenes sin cobertura para esa empresa quedarán sin asignar y se mostrarán sus alternativas disponibles.</div></div>`:'';
-        html+=`<div class="btnrow" style="margin-top:8px">${quoteBtn}</div>${courierControl}`;
+        const quoteBtn=`<button class="btn primary sm" onclick="kpCotizarSeleccionadas()">💰 Cotizar guías (${ids.length})</button>`;
+        let status='';
+        if(fallos.length) status=`<div class="kp-quote-status">⚠️ ${fallos.length} sin cotización: ${fallos.map(f=>escapeHtml(String(f.cliente)+' — '+String(f.msg||'').slice(0,90))).join(' · ')}<div class="btnrow" style="margin-top:8px"><button class="btn sm" onclick="kpQuitarFallidasSel()">Quitar las que no se pueden</button></div></div>`;
+        else if(sinCotizar.length) status=`<div class="kp-quote-status">${sinCotizar.length} de ${ids.length} sin cotizar. Tocá “Cotizar guías”.</div>`;
+        else if(!allQuoted) status=`<div class="kp-quote-status">⚠️ Hay órdenes cotizadas sin paqueterías disponibles.</div>`;
+        else if(allChosen) status=`<div class="kp-quote-status">✅ ${ids.length} cotizada(s) con paquetería. Ya podés crear las guías.</div>`;
+        else status=`<div class="kp-quote-status">✅ ${ids.length} cotizada(s). Elegí la paquetería para poder crear las guías.</div>`;
+        const courierControl=allQuoted&&names.size?`<div class="kp-filter-panel" style="margin-top:10px"><div class="kp-filter-title">🚚 Paquetería para las órdenes seleccionadas</div><div class="kp-filter-row"><select id="kpBulkCourierSelect" style="flex:1"><option value="">Seleccionar…</option><option value="__cheapest__">💲 La más barata de cada orden</option>${[...names.keys()].sort().map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}</select><button class="btn green sm" onclick="kpAplicarPaqueteriaSeleccionada()">Aplicar</button></div><div class="small" style="margin-top:8px">Las órdenes sin cobertura para esa empresa quedarán sin asignar y se mostrarán sus alternativas.</div></div>`:'';
+        html+=`<div class="btnrow" style="margin-top:8px">${quoteBtn}</div>${status}${courierControl}`;
       }
       return html;
     };
   }
+  window.kpQuitarFallidasSel=function(){
+    ((window.boxfulLoteEstado&&window.boxfulLoteEstado.fail)||[]).forEach(f=>boxfulGuiaSeleccion.delete(f.id));
+    window.boxfulLoteEstado=null;render();
+  };
   window.kpAplicarPaqueteriaSeleccionada=async function(){
     const name=document.getElementById('kpBulkCourierSelect')?.value;if(!name){toast('Elegí primero una empresa de envíos.');return;}
     const ids=[...boxfulGuiaSeleccion];const noCobertura=[];let asignadas=0;
@@ -18672,33 +18708,39 @@ setTimeout(hideLegacySidebar,500);
       for(const id of ids){
         const o=ORDERS.find(x=>String(x.id)===String(id));if(!o)continue;
         const opts=o.boxfulQuote?boxfulGetQuoteOptions(o.boxfulQuote):[];
-        const index=opts.findIndex((q,i)=>String(boxfulQuoteName(q,i)).toLowerCase()===String(name).toLowerCase());
+        const index=!opts.length?-1:(name==='__cheapest__'?opts.reduce((best,q,i)=>boxfulQuotePrice(q)<boxfulQuotePrice(opts[best])?i:best,0):opts.findIndex((q,i)=>String(boxfulQuoteName(q,i)).toLowerCase()===String(name).toLowerCase()));
         if(index<0){noCobertura.push(`${o.cliente||id}: ${opts.length?opts.map((q,i)=>boxfulQuoteName(q,i)).join(', '):'sin cobertura o sin tarifas'}`);continue;}
         try{await boxfulSelectQuote(id,index);asignadas++;}catch(e){noCobertura.push(`${o.cliente||id}: no se pudo guardar ${name}`);}
       }
     }finally{document.body.classList.remove('kp-busy');}
-    render();toast(`Paquetería ${name}: asignada a ${asignadas} orden(es); sin cobertura/pendientes: ${noCobertura.length}.`);
+    render();toast(`Paquetería ${name==='__cheapest__'?'más barata':name}: asignada a ${asignadas} orden(es); sin cobertura/pendientes: ${noCobertura.length}.`);
     if(noCobertura.length)boxfulShowErrorModal('Órdenes que necesitan otra paquetería',noCobertura.join('\n'),null);
   };
   window.kpCotizarSeleccionadas=async function(){
     const ids=[...(boxfulGuiaSeleccion||[])];
     if(!ids.length){toast('Marcá las órdenes que querés cotizar.');return;}
-    if(!confirm(`Se actualizará la cotización de ${ids.length} órdenes. Después podrás elegir la paquetería para cada una. ¿Continuar?`))return;
+    const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+    const ok=[],fail=[];
     document.body.classList.add('kp-busy');
-    let ok=0;const fail=[];
+    window.__kpQuoteQuiet=true; // sin avisos ni redibujado por orden: se actualiza todo una sola vez al final
+    const bar=document.createElement('div');bar.id='kpProgreso';bar.className='kpProgreso';document.body.appendChild(bar);
     try{
       for(let i=0;i<ids.length;i++){
         const o=(ORDERS||[]).find(x=>String(x.id)===String(ids[i]));
         if(!o)continue;
-        const bar=document.getElementById('kpProgreso')||document.createElement('div');bar.id='kpProgreso';bar.className='kpProgreso';bar.textContent=`⏳ Cotizando ${i+1} de ${ids.length}`;if(!bar.isConnected)document.body.appendChild(bar);
-        try{await boxfulQuoteOrder(ids[i]);const fresh=(ORDERS||[]).find(x=>String(x.id)===String(ids[i]));if(fresh&&fresh.boxfulQuote)ok++;else fail.push((o.cliente||ids[i])+': sin tarifas disponibles');}
-        catch(e){fail.push((o.cliente||ids[i])+': '+(e.message||'sin cobertura o error'));}
-        await new Promise(r=>setTimeout(r,350));
+        bar.textContent=`⏳ Cotizando ${i+1} de ${ids.length}`;
+        window.__kpQuoteError='';
+        try{
+          const r=await boxfulQuoteOrder(ids[i]);
+          if(r===false||window.__kpQuoteError) fail.push({id:ids[i],cliente:o.cliente||ids[i],msg:window.__kpQuoteError||'sin tarifas disponibles'});
+          else ok.push(ids[i]);
+        }catch(e){fail.push({id:ids[i],cliente:o.cliente||ids[i],msg:e.message||'sin cobertura o error'});}
+        await sleep(350);
       }
-    }finally{document.body.classList.remove('kp-busy');document.getElementById('kpProgreso')?.remove();}
+    }finally{window.__kpQuoteQuiet=false;document.body.classList.remove('kp-busy');bar.remove();}
+    window.boxfulLoteEstado={ok,fail};
     render();
-    toast(`Cotizaciones listas: ${ok} · revisar: ${fail.length}`);
-    if(fail.length) boxfulShowErrorModal('Órdenes sin cotización disponible',fail.join('\n'),null);
+    toast(fail.length?`Cotizadas: ${ok.length} · sin cotización: ${fail.length}`:`✅ ${ok.length} cotizada(s)`);
   };
 
   // Filtros independientes de fecha y forma de pago; selección de guías sigue disponible.
@@ -18781,7 +18823,7 @@ setTimeout(hideLegacySidebar,500);
     const seen=new Set();
     root.querySelectorAll('button').forEach(b=>{
       const label=(b.textContent||'').replace(/\s+/g,' ').trim();
-      if(!/^(🚚\s*)?(Crear guías múltiples|Crear guías múltiples\s*\(\d+\))$/.test(label))return;
+      if(!/^(🚚\s*)?(Seleccionar guías|Crear guías múltiples|Crear guías(\s*\(\d+\))?)$/.test(label))return;
       const key=label;
       if(seen.has(key))b.remove();else seen.add(key);
     });
@@ -19901,6 +19943,7 @@ window.__kpDevBoxfulCtx=()=>ctx;window.__kpDevConCtx=conCtx;
   var original=window.boxfulQuoteOrder;
   if(typeof original==='function'&&!original.__kpLoadingFix){
     var wrapped=function(id){
+      if(window.__kpQuoteQuiet)return original.apply(this,arguments);
       var card=null;try{card=[...document.querySelectorAll('#view .card')].find(c=>(c.innerHTML||'').includes(String(id)));}catch(e){}
       var btn=card&&[...card.querySelectorAll('button')].find(b=>/Cotizar envío|Actualizar cotización/i.test(b.textContent||''));
       if(btn&&!btn.disabled){btn.disabled=true;btn.dataset.kpQuoteBusy='1';var old=btn.textContent;btn.textContent='⏳ Cotizando…';}
@@ -20412,7 +20455,7 @@ window.renderIntegraciones=function(){
 };
 
 /* ===== Prompt del sistema ===== */
-const MANUAL='Secciones: Inicio, Chat, Órdenes (pedidos del día; botón ＋ crea una orden; las flechas ‹ › cambian de día), Nivel Nacional (envíos Boxful: Cotizar envío → elegir paquetería → Crear guía; "Crear guías múltiples" crea varias juntas; una guía creada muestra número, PDF y botón de WhatsApp; ✕ Cancelar guía la anula), Rastreos Envíos Nacionales (guías por fecha), Programadas (órdenes para otro día; se envían a la vista principal), Retrasos (órdenes atrasadas), Repartidor (el repartidor ve sus órdenes y las marca entregadas), Admin (usuarios, inventario, reportes, integraciones, GPS), Devoluciones. Crear orden: toca ＋, pega el mensaje del cliente y toca "🪄 Extraer nombre, número y dirección"; revisa y guarda. Inventario (admin/encargado): ＋ Agregar, ✎ Editar, ⇄ Transferir, 📥 Importar Excel (lee SKU, código de barras y precio con IA), ▦ QR, 🏷️ Etiquetas PDF, escaneo de códigos. Modo día/noche: ☰ → Configuración. Boxful se conecta en Integraciones (solo admin). Roles: Administrador, Encargado de envíos, Repartidor, Vendedor.';
+const MANUAL='Secciones: Inicio, Chat, Órdenes (pedidos del día; botón ＋ crea una orden; las flechas ‹ › cambian de día), Nivel Nacional (envíos Boxful: Cotizar envío → elegir paquetería → Crear guía; "Seleccionar guías" cotiza y crea varias juntas; una guía creada muestra número, PDF y botón de WhatsApp; ✕ Cancelar guía la anula), Rastreos Envíos Nacionales (guías por fecha), Programadas (órdenes para otro día; se envían a la vista principal), Retrasos (órdenes atrasadas), Repartidor (el repartidor ve sus órdenes y las marca entregadas), Admin (usuarios, inventario, reportes, integraciones, GPS), Devoluciones. Crear orden: toca ＋, pega el mensaje del cliente y toca "🪄 Extraer nombre, número y dirección"; revisa y guarda. Inventario (admin/encargado): ＋ Agregar, ✎ Editar, ⇄ Transferir, 📥 Importar Excel (lee SKU, código de barras y precio con IA), ▦ QR, 🏷️ Etiquetas PDF, escaneo de códigos. Modo día/noche: ☰ → Configuración. Boxful se conecta en Integraciones (solo admin). Roles: Administrador, Encargado de envíos, Repartidor, Vendedor.';
 function sysPrompt(live){
  const u=U(),rol=u.esAdmin?'administrador':u.esEncargadoEnvios?'encargado de envíos':u.esRepartidor?'repartidor':'vendedor';
  return 'Eres Mike, compañero de trabajo de KPlace (gestión de órdenes, inventario y envíos en Honduras) y además un asistente general muy capaz: respondes CUALQUIER pregunta (cultura, distancias, clima, cálculos, consejos, redacción) con la calidad de un buen chat general, sin decir que eso no es de KPlace. Hablas español natural de Honduras, cercano y directo, como una persona real, sin sonar a manual. ENTENDER BIEN: entiendes jerga hondureña, errores de ortografía, abreviaturas y audio mal transcrito (tegus = Tegucigalpa, lps = lempiras, la orden de Carlos, el de ayer); usas el contexto de lo que ya dijeron (ese, esa orden, cámbialo); si algo es ambiguo eliges la lectura más probable y la dices en media frase; solo preguntas cuando equivocarte podría crear o cambiar algo mal; nunca contestes solo no entendí: di qué crees que quisieron decir. '+
@@ -21649,7 +21692,7 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
       ev.preventDefault();ev.stopPropagation();
       panel.classList.remove('open');
       panel.setAttribute('aria-hidden','true');
-      panel.style.setProperty('display','none','important');
+      panel.style.removeProperty('display');
       const fab=document.getElementById('kpMikeFab');
       if(fab&&window.CURRENT_USER){fab.style.removeProperty('display');fab.style.display='block';}
       const dock=document.getElementById('kpMikeDock');
@@ -21791,6 +21834,7 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
 <script id="kp-mike-mobile-fab-restore-v2">
 (function(){
   function restoreLauncher(){
+    if(window.__kpMikeLauncherHardeningV3)return;
     var panel=document.getElementById('kpMikePanel'),fab=document.getElementById('kpMikeFab'),dock=document.getElementById('kpMikeDock');
     if(!panel||!fab||panel.classList.contains('open')||!window.CURRENT_USER)return;
     var pos={};
@@ -21863,6 +21907,16 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
     fab.style.setProperty('right','auto','important');
     fab.style.setProperty('bottom','auto','important');
   }
+  function clearOfPlus(x,y){
+    const fab=get('kpMikeFab'), plus=document.querySelector('.fab');
+    if(!fab||!plus||getComputedStyle(plus).display==='none') return {x:x,y:y};
+    const p=plus.getBoundingClientRect(); if(!p.width) return {x:x,y:y};
+    const w=fab.offsetWidth||64, h=fab.offsetHeight||64, g=12;
+    const overlap = x < p.right+g && x+w > p.left-g && y < p.bottom+g && y+h > p.top-g;
+    if(!overlap) return {x:x,y:y};
+    const up=p.top-h-g;
+    return up>=6 ? {x:x,y:up} : {x:Math.max(6,p.left-w-g),y:y};
+  }
   function sync(){
     const panel=get('kpMikePanel'), fab=get('kpMikeFab'), dock=get('kpMikeDock');
     if(!panel||!fab) return;
@@ -21894,8 +21948,11 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
     }
     if(dock) dock.style.setProperty('display','none','important');
     if(!dragging){
-      if(Number.isFinite(pos.x) && Number.isFinite(pos.y)) placeFab(pos.x,pos.y);
-      else placeFab(window.innerWidth-(fab.offsetWidth||64)-18, window.innerHeight-(fab.offsetHeight||64)-105);
+      if(Number.isFinite(pos.x) && Number.isFinite(pos.y)){ const c=clearOfPlus(pos.x,pos.y); placeFab(c.x,c.y); }
+      else {
+        const big=window.innerWidth>700;
+        placeFab(window.innerWidth-(fab.offsetWidth||64)-(big?28:16), window.innerHeight-(fab.offsetHeight||64)-(big?96:164));
+      }
     }
     fab.style.setProperty('display','grid','important');
     fab.style.setProperty('visibility','visible','important');
