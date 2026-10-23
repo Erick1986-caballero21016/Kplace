@@ -4653,6 +4653,10 @@ function boxfulSeleccionarTodo(seleccionar){
 window.boxfulGuiaSeleccion = new Set(); // ids marcados para crear guía en el próximo lote
 function toggleBoxfulGuiaSel(id, checked){
   if(checked) boxfulGuiaSeleccion.add(id); else boxfulGuiaSeleccion.delete(id);
+  // Al volver a dibujar las tarjetas, no reabrir detalles que estaban abiertos
+  // antes de marcar una orden. La selección debe afectar solo la casilla.
+  try{sessionStorage.removeItem('kpx_open');if(window.__kpxOpenCards)window.__kpxOpenCards.clear();}catch(e){}
+  document.querySelectorAll('#view .card.kpx-open').forEach(c=>c.classList.remove('kpx-open'));
   render();
 }
 function boxfulGuiaSeleccionables(){
@@ -16199,6 +16203,7 @@ document.addEventListener('click',function(e){
 },true);
 /* ---------- Tarjetas de orden desplegables ---------- */
 const OPEN=new Set(JSON.parse(sessionStorage.getItem('kpx_open')||'[]'));
+window.__kpxOpenCards=OPEN;
 function cardify(c){
   if(c.dataset.kpx)return;c.dataset.kpx='1';
   const m=c.textContent.match(/ORDEN\s*#\s*(\d+)/i),key=m?m[1]:null,kids=[...c.children];
@@ -18669,6 +18674,24 @@ setTimeout(hideLegacySidebar,500);
         !(o.boxfulShipmentNumber||o.boxfulGuideNumber||o.boxfulShipment));
     };
   }
+  const normCourierName=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const orderNumber=o=>{try{return window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):String(o&&o.id||'').slice(-6);}catch(e){return String(o&&o.id||'').slice(-6);}};
+  function bulkCourierSummary(){
+    const applied=window.kpBulkCourierAppliedName;
+    if(!applied||!boxfulGuideMode||!boxfulGuiaSeleccion||!boxfulGuiaSeleccion.size)return '';
+    const selected=[...boxfulGuiaSeleccion].map(id=>(ORDERS||[]).find(o=>String(o.id)===String(id))).filter(Boolean);
+    if(!selected.length)return '';
+    const cheapest=applied==='__cheapest__';
+    const label=cheapest?'La más barata de cada orden':applied;
+    const assigned=o=>{
+      if(window.kpBulkCourierNoMatchIds&&window.kpBulkCourierNoMatchIds.has(String(o.id)))return false;
+      if(!o.boxfulSelectedQuote)return false;
+      return cheapest||normCourierName(boxfulQuoteName(o.boxfulSelectedQuote,0))===normCourierName(applied);
+    };
+    const missing=selected.filter(o=>!assigned(o));
+    const count=selected.length-missing.length;
+    return `<div class="kp-quote-status kp-bulk-courier-summary"><b>🚚 ${escapeHtml(label)}: ${count} de ${selected.length} órdenes asignadas.</b>${missing.length?`<div class="kp-bulk-courier-missing"><b>Sin asignar a esta empresa:</b><ol>${missing.map(o=>`<li>Orden #${escapeHtml(orderNumber(o))} — ${escapeHtml(o.cliente||'Cliente')}</li>`).join('')}</ol></div>`:''}</div>`;
+  }
   const oldToolbar=renderBoxfulSelectionToolbar;
   if(typeof oldToolbar==='function'){
     renderBoxfulSelectionToolbar=function(){
@@ -18689,9 +18712,10 @@ setTimeout(hideLegacySidebar,500);
         else if(sinCotizar.length) status=`<div class="kp-quote-status">${sinCotizar.length} de ${ids.length} sin cotizar. Tocá “Cotizar guías”.</div>`;
         else if(!allQuoted) status=`<div class="kp-quote-status">⚠️ Hay órdenes cotizadas sin paqueterías disponibles.</div>`;
         else if(allChosen) status=`<div class="kp-quote-status">✅ ${ids.length} cotizada(s) con paquetería. Ya podés crear las guías.</div>`;
+        else if(window.kpBulkCourierAppliedName) status=`<div class="kp-quote-status">🚚 Paquetería aplicada. Revisá arriba las órdenes que quedaron sin asignar.</div>`;
         else status=`<div class="kp-quote-status">✅ ${ids.length} cotizada(s). Elegí la paquetería para poder crear las guías.</div>`;
         const courierControl=allQuoted&&names.size?`<div class="kp-filter-panel" style="margin-top:10px"><div class="kp-filter-title">🚚 Paquetería para las órdenes seleccionadas</div><div class="kp-filter-row"><select id="kpBulkCourierSelect" style="flex:1"><option value="">Seleccionar…</option><option value="__cheapest__">💲 La más barata de cada orden</option>${[...names.keys()].sort().map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}</select><button class="btn green sm" onclick="kpAplicarPaqueteriaSeleccionada()">Aplicar</button></div><div class="small" style="margin-top:8px">Las órdenes sin cobertura para esa empresa quedarán sin asignar y se mostrarán sus alternativas.</div></div>`:'';
-        html+=`<div class="btnrow" style="margin-top:8px">${quoteBtn}</div>${status}${courierControl}`;
+        html+=`<div class="btnrow" style="margin-top:8px">${quoteBtn}</div>${status}${courierControl}${bulkCourierSummary()}`;
       }
       return html;
     };
@@ -18702,19 +18726,33 @@ setTimeout(hideLegacySidebar,500);
   };
   window.kpAplicarPaqueteriaSeleccionada=async function(){
     const name=document.getElementById('kpBulkCourierSelect')?.value;if(!name){toast('Elegí primero una empresa de envíos.');return;}
-    const ids=[...boxfulGuiaSeleccion];const noCobertura=[];let asignadas=0;
+    const ids=[...boxfulGuiaSeleccion];let asignadas=0;const noMatchIds=[];
     document.body.classList.add('kp-busy');
     try{
       for(const id of ids){
         const o=ORDERS.find(x=>String(x.id)===String(id));if(!o)continue;
         const opts=o.boxfulQuote?boxfulGetQuoteOptions(o.boxfulQuote):[];
-        const index=!opts.length?-1:(name==='__cheapest__'?opts.reduce((best,q,i)=>boxfulQuotePrice(q)<boxfulQuotePrice(opts[best])?i:best,0):opts.findIndex((q,i)=>String(boxfulQuoteName(q,i)).toLowerCase()===String(name).toLowerCase()));
-        if(index<0){noCobertura.push(`${o.cliente||id}: ${opts.length?opts.map((q,i)=>boxfulQuoteName(q,i)).join(', '):'sin cobertura o sin tarifas'}`);continue;}
-        try{await boxfulSelectQuote(id,index);asignadas++;}catch(e){noCobertura.push(`${o.cliente||id}: no se pudo guardar ${name}`);}
+        const index=!opts.length?-1:(name==='__cheapest__'?opts.reduce((best,q,i)=>boxfulQuotePrice(q)<boxfulQuotePrice(opts[best])?i:best,0):opts.findIndex((q,i)=>normCourierName(boxfulQuoteName(q,i))===normCourierName(name)));
+        if(index<0)noMatchIds.push(String(id));
+        if(index<0){
+          try{
+            await db.collection('orders').doc(String(id)).update({boxfulSelectedQuote:null,boxfulSelectedCourierId:null,boxfulSelectedQuotePrice:null});
+            o.boxfulSelectedQuote=null;o.boxfulSelectedCourierId=null;o.boxfulSelectedQuotePrice=null;
+          }catch(e){console.warn('No se pudo quitar la empresa de envío de la orden',id,e);}
+          continue;
+        }
+        try{
+          const chosen=opts[index],courierId=boxfulQuoteCourierId(chosen);
+          if(!courierId)throw new Error('La tarifa no trae un identificador válido.');
+          await db.collection('orders').doc(String(id)).update({boxfulSelectedQuote:chosen,boxfulSelectedCourierId:String(courierId),boxfulSelectedQuotePrice:boxfulQuotePrice(chosen)});
+          o.boxfulSelectedQuote=chosen;o.boxfulSelectedCourierId=String(courierId);o.boxfulSelectedQuotePrice=boxfulQuotePrice(chosen);
+          asignadas++;
+        }catch(e){console.warn('No se pudo asignar la paquetería a la orden',id,e);}
       }
     }finally{document.body.classList.remove('kp-busy');}
-    render();toast(`Paquetería ${name==='__cheapest__'?'más barata':name}: asignada a ${asignadas} orden(es); sin cobertura/pendientes: ${noCobertura.length}.`);
-    if(noCobertura.length)boxfulShowErrorModal('Órdenes que necesitan otra paquetería',noCobertura.join('\n'),null);
+    window.kpBulkCourierAppliedName=name;
+    window.kpBulkCourierNoMatchIds=new Set(noMatchIds);
+    render();toast(`Paquetería ${name==='__cheapest__'?'más barata':name}: asignada a ${asignadas} orden(es).`);
   };
   window.kpCotizarSeleccionadas=async function(){
     const ids=[...(boxfulGuiaSeleccion||[])];
@@ -19210,6 +19248,34 @@ ${texto}`;
     return j;
   }finally{clearTimeout(to);}
 }
+function coreAiFields(j){
+  return {
+    cliente:String(j&&j.cliente||'').trim(),
+    numero:tel(j&&j.numero),
+    numero2:tel(j&&j.numero2),
+    direccion:String(j&&j.direccion||'').replace(/\s*\n\s*/g,', ').trim()
+  };
+}
+function coreAiComplete(j){
+  const x=coreAiFields(j);
+  return !!(x.cliente&&x.numero&&x.direccion);
+}
+function applyMissingAiCore(j){
+  const x=coreAiFields(j);
+  const put=(id,value,max)=>{
+    const e=document.getElementById(id);
+    if(e&&value)e.value=max?String(value).slice(0,max):value;
+  };
+  put('f_cliente',x.cliente);
+  put('f_numero',x.numero);
+  if(x.numero2){
+    try{if(typeof mostrarNumero2==='function')mostrarNumero2();}catch(e){}
+    put('f_numero2',x.numero2);
+  }
+  put('f_direccion',x.direccion,200);
+  try{if(window.KP&&typeof KP.checkFrecuenteOrden==='function')KP.checkFrecuenteOrden();}catch(e){}
+  try{if(window.KP&&typeof KP.dirCount==='function')KP.dirCount();}catch(e){}
+}
 /* Convierte la respuesta en el formato con etiquetas que ya entiende el formulario */
 function aEtiquetas(j){
   const L=[],s=v=>String(v==null?'':v).replace(/\s*\n\s*/g,', ').trim();
@@ -19234,21 +19300,37 @@ function wrap(obj,key){
   const w=async function(){
     const self=this,args=arguments,el=document.getElementById('f_pegado');
     if(window.__KP_NOGEM||!el||!el.value||!el.value.trim())return f.apply(self,args);
-    el.value=window.kpLimpiarWhatsApp(el.value);
+    const source=window.kpLimpiarWhatsApp(el.value);
+    el.value=source;
     const btn=document.querySelector('button[onclick*="extraerDatos"]'),label=btn&&btn.textContent;
+    let ai=null,aiCompleto=false;
     try{
       const key=await getKey();
       if(key){
         if(btn){btn.disabled=true;btn.textContent='🪄 Leyendo con Gemini…';}
-        const et=aEtiquetas(await gemini(el.value,key));
-        if(/^(Cliente|Número|Dirección):/m.test(et))el.value=et;
-        else if(typeof toast==='function')toast('Gemini no encontró datos claros; uso el lector normal');
+        ai=await gemini(source,key);
+        aiCompleto=coreAiComplete(ai);
+        if(aiCompleto)el.value=aEtiquetas(ai);
+        else{
+          el.value=source;
+          if(typeof toast==='function')toast('Gemini encontró datos parciales; completaré lo que falte con la extracción normal.');
+        }
       }
     }catch(e){
       console.warn('Gemini falló, se usa el lector normal',e);
       if(typeof toast==='function')toast('No se pudo usar Gemini ('+(e.message||'error')+'). Uso el lector normal');
+      el.value=source;
     }finally{if(btn){btn.disabled=false;btn.textContent=label;}}
-    return f.apply(self,args);
+    const result=await f.apply(self,args);
+    if(ai&&!aiCompleto)applyMissingAiCore(ai);
+    if(ai&&!aiCompleto){
+      const missing=[];
+      if(!document.getElementById('f_cliente')?.value.trim())missing.push('nombre');
+      if(!document.getElementById('f_numero')?.value.trim())missing.push('teléfono');
+      if(!document.getElementById('f_direccion')?.value.trim())missing.push('dirección');
+      if(missing.length&&typeof toast==='function')toast('Todavía falta '+missing.join(', ')+'. Revisa el texto del pedido.');
+    }
+    return result;
   };
   w.__kpwa=1;obj[key]=w;
 }
@@ -22004,34 +22086,49 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
     </div>`;
   }
 
+  function courierBadge(order){
+    if(!order.boxfulSelectedQuote||(window.kpBulkCourierNoMatchIds&&window.kpBulkCourierNoMatchIds.has(String(order.id))))return '';
+    const name=boxfulQuoteName(order.boxfulSelectedQuote,0);
+    const price=Number(boxfulQuotePrice(order.boxfulSelectedQuote)||0);
+    return `<div class="kp-bulk-courier-badge">🚚 Empresa asignada: <b>${escapeHtml(name)}</b> · ${kpMoneda()} ${price.toFixed(2)}</div>`;
+  }
+  function orderCardWithCourier(order){
+    const html=orderCard(order);
+    const badge=courierBadge(order);
+    if(!badge)return html;
+    return html.replace(/(<div class="card[^"]*"[^>]*>)/,`$1${badge}`);
+  }
+
   // En modo de guías, solo la casilla selecciona la orden. Tocar el resto de
   // la tarjeta deja disponibles los controles/detalles y nunca marca la orden.
   const originalRenderBoxfulCards=renderBoxfulCards;
   if(typeof originalRenderBoxfulCards==='function'){
     renderBoxfulCards=function(list){
       if(!boxfulGuideMode)return originalRenderBoxfulCards.apply(this,arguments);
-      return list.map(order=>{
+      return `<div class="kp-guide-orders-grid">${list.map(order=>{
         const id=String(order.id);
         const jsId=escapeHtml(JSON.stringify(id));
         const selected=boxfulGuiaSeleccion.has(order.id);
         const canCreate=selected&&!!order.boxfulSelectedQuote&&!(order.boxfulShipmentNumber||order.boxfulGuideNumber||order.boxfulShipment);
         return `<div class="kp-guide-order-wrap ${selected?'kp-selected':''}">
-          <label class="kp-guide-select">
-            <input type="checkbox" ${selected?'checked':''} onchange="toggleBoxfulGuiaSel(${jsId},this.checked)">
+          <label class="kp-guide-select" onclick="event.stopPropagation()" onpointerdown="event.stopPropagation()">
+            <input type="checkbox" ${selected?'checked':''} onclick="event.stopPropagation()" onpointerdown="event.stopPropagation()" onchange="toggleBoxfulGuiaSel(${jsId},this.checked)">
             <span>Seleccionar esta guía</span>
           </label>
-          ${orderCard(order)}
+          ${orderCardWithCourier(order)}
           ${selected?guideCourierControl(order,jsId):''}
           ${canCreate?`<div class="kp-guide-ready">✓ Cotización lista para crear guía</div>`:''}
         </div>`;
-      }).join('');
+      }).join('')}</div>`;
     };
   }
 
   const style=document.createElement('style');
   style.id='kp-bulk-guide-ux-style';
   style.textContent=`
-    #view .kp-guide-order-wrap{margin:0 auto 12px;max-width:410px;padding:7px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+    #view .kp-guide-orders-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%;max-width:720px;margin:0 auto}
+    #view .kp-guide-order-wrap{width:100%;min-width:0;max-width:none;box-sizing:border-box;margin:0;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--card);align-self:start}
+    #view .kp-guide-order-wrap>.card{width:100%;min-width:0;box-sizing:border-box;margin:0 0 8px}
     #view .kp-guide-order-wrap.kp-selected{border-color:#31a24c;box-shadow:0 0 0 2px rgba(49,162,76,.12)}
     #view .kp-guide-select{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;color:var(--ink);font-size:13px;font-weight:800;cursor:pointer}
     #view .kp-guide-select input{width:19px;height:19px;margin:0;accent-color:#168b5d;flex:none}
@@ -22040,6 +22137,16 @@ html body #kpChat26 .kp-chat26-avatar .kp-channel-mark{width:28px;height:28px;co
     #view .kp-guide-courier select{width:100%;min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);font:inherit}
     #view .kp-guide-courier-empty{display:block;color:#a34b00;font-size:12px;font-weight:700}
     #view .kp-guide-ready{margin:0 7px 8px;color:#168b5d;font-size:12px;font-weight:800}
+    #view .kp-bulk-courier-summary{line-height:1.5}
+    #view .kp-bulk-courier-missing{margin-top:6px}
+    #view .kp-bulk-courier-missing ol{margin:5px 0 0;padding-left:24px}
+    #view .kp-bulk-courier-missing li{padding:2px 0}
+    #view .kp-bulk-courier-badge{margin:0 12px 9px;padding:8px 10px;border:1px solid rgba(22,163,106,.35);border-radius:10px;background:rgba(22,163,106,.1);color:#168b5d;font-size:12px;line-height:1.4}
+    body.kp-dark #view .kp-bulk-courier-badge{color:#86efac;background:rgba(22,163,106,.12);border-color:rgba(22,163,106,.35)}
+    @media(min-width:900px){
+      #view .kp-guide-orders-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;max-width:1400px}
+      #view .kp-guide-order-wrap{padding:12px}
+    }
   `;
   document.head.appendChild(style);
 })();
