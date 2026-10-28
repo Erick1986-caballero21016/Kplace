@@ -7934,10 +7934,12 @@ function toggleBoxfulGuideMode(event){
   }else{
     boxfulGuideMode=true;
   }
-  render();
-  // Montar los acordeones inmediatamente, antes de que el navegador pinte
-  // tarjetas abiertas durante los 120 ms del observador general.
-  if(cerrando&&typeof window.kpCardifyOrdersNow==='function')window.kpCardifyOrdersNow();
+  // La cadena global render() tiene un anti-parpadeo que puede aplazar el render
+  // durante 130 ms. Si lo usamos aquí, cardify() actúa sobre tarjetas viejas
+  // y la lista nueva aparece abierta al llegar el render aplazado.
+  // Pintamos directamente SOLO Nivel Nacional, sin alterar otros módulos.
+  if(activeTab==='boxful') kpRenderOrdersTab('boxful');
+  else render();
 }
 function renderBoxfulSelectionToolbar(){
   if(!boxfulExcelMode&&!boxfulGuideMode) return '';
@@ -7995,6 +7997,12 @@ function kpRenderOrdersTab(tab){
       </div>
     </div>`;
     view.innerHTML=renderSearchBar()+extra+`<div id="kpBoxfulSelectionToolbar">${renderBoxfulSelectionToolbar()}</div>`+renderBoxfulCards(list);
+    // Preparar el acordeón EN ESTE MISMO render, antes de pintar el nuevo DOM.
+    // Esperar al MutationObserver (120 ms) muestra accidentalmente todos los detalles.
+    if(typeof window.kpCardifyOrdersNow==='function')window.kpCardifyOrdersNow();
+    if(!boxfulGuideMode&&window.__kpCollapseNationalAfterSelection){
+      view.querySelectorAll('.card[data-kpx]').forEach(card=>card.classList.remove('kpx-open'));
+    }
     boxfulScheduleAutoSync();
     updateKPlaceNav();
     return;
@@ -16960,7 +16968,9 @@ function cardify(c){
 // expandidos antes de que entrara la clase CSS de acordeón.
 window.kpCardifyOrdersNow=function(){
   if(activeTab!=='boxful')return;
-  document.querySelectorAll('#view .card.pendiente-entrega:not([data-kpx]),#view .card.entregado:not([data-kpx]),#view .card.no-entregado:not([data-kpx])').forEach(cardify);
+  const root=document.getElementById('view');
+  if(!root)return;
+  root.querySelectorAll('.card.pendiente-entrega:not([data-kpx]),.card.entregado:not([data-kpx]),.card.no-entregado:not([data-kpx])').forEach(cardify);
 };
 /* ---------- Configuración con menús desplegables ---------- */
 function accordions(){
