@@ -3570,8 +3570,48 @@ window.kpStampCompanyOnOrder=function(order){
 };
 
 /* ======================= ÓRDENES: listener ======================= */
+// El guardado de cada tarifa de Boxful emite un snapshot de Firestore. En modo
+// de selección de guías, NO desmontar las tarjetas por cambios exclusivamente
+// de cotización: se perderían el estado y la animación de sus detalles.
+function kpSoloCambioCotizacion(snap,anteriores){
+  if(!snap||typeof snap.docChanges!=='function'||!Array.isArray(anteriores)||!anteriores.length)return false;
+  const cambios=snap.docChanges();
+  if(!cambios.length)return false;
+  const antes=new Map(anteriores.map(o=>[String(o.id),o]));
+  const campos=new Set([
+    'boxfulQuote','boxfulQuoteAt','boxfulRecolectionAddressId',
+    'boxfulCustomerCityId','boxfulCustomerStateId','boxfulRecolectionCityId',
+    'boxfulRecolectionStateId','boxfulSelectedQuote',
+    'boxfulSelectedCourierId','boxfulSelectedQuotePrice'
+  ]);
+  let hayCotizacion=false;
+  for(const cambio of cambios){
+    if(cambio.type!=='modified')return false;
+    const id=String(cambio.doc.id),previo=antes.get(id);
+    if(!previo)return false;
+    const nuevo=kpStampCompanyOnOrder({id,...cambio.doc.data()});
+    for(const campo of new Set([...Object.keys(previo),...Object.keys(nuevo)])){
+      if(JSON.stringify(previo[campo])===JSON.stringify(nuevo[campo]))continue;
+      if(!campos.has(campo))return false;
+      hayCotizacion=true;
+    }
+  }
+  return hayCotizacion;
+}
 db.collection('orders').orderBy('creado','asc').onSnapshot(snap=>{
+  const soloTarifas=kpSoloCambioCotizacion(snap,ORDERS);
   ORDERS = snap.docs.map(d=>kpStampCompanyOnOrder({id:d.id, ...d.data()})).filter(kpOrderBelongsToCurrentCompany);
+  const seleccionandoGuias=activeTab==='boxful'&&boxfulGuideMode&&!!document.getElementById('kpBoxfulSelectionToolbar');
+  if(seleccionandoGuias&&window.__kpQuoteQuiet){
+    // Las órdenes sí se actualizan en memoria; las tarjetas no se reconstruyen.
+    if(!soloTarifas)window.__kpQuoteBatchPendingRender=true;
+    return;
+  }
+  if(seleccionandoGuias&&soloTarifas){
+    // Tras el lote o una tarifa individual, solo refrescar las tarifas y la barra.
+    if(typeof kpRefreshBoxfulSelectionView==='function')kpRefreshBoxfulSelectionView();
+    return;
+  }
   if(CURRENT_USER) buildTabs();
   render();
 });
@@ -18944,8 +18984,9 @@ if(typeof oldUpload==='function'&&!oldUpload.__kpLoading){
     if(!ids.length){toast('Marcá las órdenes que querés cotizar.');return;}
     const sleep=ms=>new Promise(r=>setTimeout(r,ms));
     const ok=[],fail=[];
+    window.__kpQuoteBatchPendingRender=false;
     document.body.classList.add('kp-busy');
-    window.__kpQuoteQuiet=true; // sin avisos ni redibujado por orden: se actualiza todo una sola vez al final
+    window.__kpQuoteQuiet=true; // snapshots de las tarifas sin redibujar tarjetas de órdenes
     const bar=document.createElement('div');bar.id='kpProgreso';bar.className='kpProgreso';document.body.appendChild(bar);
     try{
       for(let i=0;i<ids.length;i++){
@@ -18962,7 +19003,13 @@ if(typeof oldUpload==='function'&&!oldUpload.__kpLoading){
       }
     }finally{window.__kpQuoteQuiet=false;document.body.classList.remove('kp-busy');bar.remove();}
     window.boxfulLoteEstado={ok,fail};
-    kpRefreshBoxfulSelectionView();
+    if(window.__kpQuoteBatchPendingRender){
+      // Otro cambio ajeno a tarifas ocurrió durante el lote: pintarlo una vez.
+      window.__kpQuoteBatchPendingRender=false;
+      render();
+    }else{
+      kpRefreshBoxfulSelectionView();
+    }
     toast(fail.length?`Cotizadas: ${ok.length} · sin cotización: ${fail.length}`:`✅ ${ok.length} cotizada(s)`);
   };
 
