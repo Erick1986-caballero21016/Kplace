@@ -7955,7 +7955,7 @@ function renderBoxfulSelectionToolbar(){
       <div class="kp-selection-tools">
         <button class="btn sm" onclick="kpSelectAllMode('${mode}',true)">✓ Seleccionar todo</button>
         <button class="btn sm" onclick="kpSelectAllMode('${mode}',false)">Limpiar</button>
-        <button class="btn sm" onclick="${mode==='excel'?'exportBoxful()':'toggleBoxfulGuideMode(event)'}">${mode==='excel'?'📤 Crear Excel':'Cerrar selección'}</button>
+        ${mode==='excel'?`<button class="btn sm" onclick="exportBoxful()">📤 Crear Excel</button>`:''}
       </div>
     </div>
     ${bulkCreate}
