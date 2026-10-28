@@ -21167,6 +21167,38 @@ window.KPMike={stats,buscar:toolBuscar,runTool,open,minimize};
   try{mo.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true});}catch(e){}
 })();
 </script>
+
+<!-- KPlace: numeración única y controles de usuarios -->
+<style>
+.kpmem-row .kp-chat-avatar,.kpmem-row .kp-chat-avatar img{border-radius:50%!important;overflow:hidden!important;box-sizing:border-box!important}
+.kpmem-row .kp-chat-avatar{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex-shrink:0!important;padding:0!important}
+.kpmem-row .kp-chat-avatar img{display:block!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;margin:0!important;padding:0!important;transform:none!important}
+.kpmem-dm{display:inline-flex;align-items:center;justify-content:center;color:#a78bfa;cursor:pointer}
+</style>
+<script>
+(function(){
+  function admin(){return !!(window.CURRENT_USER&&window.CURRENT_USER.esAdmin)}
+  function uniqueNumbers(){
+    var list=window.VENDEDORES;if(!Array.isArray(list)||!list.length)return false;
+    var used=new Set(),changed=false,next=10001;
+    list.forEach(function(u){var n=Number(String(u.numeroUsuario||'').replace(/\D/g,''));if(Number.isInteger(n)&&n>=10001&&n<=99999&&!used.has(n)){used.add(n);next=Math.max(next,n+1)}});
+    var seen=new Set();list.forEach(function(u){var n=Number(String(u.numeroUsuario||'').replace(/\D/g,''));if(!Number.isInteger(n)||n<10001||n>99999||seen.has(n)){while(used.has(next)&&next<=99999)next++;if(next>99999)return;u.numeroUsuario=String(next);used.add(next);seen.add(next);next++;changed=true;}else{seen.add(n);if(String(u.numeroUsuario)!==String(n)){u.numeroUsuario=String(n);changed=true;}}});
+    if(window.CURRENT_USER){var me=list.find(function(u){return (u.email&&window.CURRENT_USER.email&&u.email.toLowerCase()===window.CURRENT_USER.email.toLowerCase())||(u.usuario&&window.CURRENT_USER.usuario&&u.usuario===window.CURRENT_USER.usuario)});if(me)window.CURRENT_USER.numeroUsuario=me.numeroUsuario;}
+    return changed;
+  }
+  var busy=false;
+  async function sync(){if(busy||!window.db||!Array.isArray(window.VENDEDORES)||!window.VENDEDORES.length)return;busy=true;try{
+    if(admin()&&typeof db.runTransaction==='function'){
+      var ref=db.collection('config').doc('vendedores');var result=await db.runTransaction(async function(tx){var snap=await tx.get(ref),remote=snap.exists&&snap.data()&&snap.data().lista;if(!Array.isArray(remote)||!remote.length)return null;var original=window.VENDEDORES;window.VENDEDORES=remote;var changed=uniqueNumbers();window.VENDEDORES=original;if(changed)tx.update(ref,{lista:remote});return remote;});
+      if(result){var byKey=new Map(result.map(function(u){return [String(u.email||u.usuario||u.nombre||'').toLowerCase(),u.numeroUsuario]}));window.VENDEDORES.forEach(function(u){var n=byKey.get(String(u.email||u.usuario||u.nombre||'').toLowerCase());if(n)u.numeroUsuario=n;});uniqueNumbers();}
+    }else uniqueNumbers();
+  }catch(e){console.warn('Numeración KPlace:',e);uniqueNumbers()}finally{busy=false;}}
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(sync,1800)});
+  var timer=setInterval(function(){if(window.VENDEDORES&&window.VENDEDORES.length){clearInterval(timer);sync()}},1500);setTimeout(function(){clearInterval(timer)},30000);
+  function enhance(){if(!admin())return;document.querySelectorAll('#kpEnterpriseUsers .kp-user-row').forEach(function(row){var sel=row.querySelector('.kp-user-branch');if(!sel||row.querySelector('.kp-delete-user-direct'))return;var i=Number(sel.dataset.index);if(!Number.isInteger(i))return;var b=document.createElement('button');b.type='button';b.className='btn sm red kp-delete-user-direct';b.textContent='Eliminar usuario';b.onclick=function(){if(!admin())return; if(typeof window.kpEliminarUsuario==='function')window.kpEliminarUsuario(i);else if(typeof window.eliminarUsuarioPermanente==='function')window.eliminarUsuarioPermanente(i)};row.appendChild(b)});}
+  document.addEventListener('DOMContentLoaded',function(){var root=document.getElementById('kpEnterpriseUsers');if(root){new MutationObserver(enhance).observe(root,{childList:true,subtree:true});enhance()}});
+})();
+</script>
 </body>
 </html>
 
