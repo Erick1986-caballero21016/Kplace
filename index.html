@@ -2926,278 +2926,218 @@ body.kp-dark #view .cot .btn.act{color:#d4b5ff;border-color:#8253cc;background:#
 }
 @media(prefers-reduced-motion:reduce){body.kp-dark .btn{transition:none!important}}
 </style>
-<!-- KPLACE ORBIT UI · Estilo visual transversal, sin cambios funcionales -->
-<style id="kplace-orbit-ui">
-/* ═══════════════════════════════════════════════════════════════════
-   KPLACE · ORBIT DESIGN SYSTEM 2026
-   Solo presentación. Ninguna función, evento o dato se modifica.
-   Identidad: tinta nocturna, violeta KPlace, microtrama técnica.
-   ═══════════════════════════════════════════════════════════════════ */
+<style id="kp-violet-spectrum-2026">
+/* KPlace · Violet Spectrum — actualización visual de la versión del usuario.
+   CSS exclusivamente: conservar flujo de órdenes/guías, navegación, Firebase y cotizaciones. */
 :root{
-  --orbit-bg:#080c18;
-  --orbit-plate:#12192a;
-  --orbit-plate2:#182136;
-  --orbit-plate3:#1c2540;
-  --orbit-line:rgba(167,184,221,.18);
-  --orbit-violet:#ae76ff;
-  --orbit-lilac:#d7b6ff;
-  --orbit-text:#f2f2fc;
-  --orbit-sub:#a4b1ce;
-  --orbit-glow:rgba(129,63,237,.24);
-  --orbit-radius:22px;
+  --kps-night:#080719;
+  --kps-deep:#0b0b20;
+  --kps-ink:#f4f1ff;
+  --kps-lilac:#c9a8ff;
+  --kps-violet:#9737fa;
+  --kps-purple:#702be8;
+  --kps-blue:#4b39d7;
+  --kps-border:rgba(164,128,246,.24);
+  --kps-gradient:linear-gradient(112deg,#a13dff 0%,#7531ee 49%,#4835cb 100%);
+  --kps-quiet-gradient:linear-gradient(132deg,#1c1740 0%,#14142e 55%,#101529 100%);
 }
-html{background:var(--orbit-bg)}
 body.kp-dark{
-  color:var(--orbit-text);
-  background-color:var(--orbit-bg)!important;
-  background-image:
-    radial-gradient(ellipse 74% 480px at 92% 2%,rgba(117,63,196,.16),transparent 78%),
-    radial-gradient(ellipse 58% 520px at -16% 35%,rgba(46,74,144,.15),transparent 72%),
-    linear-gradient(rgba(193,168,255,.025) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(193,168,255,.025) 1px,transparent 1px),
-    linear-gradient(170deg,#0a0e1b,#0b1020 52%,#090d18)!important;
-  background-size:auto,auto,46px 46px,46px 46px,auto!important;
-  background-attachment:fixed!important;
-  -webkit-font-smoothing:antialiased;
-  text-rendering:optimizeLegibility;
+  --wine:#8f43ef!important;--wine-dark:#6829da!important;
+  --cream:#0b0b1e!important;--card:#14142d!important;
+  --line:#393051!important;--muted:#aaa4c7!important;
+  --kp-final-bg:#09091c;--kp-final-surface:#14152f;
+  --kp-final-line:#352d50;--kp-final-text:#f0ecff;
+  --kp-d-surface:#14152d;--kp-d-surface2:#1a1a3a;--kp-d-line:#382f54;
+  --kp-ui-purple:#c194ff;--kp-ui-purple-strong:#8f3aee;
+  --kp-ui-border:var(--kps-border);
+  background:var(--kps-night)!important;color:var(--kps-ink)!important;
 }
-body.kp-dark #app{background:transparent!important}
-body.kp-dark #view{background:transparent!important}
-/* The entire app feels like one system, without changing the header's sticky positioning. */
+/* Un brillo ambiental fijo y muy ligero, sin imágenes, filtros animados ni elementos sobre los controles */
+html:has(body.kp-dark){background:#080719!important}
+body.kp-dark #app{background:linear-gradient(165deg,#09091c 0%,#0b0b21 46%,#0b0920 100%)!important;color:var(--kps-ink)!important}
+body.kp-dark #view,body.kp-dark main.view{
+  background:radial-gradient(ellipse 78% 330px at 97% 0%,rgba(115,40,224,.13),transparent 78%),
+             radial-gradient(ellipse 58% 370px at 2% 42%,rgba(57,47,153,.065),transparent 85%),
+             linear-gradient(180deg,#090a1b,#0b0b20 76%)!important;
+  color:var(--kps-ink)!important;
+}
+/* La identidad visual se integra en la barra original y el selector existente de fecha */
 body.kp-dark .topbar{
-  background:linear-gradient(112deg,rgba(10,13,29,.98),rgba(14,17,38,.96) 65%,rgba(25,17,48,.97))!important;
-  border-bottom:1px solid rgba(174,118,255,.15)!important;
-  box-shadow:0 12px 36px rgba(2,5,16,.25),inset 0 -1px rgba(255,255,255,.025)!important;
+  background:linear-gradient(112deg,rgba(12,10,32,.99),rgba(25,14,57,.97) 66%,rgba(10,10,33,.99))!important;
+  border-bottom:1px solid rgba(156,100,237,.25)!important;
+  box-shadow:0 7px 28px rgba(12,6,35,.20)!important;
 }
-body.kp-dark .topbar::after{
-  content:"";position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 5%,rgba(181,127,255,.52) 28%,rgba(117,82,222,.06) 80%,transparent);
-  pointer-events:none;
+body.kp-dark .kp-top-logo h1,body.kp-dark .topbar h1,
+body.kp-dark #kpMenuDrawer .kp-drawer-brand{
+  color:#dfbaff!important;
 }
-body.kp-dark .kp-top-logo h1,body.kp-dark .kp-brand{letter-spacing:-.75px!important}
-body.kp-dark .kp-top-sub,body.kp-dark .kp-brand small{letter-spacing:1.55px!important}
-body.kp-dark #menuBtn{
-  border:1px solid rgba(179,130,255,.26)!important;
-  border-radius:16px!important;
-  background:linear-gradient(150deg,rgba(64,34,108,.44),rgba(13,17,33,.86))!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.12),0 7px 25px rgba(73,36,129,.12)!important;
+body.kp-dark .kp-top-mark,body.kp-dark .kp-brand-mark{
+  background:var(--kps-gradient)!important;
+  box-shadow:0 4px 18px rgba(126,48,219,.23),inset 0 1px rgba(255,255,255,.15)!important;
+}
+body.kp-dark #menuBtn,body.kp-dark .kp-menu-trigger{
+  background:linear-gradient(145deg,#20163b,#111027)!important;
+  border:1px solid rgba(177,124,255,.34)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.06)!important;
 }
 body.kp-dark .dateNav{
-  border:1px solid rgba(154,157,215,.24)!important;
-  background:linear-gradient(150deg,#151e33,#11172a)!important;
-  border-radius:19px!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.045),0 9px 24px rgba(0,0,0,.16)!important;
+  background:linear-gradient(115deg,#1b1738,#19172f 65%,#1b153c)!important;
+  border:1px solid rgba(180,142,255,.26)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.07),0 6px 20px rgba(0,0,0,.10)!important;
+  border-radius:18px!important;
 }
-body.kp-dark .dateNav button{border-radius:12px!important}
-body.kp-dark .dateNav span{font-weight:740!important;letter-spacing:.05px}
-body.kp-dark .kp-user-button{
-  border-radius:17px!important;border:1px solid rgba(165,149,215,.22)!important;
-  background:linear-gradient(145deg,rgba(33,36,65,.92),rgba(17,22,43,.94))!important;
+body.kp-dark .dateNav span,body.kp-dark .dateNav button{color:#e8ddff!important}
+body.kp-dark .dateNav button:active{background:rgba(160,84,255,.2)!important}
+/* Paneles principales de todas las secciones: colores nuevos, estructura original intacta */
+body.kp-dark #view .card,
+body.kp-dark #view .kp-panel,
+body.kp-dark #view .kp-enterprise-panel,
+body.kp-dark #view .kp-v23-card,
+body.kp-dark #view .kp-v23-export-card,
+body.kp-dark #view .adminUsersCard,
+body.kp-dark #view .adminToolsCard,
+body.kp-dark #view .kp-stat,
+body.kp-dark #view .kp-metric,
+body.kp-dark #view .order-card,
+body.kp-dark #view .kp-excel-card,
+body.kp-dark #view .kp-return-card,
+body.kp-dark #view .boxfulStatusCard,
+body.kp-dark #view .cot .cotC,
+body.kp-dark #view .kp-selection-panel,
+body.kp-dark #view .kp-pro-subpanel{
+  background:linear-gradient(143deg,#191731 0%,#13152d 58%,#11132a 100%)!important;
+  border:1px solid rgba(164,128,246,.23)!important;
+  border-radius:20px!important;
+  box-shadow:inset 0 1px 0 rgba(228,206,255,.045),0 9px 23px rgba(0,0,0,.12)!important;
+  color:#f2efff!important;
 }
-/* Navigation: calm geometry instead of bright rectangles. */
-body.kp-dark .kp-sidebar{
-  background:linear-gradient(170deg,#101326,#111426 48%,#0b1020)!important;
-  border-right:1px solid rgba(180,154,236,.14)!important;
+body.kp-dark #view .card:focus-within,body.kp-dark #view .kp-v23-card:focus-within{
+  border-color:rgba(165,110,255,.38)!important;
 }
-body.kp-dark .kp-brand{border-bottom-color:rgba(160,157,220,.14)!important}
-body.kp-dark .kp-nav button,body.kp-dark .kp-drawer-nav button{
-  border-radius:15px!important;
-  transition:background-color .16s ease,box-shadow .16s ease,color .16s ease!important;
+/* El contenedor de selección por lotes gana personalidad sin alterar las casillas */
+body.kp-dark #view .kp-selection-panel{
+  background:radial-gradient(ellipse 78% 100% at 97% 0%,rgba(129,57,226,.29),transparent 80%),
+             linear-gradient(136deg,#261947 0%,#191531 65%,#15142e 100%)!important;
+  border-color:rgba(172,104,255,.33)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.08),0 12px 28px rgba(17,7,44,.14)!important;
 }
-body.kp-dark .kp-nav button.active,body.kp-dark .kp-drawer-nav button.active{
-  color:#f5eaff!important;
-  background:linear-gradient(103deg,rgba(117,58,220,.34),rgba(73,42,143,.18))!important;
-  box-shadow:inset 3px 0 0 #b983ff,inset 0 1px rgba(255,255,255,.065)!important;
+body.kp-dark #view .kp-selection-title{color:#f8f3ff!important}
+body.kp-dark #view .kp-selection-count,body.kp-dark #view .kp-bulk-hint{color:#bdb1d9!important}
+body.kp-dark #view .kp-guide-order-wrap{
+  background:linear-gradient(144deg,#16162f 0%,#101426 100%)!important;
+  border:1px solid rgba(157,128,217,.20)!important;
+  border-radius:20px!important;
 }
-body.kp-dark .kp-menu-drawer{
-  background:linear-gradient(165deg,#141a2d 0%,#0d1324 77%,#101329 100%)!important;
-  border-right:1px solid rgba(195,145,255,.22)!important;
-  box-shadow:22px 0 65px rgba(0,0,0,.4)!important;
-}
-body.kp-dark .kp-menu-drawer .kp-drawer-nav button:not(.active){border-color:transparent!important}
-body.kp-dark .kp-profile-menu,
-body.kp-dark .kp-popover{background:#141b2e!important;border:1px solid rgba(176,157,217,.25)!important;border-radius:20px!important;box-shadow:0 20px 50px rgba(0,0,0,.4)!important}
-body.kp-dark .tabs{background:rgba(10,14,28,.9)!important;border-bottom:1px solid rgba(149,129,187,.12)!important}
-body.kp-dark .tabs .tab{border-radius:13px!important}
-body.kp-dark .tabs .tab.active{background:rgba(111,66,195,.24)!important;color:#e0c3ff!important;box-shadow:inset 0 -2px #a673ee!important}
-/* Shared panels: subtle corner lighting, technical crosshatch and brushed glass. */
-body.kp-dark #view :is(.card,.kp-panel,.kp-enterprise-panel,.kp-v23-card,.kp-v23-export-card,.kp-inventory-manager,.inventory-controls,.inventory-table,.kp-report-card,.kp-stat,.kp-metric,.kp-branch-card,.kp-user-row,.kp-return-card,.boxfulStatusCard,.kp-excel-card,.kp-driver-attendance,.kp-selection-toolbar,.kp-guide-order-wrap,.kpc-row,.kp-channel-list,.kp-channel-header,.kp-chat-composer),
-body.kp-dark #view .cot .cotC{
-  border:1px solid var(--orbit-line)!important;
-  border-radius:var(--orbit-radius)!important;
-  background-color:var(--orbit-plate)!important;
-  background-image:
-    radial-gradient(circle at 103% -18%,rgba(153,108,255,.115) 0,transparent 42%),
-    linear-gradient(132deg,rgba(255,255,255,.035),rgba(255,255,255,0) 28%),
-    linear-gradient(165deg,rgba(20,28,46,.96),rgba(13,20,35,.98))!important;
-  box-shadow:0 12px 32px rgba(1,4,15,.17),inset 0 1px rgba(255,255,255,.055)!important;
-}
-/* Gentle variation: hero panels use a stronger violet flare. */
-body.kp-dark #view :is(.kp-enterprise-panel,.kp-v23-card,.kp-dashboard-head,.kp-selection-toolbar),
-body.kp-dark #view .cot .cotC{
-  background-image:
-    radial-gradient(ellipse at 100% 0%,rgba(145,81,226,.125),transparent 43%),
-    linear-gradient(148deg,rgba(32,38,65,.95),rgba(16,23,40,.98) 62%)!important;
-}
-body.kp-dark #view :is(.card,.kp-panel,.kp-enterprise-panel,.kp-v23-card,.kp-stat,.kp-branch-card,.kp-selection-toolbar,.kp-guide-order-wrap){
-  outline:1px solid rgba(255,255,255,.014);outline-offset:-4px;
-}
-/* The colored bar unifies section headings across modules. */
-body.kp-dark #view :is(.kp-dashboard-head h2,.kp-enterprise-head h2,.kp-panel-title h3,.kp-v23-section-head h3,.kpc-head h2){
-  letter-spacing:-.65px!important;color:#f2f1ff!important;
-}
-body.kp-dark #view :is(.kp-kicker,.cot .eyebrow){
-  color:#c7a1fc!important;letter-spacing:1.8px!important;font-weight:780!important;
-}
-body.kp-dark #view :is(.small,p.small,.kp-panel-title small,.kp-enterprise-head p,.kp-stat .label){color:var(--orbit-sub)!important}
-body.kp-dark #view .kp-stat{
-  position:relative;
-  overflow:hidden;
-  min-height:108px;
-  border-radius:19px!important;
-  background-image:
-    radial-gradient(circle at 92% 16%,rgba(160,99,255,.16) 0 18%,transparent 19%),
-    radial-gradient(circle at 92% 16%,transparent 0 28%,rgba(160,99,255,.105) 29%,transparent 30%),
-    linear-gradient(146deg,#1a2239,#11182b 76%)!important;
-}
-body.kp-dark #view .kp-stat .value{color:#f3efff!important;font-size:clamp(19px,2.5vw,29px)!important;letter-spacing:-.7px!important}
-body.kp-dark #view .kp-stat .kps-ic{border-radius:13px!important;background:rgba(161,109,250,.12)!important}
-body.kp-dark #view .kp-metric{border-radius:18px!important}
-/* Order cards: distinctive slim violet tracking rail; preserve expand/collapse. */
-body.kp-dark #view .card[data-kpx]{
-  border-left:3px solid rgba(162,108,255,.47)!important;
-  background-image:
-    radial-gradient(ellipse at 110% -12%,rgba(135,74,225,.13),transparent 39%),
-    linear-gradient(152deg,#182035,#111827 67%)!important;
-  box-shadow:0 9px 26px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.05)!important;
-}
-body.kp-dark #view .card[data-kpx].kpx-open{border-left-color:#ac76ff!important}
-body.kp-dark #view .card[data-kpx] .kpx-toggle{border-radius:15px!important}
-body.kp-dark #view .kp-order-number,body.kp-dark #view .kp-order-id{letter-spacing:.65px!important}
 body.kp-dark #view .kp-guide-order-wrap.kp-selected{
-  border-color:rgba(189,139,255,.63)!important;
-  box-shadow:0 0 0 2px rgba(141,83,233,.16),0 15px 38px rgba(0,0,0,.2)!important;
+  border-color:#a16bfa!important;
+  box-shadow:0 0 0 2px rgba(152,89,255,.15)!important;
 }
-body.kp-dark #view .kp-guide-select{border-radius:14px!important}
-/* Action hierarchy. No changes to disabled state or event handling. */
-body.kp-dark #view .btn,
-body.kp-dark .sheet .btn,
-body.kp-dark .kp-modal .btn{
-  border-radius:15px!important;
-  border:1px solid rgba(154,166,204,.24)!important;
-  background:linear-gradient(142deg,#1a243b,#151c30)!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.047),0 4px 10px rgba(0,0,0,.075);
-  color:#e8e9ff!important;
-  font-weight:720!important;
-  letter-spacing:.04px;
-  transition:filter .16s ease,transform .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+body.kp-dark #view .kp-guide-order-wrap .kp-guide-select input,
+body.kp-dark #view input[type=checkbox]{accent-color:#9745f5}
+/* Elementos internos: jerarquía más clara sin alterar estados operativos ni botones de WhatsApp */
+body.kp-dark #view .kp-user-row,
+body.kp-dark #view .teamMember,
+body.kp-dark #view .kp-order-row,
+body.kp-dark #view .kp-branch-tools,
+body.kp-dark #view .kp-branch-card,
+body.kp-dark #view .kp-inventory-card,
+body.kp-dark #view .inventory-toolbar,
+body.kp-dark #view .inventory-controls,
+body.kp-dark #view .inventory-table{
+  border-color:rgba(155,130,216,.22)!important;
 }
-body.kp-dark #view :is(.btn.primary,.btn.act,.kp-primary-btn),
-body.kp-dark .sheet .btn.primary,
-body.kp-dark .kp-modal .btn.primary{
-  background:linear-gradient(112deg,#a153ef 0%,#8339e6 53%,#6632cb 100%)!important;
-  border:1px solid rgba(209,163,255,.35)!important;
+body.kp-dark #view .kp-order-statuses .chip,
+body.kp-dark #view .chip,body.kp-dark #view .pill{
+  border-radius:999px!important;
+}
+body.kp-dark #view .kp-kicker,body.kp-dark #view .cot .cot-hero .eyebrow{
+  color:#d5aaff!important;
+}
+/* Botones primarios con degradado real de 3 tonos; secundarios discretos y legibles */
+body.kp-dark .btn.primary,body.kp-dark button.btn.primary,
+body.kp-dark #view .btn.primary,body.kp-dark #view .cot .btn.primary,
+body.kp-dark #view .kp-bulk-create:not(:disabled),
+body.kp-dark #view .kp-create-guides:not(:disabled){
+  background:var(--kps-gradient)!important;
+  border:1px solid rgba(212,169,255,.33)!important;
   color:#fff!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.23),0 9px 22px rgba(112,48,196,.2)!important;
+  text-shadow:0 1px rgba(52,15,114,.14);
+  box-shadow:inset 0 1px rgba(255,255,255,.2),0 7px 17px rgba(92,36,184,.2)!important;
 }
-/* Preserve familiar semantic status colors (green = paid/delivered, red = danger). */
-body.kp-dark #view :is(.btn.danger,.btn.red,.kp-branch-remove-user,.kpn-del){
-  background:rgba(145,36,72,.13)!important;border-color:rgba(250,110,136,.35)!important;color:#ffb6c3!important;
+body.kp-dark .btn.secondary,body.kp-dark #view .kp-selection-tools .btn.sm,
+body.kp-dark .kp-modal-close,body.kp-dark .kp-v23-modal-close{
+  background:linear-gradient(135deg,#211c3e 0%,#17172e 100%)!important;
+  color:#ebe5ff!important;
+  border-color:rgba(158,139,210,.28)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.045)!important;
 }
-body.kp-dark #view :is(.btn.success,.btn.green){
-  background:linear-gradient(120deg,rgba(16,113,77,.32),rgba(15,87,78,.18))!important;
-  border-color:rgba(77,220,170,.3)!important;color:#a2f5d3!important;
+body.kp-dark .btn,body.kp-dark button.btn{border-radius:14px!important}
+body.kp-dark .btn:not(:disabled):active{transform:scale(.988)!important}
+body.kp-dark button:disabled,body.kp-dark .btn:disabled{filter:none!important;opacity:.55}
+/* Menú: solamente retocar colores y superficies. No crear barras ni navegación adicional. */
+body.kp-dark .kp-sidebar,body.kp-dark #kpMenuDrawer,body.kp-dark .kp-menu-drawer{
+  background:linear-gradient(165deg,#100f28 0%,#15112b 52%,#0c0c21 100%)!important;
+  border-color:rgba(149,102,221,.22)!important;
 }
-body.kp-dark #view :is(.btn,button):disabled{opacity:.55!important;cursor:not-allowed!important;box-shadow:none!important}
-body.kp-dark #view .btn:focus-visible,
-body.kp-dark .kp-nav button:focus-visible,
-body.kp-dark .kp-drawer-nav button:focus-visible{outline:2px solid #c59aff!important;outline-offset:2px!important}
-@media(hover:hover){
-  body.kp-dark #view .btn:not(:disabled):hover{border-color:rgba(194,150,252,.55)!important;filter:brightness(1.095)}
-  body.kp-dark #view .card[data-kpx]:hover{border-color:rgba(155,121,214,.37)!important}
-  body.kp-dark .kp-nav button:not(.active):hover,body.kp-dark .kp-drawer-nav button:not(.active):hover{background:rgba(137,97,211,.12)!important}
+body.kp-dark #kpMenuDrawer .kp-drawer-user,
+body.kp-dark .kp-drawer-user,
+body.kp-dark #kpSideNav button,
+body.kp-dark .kp-drawer-nav button{
+  border-color:rgba(153,120,218,.14)!important;
 }
-body.kp-dark #view .btn:not(:disabled):active{transform:scale(.985)!important}
-/* Fields: outlined inset wells with a violet focus ring. */
-body.kp-dark #view :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),select,textarea),
-body.kp-dark .sheet :is(input:not([type=checkbox]):not([type=radio]),select,textarea),
-body.kp-dark .kp-modal :is(input:not([type=checkbox]):not([type=radio]),select,textarea){
-  background:#0e1526!important;
-  border:1px solid rgba(150,163,202,.28)!important;
-  color:#f1f1fc!important;
-  border-radius:14px!important;
-  box-shadow:inset 0 2px 7px rgba(0,0,0,.13)!important;
+body.kp-dark #kpSideNav button.active,
+body.kp-dark .kp-nav button.active,
+body.kp-dark .kp-drawer-nav button.active,
+body.kp-dark #kpMenuDrawer .active{
+  background:linear-gradient(103deg,#46208c 0%,#301755 55%,#21164b 100%)!important;
+  color:#f6eeff!important;
+  box-shadow:inset 3px 0 #a65bfa!important;
 }
-body.kp-dark #view :is(input,select,textarea):focus,
-body.kp-dark .sheet :is(input,select,textarea):focus{
-  border-color:#b18afc!important;
-  box-shadow:0 0 0 3px rgba(160,108,245,.17),inset 0 2px 7px rgba(0,0,0,.12)!important;
-  outline:none!important;
+/* Formularios, modales, cotizaciones y chat */
+body.kp-dark #view input:not([type=checkbox]):not([type=radio]):not([type=color]),
+body.kp-dark #view select,body.kp-dark #view textarea,
+body.kp-dark .sheet input,body.kp-dark .sheet select,body.kp-dark .sheet textarea{
+  background:#14142b!important;
+  border:1px solid rgba(153,125,216,.30)!important;
+  color:#f1efff!important;
+  border-radius:13px!important;
 }
-body.kp-dark :is(input[type=checkbox],input[type=radio]){accent-color:#a772ef}
-/* More polished badges, small labels and table rows */
-body.kp-dark #view :is(.pill,.kp-status-chip,.kp-mini-status,.kp-order-badge,.badge){
-  border-radius:999px!important;border-color:rgba(165,157,210,.23)!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.035);
+body.kp-dark :is(input,textarea,select):focus-visible{
+  outline:2px solid rgba(180,111,255,.78)!important;outline-offset:1px;
 }
-body.kp-dark #view :is(table,.kp-inventory-table) th{background:rgba(101,76,170,.17)!important;color:#e4d3ff!important;letter-spacing:.25px}
-body.kp-dark #view :is(table,.kp-inventory-table) td{border-bottom-color:rgba(151,163,201,.1)!important}
-body.kp-dark #view :is(table,.kp-inventory-table) tr:hover td{background:rgba(139,96,217,.035)}
-/* Chat: distinctive composition, but keep message bubbles and avatars untouched. */
-body.kp-dark #view :is(.kp-chat-enterprise,.kp-chat26-shell,.kp-chat-panel,.kpc-wrap){
-  border-color:rgba(163,154,207,.18)!important;
+body.kp-dark #view .cot .cot-hero,
+body.kp-dark #view .kp-enterprise-banner{
+  background:radial-gradient(ellipse 85% 120% at 95% 12%,rgba(167,65,255,.32),transparent 75%),
+             linear-gradient(120deg,#22154e 0%,#382080 56%,#20184d 100%)!important;
+  border:1px solid rgba(191,142,255,.3)!important;
+  color:#f8f4ff!important;
 }
-body.kp-dark #view :is(.kp-channel-list,.kp-channel-header,.kp-chat-composer){
-  background-image:linear-gradient(155deg,#182137,#11182b)!important;
+body.kp-dark #view .cot .cotC h3:before{background:var(--kps-gradient)!important}
+body.kp-dark .sheet,body.kp-dark .kp-modal,body.kp-dark .kp-v23-modal,
+body.kp-dark .kp-confirm,body.kp-dark .kp-profile-menu{
+  background:linear-gradient(150deg,#1b1736,#111327)!important;
+  color:#f1edff!important;border-color:rgba(173,132,242,.27)!important;
 }
-body.kp-dark #view .kpc-row{border-radius:17px!important}
-body.kp-dark #view .kpc-row:active{background-color:#242345!important}
-body.kp-dark #view :is(.kp-chat26-avatar,.kp-chat-avatar,.kpc-av){box-shadow:0 0 0 2px rgba(171,127,246,.18)!important}
-/* Cotizaciones: ornamental arcs in hero; sections look like premium documents. */
-body.kp-dark #view .cot .cot-hero{
-  position:relative;
-  overflow:hidden;
-  border-radius:26px!important;
-  border:1px solid rgba(197,143,255,.31)!important;
-  background:
-    radial-gradient(circle at 97% 0%,transparent 0 50px,rgba(217,161,255,.11) 51px 52px,transparent 53px 83px,rgba(217,161,255,.08) 84px 85px,transparent 86px),
-    radial-gradient(ellipse at 110% 110%,rgba(234,148,199,.22),transparent 42%),
-    linear-gradient(112deg,#1a2451 0%,#34206b 64%,#432570 100%)!important;
-  box-shadow:0 18px 35px rgba(44,20,101,.23),inset 0 1px rgba(255,255,255,.15)!important;
+body.kp-dark .kp-chat-enterprise,body.kp-dark .kp-channel-list,
+body.kp-dark .kp-channel-header,body.kp-dark .kp-chat-composer{
+  background:#12142c!important;
+  border-color:rgba(155,125,221,.22)!important;
 }
-body.kp-dark #view .cot .cotC{border-radius:23px!important}
-body.kp-dark #view .cot .cotC h3:before{border-radius:8px!important;background:linear-gradient(180deg,#d394ff,#8550ec)!important}
-/* Popups / drawers retain their scrolling and z-order. */
-body.kp-dark .sheet,
-body.kp-dark .modal,body.kp-dark .modal-card,
-body.kp-dark .kp-modal,body.kp-dark .kp-v23-modal{
-  color:#f2f2fc!important;
-  background-color:#12192a!important;
-  border:1px solid rgba(172,155,213,.25)!important;
-  border-radius:23px!important;
-  box-shadow:0 30px 75px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.06)!important;
+body.kp-dark .kp-channel-item.active,body.kp-dark .kpMentionItem:hover{
+  background:linear-gradient(110deg,#2b1b51,#1c1a3c)!important;
 }
-body.kp-dark .sheet{border-radius:25px 25px 0 0!important}
-body.kp-dark .sheet-bg,body.kp-dark .modal-backdrop{backdrop-filter:blur(7px)!important}
-body.kp-dark .fab{
-  border-radius:19px!important;
-  background:linear-gradient(135deg,#af5bfc,#7936e2)!important;
-  box-shadow:0 12px 32px rgba(106,43,195,.37),inset 0 1px rgba(255,255,255,.2)!important;
-}
-/* Responsive: retain the existing structural breakpoints and stable order layout. */
-@media(max-width:700px){
-  body.kp-dark{background-size:auto,auto,36px 36px,36px 36px,auto!important}
-  body.kp-dark #view :is(.card,.kp-panel,.kp-enterprise-panel,.kp-v23-card,.kp-selection-toolbar,.kp-guide-order-wrap),
-  body.kp-dark #view .cot .cotC{border-radius:20px!important}
-  body.kp-dark #view .kp-stat{border-radius:17px!important;min-height:95px}
-  body.kp-dark #view .cot .cot-hero{border-radius:22px!important}
-  body.kp-dark .topbar{box-shadow:0 8px 28px rgba(1,3,14,.23)!important}
-  body.kp-dark #view .btn{border-radius:14px!important}
+/* Compatible con la pantalla estrecha sin modificar el diseño funcional */
+@media(max-width:600px){
+  body.kp-dark #view .card,body.kp-dark #view .kp-enterprise-panel,
+  body.kp-dark #view .kp-v23-card,body.kp-dark #view .kp-selection-panel{
+    border-radius:19px!important;
+  }
+  body.kp-dark .topbar{box-shadow:none!important}
+  body.kp-dark #view .kp-guide-order-wrap{border-radius:18px!important}
 }
 @media(prefers-reduced-motion:reduce){
-  body.kp-dark #view .btn,body.kp-dark .kp-nav button,body.kp-dark .kp-drawer-nav button{transition:none!important}
+  body.kp-dark .btn{transition:none!important}
 }
-
 </style>
 </head>
 <body class="kp-dark">
