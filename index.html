@@ -3991,7 +3991,7 @@ function render(){
         <button class="btn green sm" onclick="setTab('rastreosNacionales')">📍 Rastreos Envíos Nacionales</button>
         <button class="btn sm ${boxfulExcelMode?'activeAction':''}" onclick="toggleBoxfulExcelMode()">📤 ${boxfulExcelMode?'Descargar Excel seleccionado':'Seleccionar para Excel'}</button>
         ${boxfulExcelMode?`<button class="btn sm cancelSelectBtn" onclick="cancelBoxfulExcelSelection(event)">✕ Cancelar selección</button><button class="btn sm" onclick="boxfulSeleccionarTodo(true)">✓ Seleccionar todo</button><button class="btn sm" onclick="boxfulSeleccionarTodo(false)">□ Quitar todo</button>`:''}
-        <button class="btn sm ${boxfulGuideMode?'activeAction':''}" onclick="toggleBoxfulGuideMode()">🚚 ${boxfulGuideMode?'Cerrar selección de guías':'Seleccionar guías'}</button>
+        <button class="btn sm ${boxfulGuideMode?'activeAction':''}" onclick="toggleBoxfulGuideMode(event)">🚚 ${boxfulGuideMode?'Cerrar selección de guías':'Seleccionar guías'}</button>
         <details class="boxfulAdvanced"><summary>Avanzado</summary><div class="btnrow" style="margin-top:8px;"><button class="btn sm" onclick="boxfulLoadAddresses()">📍 Actualizar dirección</button><button class="btn sm" onclick="boxfulRefreshCatalog()">🗺️ Actualizar ciudades</button><button class="btn sm" onclick="boxfulTestConnection()">✓ Probar conexión</button><button class="btn sm" onclick="boxfulDebugCatalog()">🔍 Buscar municipio</button></div></details>
       </div>
     </div>`;
@@ -7896,11 +7896,48 @@ function toggleBoxfulExcelMode(){
   if(boxfulExcelMode){ exportBoxful(); return; }
   boxfulExcelMode=true; boxfulExcluidos=new Set(kpBoxfulList().map(o=>o.id)); render();
 }
-function toggleBoxfulGuideMode(){
+/* Salir de selección sin reabrir tarjetas por el estado persistido del acordeón.
+   Las tarjetas de órdenes guardan sus expansiones en sessionStorage (kpx_open).
+   Al cambiar de vista, restaurar esos estados podía abrir la primera orden. */
+function kpCerrarDetallesSeleccionGuias(){
+  // La lista se reconstruye al cerrar el modo de selección. Otro observador
+  // cardify() se ejecuta DESPUÉS del render y restaura detalles persistidos.
+  // Esta bandera impide la restauración automática en Nivel Nacional hasta
+  // que el usuario pulse explícitamente «Ver detalles».
+  window.__kpCollapseNationalAfterSelection=true;
+  const open=window.__kpxOpenCards;
+  const remove=new Set();
+  const cards=document.querySelectorAll('#view .card[data-kpx], #view .kp-guide-order-wrap > .card, #view .kp-selectable-card');
+  cards.forEach(card=>{
+    card.classList.remove('kpx-open');
+    const match=(card.textContent||'').match(/ORDEN\s*#\s*(\d+)/i);
+    if(match)remove.add(String(match[1]));
+  });
+  // Quitar las expansiones de las órdenes de esta pantalla, tanto de memoria
+  // como de sessionStorage. Mantener las de otras secciones.
+  if(open&&typeof open.delete==='function')remove.forEach(n=>open.delete(n));
+  try{
+    const raw=JSON.parse(sessionStorage.getItem('kpx_open')||'[]');
+    const persisted=Array.isArray(raw)?raw.map(String):[];
+    sessionStorage.setItem('kpx_open',JSON.stringify(persisted.filter(n=>!remove.has(n))));
+  }catch(e){}
+}
+function toggleBoxfulGuideMode(event){
+  // Evita que el mismo toque sobre "Cerrar selección" llegue a una tarjeta.
+  if(event){event.preventDefault();event.stopPropagation();}
   if(!kpCanManageShipping()){toast('Solo el administrador de envíos puede crear guías.');return;}
-  boxfulGuideMode=!boxfulGuideMode;
-  if(!boxfulGuideMode) boxfulGuiaSeleccion.clear();
+  const cerrando=boxfulGuideMode;
+  if(cerrando){
+    kpCerrarDetallesSeleccionGuias();
+    boxfulGuiaSeleccion.clear();
+    boxfulGuideMode=false;
+  }else{
+    boxfulGuideMode=true;
+  }
   render();
+  // Montar los acordeones inmediatamente, antes de que el navegador pinte
+  // tarjetas abiertas durante los 120 ms del observador general.
+  if(cerrando&&typeof window.kpCardifyOrdersNow==='function')window.kpCardifyOrdersNow();
 }
 function renderBoxfulSelectionToolbar(){
   if(!boxfulExcelMode&&!boxfulGuideMode) return '';
@@ -7916,7 +7953,7 @@ function renderBoxfulSelectionToolbar(){
       <div class="kp-selection-tools">
         <button class="btn sm" onclick="kpSelectAllMode('${mode}',true)">✓ Seleccionar todo</button>
         <button class="btn sm" onclick="kpSelectAllMode('${mode}',false)">Limpiar</button>
-        <button class="btn sm" onclick="${mode==='excel'?'exportBoxful()':'toggleBoxfulGuideMode()'}">${mode==='excel'?'📤 Crear Excel':'Cerrar selección'}</button>
+        <button class="btn sm" onclick="${mode==='excel'?'exportBoxful()':'toggleBoxfulGuideMode(event)'}">${mode==='excel'?'📤 Crear Excel':'Cerrar selección'}</button>
       </div>
     </div>
     ${bulkCreate}
@@ -7954,7 +7991,7 @@ function kpRenderOrdersTab(tab){
       <div class="btnrow" style="margin-top:0">
         <button class="btn green sm" onclick="setTab('rastreosNacionales')">📍 Rastreo de pedidos</button>
         <button class="btn sm" onclick="toggleBoxfulExcelMode()">📤 ${boxfulExcelMode?'Finalizar Excel':'Seleccionar para Excel'}</button>
-        ${kpCanManageShipping()?`<button class="btn sm" onclick="toggleBoxfulGuideMode()">🚚 ${boxfulGuideMode?'Cerrar selección de guías':'Seleccionar guías'}</button>`:''}
+        ${kpCanManageShipping()?`<button class="btn sm" onclick="toggleBoxfulGuideMode(event)">🚚 ${boxfulGuideMode?'Cerrar selección de guías':'Seleccionar guías'}</button>`:''}
       </div>
     </div>`;
     view.innerHTML=renderSearchBar()+extra+`<div id="kpBoxfulSelectionToolbar">${renderBoxfulSelectionToolbar()}</div>`+renderBoxfulCards(list);
@@ -16907,9 +16944,24 @@ function cardify(c){
   if(last<0)return;
   const t=document.createElement('button');t.type='button';t.className='kpx-toggle';t.innerHTML='<span class="a">Ver detalles</span><span class="b">Ocultar detalles</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   kids[last].after(t);
-  if(key&&OPEN.has(key))c.classList.add('kpx-open');
-  t.onclick=()=>{c.classList.toggle('kpx-open');if(key){c.classList.contains('kpx-open')?OPEN.add(key):OPEN.delete(key);sessionStorage.setItem('kpx_open',JSON.stringify([...OPEN]));}};
+  // Al terminar «Seleccionar guías», no restaurar expansiones antiguas.
+  // Es necesario aquí porque cardify() llega después del render mediante
+  // MutationObserver y el cierre anterior solo afectaba al DOM antiguo.
+  const cerrarTrasSeleccion=activeTab==='boxful'&&window.__kpCollapseNationalAfterSelection;
+  if(key&&OPEN.has(key)&&!cerrarTrasSeleccion)c.classList.add('kpx-open');
+  t.onclick=()=>{
+    if(activeTab==='boxful')window.__kpCollapseNationalAfterSelection=false;
+    c.classList.toggle('kpx-open');
+    if(key){c.classList.contains('kpx-open')?OPEN.add(key):OPEN.delete(key);sessionStorage.setItem('kpx_open',JSON.stringify([...OPEN]));}
+  };
 }
+// Al cerrar selección de guías, preparar las tarjetas en el mismo frame.
+// La inicialización general tiene un retraso (120 ms) que mostraba detalles
+// expandidos antes de que entrara la clase CSS de acordeón.
+window.kpCardifyOrdersNow=function(){
+  if(activeTab!=='boxful')return;
+  document.querySelectorAll('#view .card.pendiente-entrega:not([data-kpx]),#view .card.entregado:not([data-kpx]),#view .card.no-entregado:not([data-kpx])').forEach(cardify);
+};
 /* ---------- Configuración con menús desplegables ---------- */
 function accordions(){
   document.querySelectorAll('#view .kp-enterprise-panel').forEach((p,i)=>{
