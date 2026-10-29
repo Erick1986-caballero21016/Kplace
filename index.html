@@ -4035,6 +4035,7 @@ function montoEfectivoACobrar(o){
   if(o.metodoPago==='efectivo'||o.metodoPago==='pos') return total;
   if(o.metodoPago==='mitad'){
     if(o.montoContraEntrega!=null) return o.montoContraEntrega;
+    if(o.estadoMitad1||o.estadoMitad2) return (o.estadoMitad1==='pendiente'?(o.montoMitad1||0):0)+(o.estadoMitad2==='pendiente'?(o.montoMitad2||0):0);
     let cobrar = 0;
     if(o.metodoPagoMitad1==='efectivo'||o.metodoPagoMitad1==='pos') cobrar += (o.montoMitad1||0);
     if(o.metodoPagoMitad2==='efectivo'||o.metodoPagoMitad2==='pos') cobrar += (o.montoMitad2||0);
@@ -7392,7 +7393,7 @@ async function exportBoxful(){
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(rows, {header:['Nombres destinatario','Codigo de area destinatario','Telefono destinatario','Correo destinatario (opcional)','Direccion destinatario','Punto de referencia destinatario','Departamento destinatario','Municipio destinatario','Indicaciones','Contenido del paquete','Peso del paquete','Tipo de servicio','Monto a cobrar','Numero de orden tienda']});
   XLSX.utils.book_append_sheet(wb, ws, 'Hoja 1');
-  XLSX.writeFile(wb, `Eunoia_Boxful_${todayStr()}.xlsx`);
+  XLSX.writeFile(wb, `KPlace_Boxful_${todayStr()}.xlsx`);
     boxfulExcelMode=false;
     boxfulExcluidos.clear();
     render();
@@ -7650,12 +7651,14 @@ function kpFinancial(o){
   if(o.metodoPago==='mitad'){
     let paid=0, pendingCash=0;
     const parts=[
-      [o.metodoPagoMitad1, Number(o.montoMitad1)||0],
-      [o.metodoPagoMitad2, Number(o.montoMitad2)||0]
+      [o.metodoPagoMitad1, Number(o.montoMitad1)||0, o.estadoMitad1],
+      [o.metodoPagoMitad2, Number(o.montoMitad2)||0, o.estadoMitad2]
     ];
-    parts.forEach(([m,a])=>{
+    parts.forEach(([m,a,e])=>{
       if(!a) return;
-      if(m==='efectivo') pendingCash += a;
+      if(e==='pagado') paid += a;
+      else if(e==='pendiente') pendingCash += a;
+      else if(m==='efectivo') pendingCash += a;
       else if(m==='transferencia' || m==='link de pago') paid += a;
     });
     if(o.entregado===true){ paid += pendingCash; pendingCash=0; }
@@ -8225,7 +8228,7 @@ exportExcel=function(){
     const detalle=[]; ordenes.forEach(o=>(o.productos||[]).forEach(p=>detalle.push({'N° Orden':(window.kpNumeroOrdenSafe?window.kpNumeroOrdenSafe(o):(o.id||'')),Fecha:o.fecha,Cliente:o.cliente,'Producto / Modelo':`${p.categoria==='__custom__'?(p.categoriaManual||''):p.categoria} ${p.modelo||''} ${p.tamano||''} — ${p.colorEn||''}${p.colorEs?' ('+p.colorEs+')':''}`.replace(/\s+/g,' ').trim(),Cantidad:p.cantidad||1,'Estado Pago':o.estadoPago,'Tipo Entrega':(window.TIPO_ENTREGA_LABELS&&window.TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'—'})));
     const ws2=XLSX.utils.json_to_sheet(detalle,{header:['N° Orden','Fecha','Cliente','Producto / Modelo','Cantidad','Estado Pago','Tipo Entrega']});
     kpExcelCellStyle(ws2,[14,12,24,55,12,14,16],1); XLSX.utils.book_append_sheet(wb,ws2,'Desglose de productos');
-    XLSX.writeFile(wb,`Eunoia_Ordenes_${todayStr()}.xlsx`); toast('Excel de órdenes descargado.');
+    XLSX.writeFile(wb,`KPlace_Ordenes_${todayStr()}.xlsx`); toast('Excel de órdenes descargado.');
   });
 };
 
@@ -8717,12 +8720,7 @@ render = function(){
     view.innerHTML=`
       <div class="kp-v23-hero"><div class="kp-v23-icon">📦</div><div><div class="kp-kicker">Herramientas</div><h2>Órdenes e Inventario</h2><p class="small">Ambas funciones están juntas en una sola pestaña.</p></div></div>
       <div class="kp-v23-export-grid">
-        <div class="kp-v23-export-card">
-          <div class="kp-v23-section-head"><span class="ico">📊</span><div><h3>Exportar órdenes</h3><p class="small">Descargá las órdenes por rango de fechas.</p></div></div>
-          <div class="grid2"><div><label>Desde</label><input type="date" id="expDesde"></div><div><label>Hasta</label><input type="date" id="expHasta"></div></div>
-          <div class="btnrow"><button class="btn primary" onclick="exportExcel()">📥 Descargar Excel</button></div>
-        </div>
-        <div class="kp-v23-export-card">
+                <div class="kp-v23-export-card">
           <div class="kp-v23-section-head"><span class="ico">📦</span><div><h3>Exportar inventario</h3><p class="small">Plantilla, descarga y actualización del inventario.</p></div></div>
           <div class="kp-hint-box" style="border:1px solid #303743;background:#12171e;border-radius:12px;padding:10px 12px;margin-bottom:10px;">
             <b style="font-size:13px;">Antes de descargar la plantilla:</b>
@@ -10581,10 +10579,10 @@ KP.openEnterpriseOrder=async function(o={}){
  <div id="kpMitadBox" style="display:${o.metodoPago==='mitad'?'block':'none'};margin-top:12px">
   <div class="kp-section-title" style="font-size:13px">Detalle del pago dividido</div>
   <div class="grid2"><div><label>Monto 1</label><input type="number" id="f_montoMitad1" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" min="0" value="${o.montoMitad1!=null?o.montoMitad1:''}" oninput="actualizarRestanteMitad()"></div><div><label>Método 1</label><select id="f_metodoMitad1" onchange="kpBancoRefresh()"><option value="efectivo" ${(!o.metodoPagoMitad1||o.metodoPagoMitad1==='efectivo')?'selected':''}>Efectivo</option><option value="transferencia" ${o.metodoPagoMitad1==='transferencia'?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPagoMitad1==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPagoMitad1==='pos'?'selected':''}>POS</option></select></div></div>
-  ${kpBancoHtml('f_bancoMitad1',o.bancoMitad1,'Banco (método 1)')}
+  ${kpBancoHtml('f_bancoMitad1',o.bancoMitad1,'Banco (método 1)')}<div><label>Estado del pago 1</label><select id="f_estadoMitad1"><option value="">Elegí…</option><option value="pagado" ${o.estadoMitad1==='pagado'?'selected':''}>Pagado</option><option value="pendiente" ${o.estadoMitad1==='pendiente'?'selected':''}>Pendiente</option></select></div>
   <div id="mitadTotalInfo" class="small" style="margin-top:6px;"></div>
   <div class="grid2"><div><label>Monto 2</label><input type="number" id="f_montoMitad2" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" min="0" value="${o.montoMitad2!=null?o.montoMitad2:''}" oninput="actualizarRestanteMitad()"></div><div><label>Método 2</label><select id="f_metodoMitad2" onchange="kpBancoRefresh()"><option value="efectivo" ${o.metodoPagoMitad2==='efectivo'?'selected':''}>Efectivo</option><option value="transferencia" ${(!o.metodoPagoMitad2||o.metodoPagoMitad2==='transferencia')?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPagoMitad2==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPagoMitad2==='pos'?'selected':''}>POS</option></select></div></div>
-  ${kpBancoHtml('f_bancoMitad2',o.bancoMitad2,'Banco (método 2)')}
+  ${kpBancoHtml('f_bancoMitad2',o.bancoMitad2,'Banco (método 2)')}<div><label>Estado del pago 2</label><select id="f_estadoMitad2"><option value="">Elegí…</option><option value="pagado" ${o.estadoMitad2==='pagado'?'selected':''}>Pagado</option><option value="pendiente" ${o.estadoMitad2==='pendiente'?'selected':''}>Pendiente</option></select></div>
   <div class="small">La suma de los dos montos debe ser igual al total a pagar.</div>
  </div></div>
  <div class="kp-order-section"><div class="kp-section-title">Notas</div><textarea id="f_notas" placeholder="Ej. Solo llamadas normales, no enviar mensajes…">${esc(o.notas||'')}</textarea><div class="small">Información especial que el cliente haya indicado para esta orden.</div></div>
@@ -10752,7 +10750,7 @@ window.saveOrder=async function(){
    if(v1<=0&&v2<=0){toast('Completá los montos del pago dividido');return;}
    const bk=x=>x==='transferencia'||x==='link de pago';
    if(bk(m1)&&kpBancoFalta('f_bancoMitad1'))return; if(bk(m2)&&kpBancoFalta('f_bancoMitad2'))return;
-   data.metodoPagoMitad1=m1;data.montoMitad1=v1;data.metodoPagoMitad2=m2;data.montoMitad2=v2;
+   data.metodoPagoMitad1=m1;data.montoMitad1=v1;data.metodoPagoMitad2=m2;data.montoMitad2=v2;const e1=document.getElementById('f_estadoMitad1')?.value||'',e2=document.getElementById('f_estadoMitad2')?.value||'';if((v1>0&&!e1)||(v2>0&&!e2)){toast('Elegí si cada pago está Pagado o Pendiente');return;}data.estadoMitad1=e1;data.estadoMitad2=e2;data.estadoPago=((v1>0&&e1!=='pagado')||(v2>0&&e2!=='pagado'))?'pendiente':'pagado';
    data.bancoMitad1=bk(m1)?kpBancoValor('f_bancoMitad1'):'';data.bancoMitad2=bk(m2)?kpBancoValor('f_bancoMitad2'):'';data.banco='';
   }else{
    const bkm=(method==='transferencia'||method==='link de pago');
@@ -10845,7 +10843,7 @@ KP.renderReportes=function(){
  const total=orders.reduce((t,o)=>t+money(o.totalPedido),0),n=orders.length,deliv=orders.filter(o=>o.entregado===true).length;
  const card=(ic,l,val,sub,cl)=>`<div class="kp-rep-card ${cl}"><span class="ic">${ic}</span><div><small>${l}</small><b>${val}</b><em>${sub}</em></div></div>`;
  const panel=(title,sub,id,xl)=>`<div class="kp-enterprise-panel"><div class="kp-panel-title"><h3>${title}</h3><button class="btn sm" onclick="KP.exportReportSheet('${xl}')">📥 Excel</button></div><p class="kp-rep-sub">${sub}</p><div class="kp-chart-box" id="${id}Box"><canvas id="${id}"></canvas></div></div>`;
- v.innerHTML=`<div class="kp-enterprise-head"><div><div class="kp-kicker">ANÁLISIS</div><h2>Reportes</h2><p>Cuánto se vende, quién vende y qué se entrega. Las barras más largas son las que más aportan.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="kpReportBranch">${branchOptions(branchSel==='todas'?'':branchSel,true)}</select><button class="btn primary" onclick="KP.exportReportExcel()">📥 Excel: todas las órdenes</button></div></div>
+ v.innerHTML=`<div class="kp-enterprise-head"><div><div class="kp-kicker">ANÁLISIS</div><h2>Reportes</h2><p>Cuánto se vende, quién vende y qué se entrega. Las barras más largas son las que más aportan.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="kpReportBranch">${branchOptions(branchSel==='todas'?'':branchSel,true)}</select><button class="btn primary" onclick="KP.exportReportExcel()">📥 Resumen de ventas (con gráficas)</button><button class="btn" onclick="KP.exportOrdersDetail()">📥 Detalle de órdenes</button><input type="date" id="expDesde" title="Desde"><input type="date" id="expHasta" title="Hasta"><div class="small" style="flex-basis:100%;color:#6b7280">Resumen: cuánto se vendió por sucursal, vendedor, producto, color y repartidor. Detalle: una fila por orden con tipo, pagos (método, banco, monto y si está pagado o pendiente) y notas. Las fechas son opcionales y filtran el detalle.</div></div></div>
  <div class="kp-rep-cards">${card('💰','Total vendido',fm(total),n+' órdenes en total','c1')}${card('🧾','Órdenes',String(n),'pedidos registrados','c2')}${card('🎯','Venta promedio',fm(n?total/n:0),'por cada orden','c3')}${card('✅','Entregadas',deliv+' de '+n,(n?Math.round(deliv*100/n):0)+'% entregado','c4')}</div>
  <div class="kp-report-grid">
   ${panel('Ventas por sucursal','Cuánto ha vendido cada sucursal (todas, para comparar).','kpChartSucursal','sucursal')}
@@ -12404,7 +12402,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
   var TIPOS={tegucigalpa:'Tegucigalpa',nacional:'Nivel Nacional',roatan:'Roatán',programada:'Programada'};
   
   window.kpTextoOrdenWhatsApp=function(o){
-    var L=[], num=(typeof kpNumeroOrden==='function'&&o.id)?kpNumeroOrden(o):'';
+    var L=[], num=(typeof kpNumeroOrden==='function'&&o.id)?kpNumeroOrden(o):'';try{if(o.tipoOrden==='cambio'){var _og=(window.ORDERS||[]).find(function(x){return o.ordenOriginalId&&String(x.id)===String(o.ordenOriginalId)});var _dx=window.__kpDevExtra||{};num=_og?kpNumeroOrden(_og):(o.ordenOriginalNumero||_dx.ordenOriginalNumero||num);}}catch(e){}
     var clean=function(v){return String(v==null?'':v).replace(/\s*\n+\s*/g,', ').trim()};
     var extra={cambio:'ORDEN DE CAMBIO',remplazo:'ORDEN DE REMPLAZO',hazab_envio:'ENVÍO A PERSONALIZAR (HAZAB)',hazab_listo:'LISTA - RECOGER EN HAZAB',frecuente:'PUNTO FRECUENTE',recoleccion:'PUNTO DE RECOLECCIÓN'}[o.tipoOrden];
     L.push('*'+kpNombreEmpresa().toUpperCase()+'*');
@@ -12436,7 +12434,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     L.push('*Pago*');
     L.push('Total: *'+money(o.totalPedido!=null?o.totalPedido:(typeof totalOrden==='function'?totalOrden(o):0))+'*');
     if(o.metodoPago==='mitad'){
-      L.push('Dividido: '+money(o.montoMitad1)+' ('+(o.metodoPagoMitad1||'')+(o.bancoMitad1?' - '+o.bancoMitad1:'')+') + '+money(o.montoMitad2)+' ('+(o.metodoPagoMitad2||'')+(o.bancoMitad2?' - '+o.bancoMitad2:'')+')');
+      L.push('Dividido:');L.push(money(o.montoMitad1)+' ('+(o.metodoPagoMitad1||'')+(o.bancoMitad1?' - '+o.bancoMitad1:'')+')');L.push(money(o.montoMitad2)+' ('+(o.metodoPagoMitad2||'')+(o.bancoMitad2?' - '+o.bancoMitad2:'')+')');
     }else{
       var m=String(o.metodoPago||'-');L.push('Método: '+m.charAt(0).toUpperCase()+m.slice(1)+(o.banco?' - '+o.banco:''));
     }
@@ -12571,7 +12569,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     return String(c.nombreNegocio||x.companyName||u.companyName||local||'KPlace').trim();
   };
   window.kpTextoOrdenWhatsApp=function(o){
-    var L=[], num=(typeof kpNumeroOrden==='function'&&o.id)?kpNumeroOrden(o):'';
+    var L=[], num=(typeof kpNumeroOrden==='function'&&o.id)?kpNumeroOrden(o):'';try{if(o.tipoOrden==='cambio'){var _og=(window.ORDERS||[]).find(function(x){return o.ordenOriginalId&&String(x.id)===String(o.ordenOriginalId)});var _dx=window.__kpDevExtra||{};num=_og?kpNumeroOrden(_og):(o.ordenOriginalNumero||_dx.ordenOriginalNumero||num);}}catch(e){}
     var clean=function(v){return String(v==null?'':v).replace(/\s*\n+\s*/g,', ').trim()};
     var extra={cambio:'ORDEN DE CAMBIO',remplazo:'ORDEN DE REMPLAZO',hazab_envio:'ENVÍO A PERSONALIZAR (HAZAB)',hazab_listo:'LISTA - RECOGER EN HAZAB',frecuente:'PUNTO FRECUENTE',recoleccion:'PUNTO DE RECOLECCIÓN'}[o.tipoOrden];
     L.push('*'+kpNombreEmpresa().toUpperCase()+'*');
@@ -12603,7 +12601,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     L.push('*Pago*');
     L.push('Total: *'+money(o.totalPedido!=null?o.totalPedido:(typeof totalOrden==='function'?totalOrden(o):0))+'*');
     if(o.metodoPago==='mitad'){
-      L.push('Dividido: '+money(o.montoMitad1)+' ('+(o.metodoPagoMitad1||'')+(o.bancoMitad1?' - '+o.bancoMitad1:'')+') + '+money(o.montoMitad2)+' ('+(o.metodoPagoMitad2||'')+(o.bancoMitad2?' - '+o.bancoMitad2:'')+')');
+      L.push('Dividido:');L.push(money(o.montoMitad1)+' ('+(o.metodoPagoMitad1||'')+(o.bancoMitad1?' - '+o.bancoMitad1:'')+')');L.push(money(o.montoMitad2)+' ('+(o.metodoPagoMitad2||'')+(o.bancoMitad2?' - '+o.bancoMitad2:'')+')');
     }else{
       var m=String(o.metodoPago||'-');L.push('Método: '+m.charAt(0).toUpperCase()+m.slice(1)+(o.banco?' - '+o.banco:''));
     }
@@ -19809,6 +19807,65 @@ KP.exportReportExcel=async function(){
     const a2=document.createElement('a');a2.href=URL.createObjectURL(blob);a2.download='reportes kplace.xlsx';document.body.appendChild(a2);a2.click();setTimeout(()=>{URL.revokeObjectURL(a2.href);a2.remove();},1500);
     toast('Excel de reportes descargado con todas las gráficas.');
   }catch(e){console.error(e);toast('No se pudo armar el Excel: '+(e.message||'error'));}
+};
+
+window.exportExcel=KP.exportOrdersDetail=async function(){
+ try{
+  const desde=document.getElementById('expDesde')?.value||'',hasta=document.getElementById('expHasta')?.value||'';
+  toast('Armando el Excel de órdenes…');await loadExcelJS();
+  const snap=await db.collection('orders').get();
+  let os=snap.docs.map(d=>({id:d.id,...d.data()}));
+  if(desde)os=os.filter(o=>(o.fecha||'')>=desde);if(hasta)os=os.filter(o=>(o.fecha||'')<=hasta);
+  const num=o=>window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):(o.id||'');
+  os.sort((a,b)=>{const fa=a.fecha||'9999',fb=b.fecha||'9999';return fa!==fb?(fa<fb?-1:1):(Number(num(a))||0)-(Number(num(b))||0);});
+  const cap=x=>x?String(x).charAt(0).toUpperCase()+String(x).slice(1):'';
+  const tot=o=>Number(o.totalPedido!=null?o.totalPedido:(window.totalOrden?totalOrden(o):0))||0;
+  const prodTxt=p=>((p.categoria==='__custom__'?(p.categoriaManual||''):(p.categoria||''))+' '+(p.modelo||'')+' '+(p.tamano||'')+' '+(p.colorEn||p.colorEs||'')).replace(/\s+/g,' ').trim()+' x'+(p.cantidad||1);
+  const calc=o=>{const t=tot(o),ent=o.entregado===true,split=o.metodoPago==='mitad';
+    const st=(m,e)=>ent||e==='pagado'?'Pagado':e==='pendiente'?'Pendiente':(split?(m==='efectivo'?'Pendiente':'Pagado'):(o.estadoPago==='pagado'?'Pagado':'Pendiente'));
+    let ps=[];
+    if(split){[[o.metodoPagoMitad1,o.bancoMitad1,o.montoMitad1,o.estadoMitad1],[o.metodoPagoMitad2,o.bancoMitad2,o.montoMitad2,o.estadoMitad2]].forEach(x=>{const a=Number(x[2])||0;if(a>0)ps.push({m:cap(x[0]),b:x[1]||'',a:a,s:st(x[0],x[3])});});}
+    else if(t>0)ps.push({m:cap(o.metodoPago),b:o.banco||'',a:t,s:st(o.metodoPago,null)});
+    const pag=ps.filter(p=>p.s==='Pagado').reduce((q,p)=>q+p.a,0),pen=ps.filter(p=>p.s==='Pendiente').reduce((q,p)=>q+p.a,0);
+    return {t,ps,pag,pen,est:pen>0?(pag>0?'Parcial':'Pendiente'):'Pagado',pago:split?'Dividido':cap(o.metodoPago)};};
+  const INK='FF0F172A',SL='FF334155',FM='#,##0.00;-#,##0.00;"–"';
+  const NC={16:['FF4F7CFF','FFEEF3FF','FF2B4FCC'],20:['FF9B6BFF','FFF3EEFF','FF6B3FD6'],22:['FF1FB57A','FFE6F7EF','FF11805A'],23:['FFFF8A4C','FFFFF0E6','FFC2571A']};
+  const CH={Pagado:['FFE6F7EF','FF11805A'],Pendiente:['FFFFF0E6','FFC2571A']},GR=['FFEEF1F5','FF475569'];
+  const wb=new ExcelJS.Workbook();wb.creator='KPlace';
+  const ws=wb.addWorksheet('Órdenes',{views:[{state:'frozen',ySplit:5,showGridLines:false}]});
+  const H=['Orden','Fecha','Canal','Vendedor','Cliente','Teléfono','Dirección','Productos','Tipo','Cambio de','Total','Pago','Estado','Método','Banco','Monto','Estado','Método','Banco','Monto','Estado','Pagado','Pendiente','Entrega','Entregada','Notas'];
+  const W=[9,12,12,11,17,16,30,34,11,11,11,15,12,14,12,12,11,14,12,12,11,12,12,12,11,42];
+  ws.getCell('A1').value='Órdenes · KPlace';ws.getCell('A1').font={bold:true,size:16,name:'Arial'};
+  ws.getCell('A2').value='Descargado: '+todayStr()+(desde||hasta?'  ·  '+(desde||'inicio')+' a '+(hasta||'hoy'):'');ws.getCell('A2').font={size:9,color:{argb:'FF64748B'},name:'Arial'};
+  [[14,17,'PAGO 1'],[18,21,'PAGO 2'],[22,23,'COBRO']].forEach(g=>{ws.mergeCells(4,g[0],4,g[1]);const c=ws.getCell(4,g[0]);c.value=g[2];c.alignment={horizontal:'center'};c.font={bold:true,size:9,name:'Arial',color:{argb:g[2]==='COBRO'?'FF64748B':SL}};});
+  H.forEach((h,i)=>{const c=ws.getCell(5,i+1),k=i+1;c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'},name:'Arial',size:10};c.alignment={horizontal:'center',vertical:'middle'};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NC[k]?NC[k][0]:(k>=14&&k<=21?SL:INK)}};ws.getColumn(k).width=W[i];});
+  ws.getRow(5).height=26;
+  const money=new Set([11,16,20,22,23]),ctr=new Set([1,2,9,10,12,13,14,17,18,21,24,25]);
+  os.forEach((o,i)=>{const r=6+i,c=calc(o),p1=c.ps[0]||{},p2=c.ps[1]||{};
+    const vals=[num(o),o.fecha||'',o.plataforma||'',o.vendedor||'',o.cliente||'',o.numero||'',o.direccion||'',(o.productos||[]).map(prodTxt).join(' | '),
+      o.tipoOrden==='cambio'?'Cambio':o.tipoOrden==='remplazo'?'Remplazo':'Normal',o.ordenOriginalNumero?'#'+o.ordenOriginalNumero:'',c.t,c.pago,c.est,
+      p1.m||'',p1.b||'',p1.a||null,p1.s||'',p2.m||'',p2.b||'',p2.a||null,p2.s||'',c.pag,c.pen,
+      (window.TIPO_ENTREGA_LABELS&&TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'',o.entregado===true?'Sí':'No',o.notas||''];
+    vals.forEach((v,j)=>{const k=j+1,x=ws.getCell(r,k);x.value=v===''?null:v;x.font={name:'Arial',size:10,bold:k===1};
+      x.alignment={vertical:'middle',wrapText:k===26,horizontal:ctr.has(k)?'center':(money.has(k)?'right':'left')};
+      x.border={bottom:{style:'thin',color:{argb:'FFE8ECF1'}}};if(money.has(k))x.numFmt=FM;
+      if(NC[k]){x.fill={type:'pattern',pattern:'solid',fgColor:{argb:NC[k][1]}};x.font={name:'Arial',size:10,bold:true,color:{argb:NC[k][2]}};}
+      const ch=[9,12,13,17,21].includes(k)?(CH[v]||(['Cambio','Remplazo','Dividido','Parcial'].includes(v)?GR:null)):null;
+      if(ch){x.fill={type:'pattern',pattern:'solid',fgColor:{argb:ch[0]}};x.font={name:'Arial',size:10,bold:true,color:{argb:ch[1]}};}});
+    ws.getRow(r).height=28;});
+  const a=6,b=5+os.length,t=b+1;
+  [11,16,20,22,23].forEach(k=>{const L=ws.getColumn(k).letter,x=ws.getCell(t,k);let sum=0;for(let r=a;r<=b;r++)sum+=Number(ws.getCell(r,k).value)||0;x.value={formula:'SUM('+L+a+':'+L+b+')',result:sum};x.numFmt='#,##0.00';x.font={bold:true,name:'Arial',size:10};});
+  ws.getCell(t,10).value='Total';ws.getCell(t,10).font={bold:true,name:'Arial',size:10};ws.getCell(t,10).alignment={horizontal:'right'};
+  ws.autoFilter={from:{row:5,column:1},to:{row:5,column:26}};
+  const w2=wb.addWorksheet('Desglose de productos');
+  w2.addRow(['Orden','Fecha','Cliente','Producto','Color','Cantidad','Precio','Subtotal']).font={bold:true,name:'Arial'};
+  os.forEach(o=>(o.productos||[]).forEach(p=>{const q=Number(p.cantidad)||1,pr=Number(p.precio)||0;w2.addRow([num(o),o.fecha||'',o.cliente||'',((p.categoria==='__custom__'?(p.categoriaManual||''):(p.categoria||''))+' '+(p.modelo||'')+' '+(p.tamano||'')).replace(/\s+/g,' ').trim(),p.colorEn||p.colorEs||'',q,pr,q*pr]);}));
+  [10,12,22,40,20,10,12,12].forEach((w,i)=>w2.getColumn(i+1).width=w);
+  const buf=await wb.xlsx.writeBuffer();
+  const bl=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const l=document.createElement('a');l.href=URL.createObjectURL(bl);l.download='KPlace_Ordenes_'+todayStr()+'.xlsx';document.body.appendChild(l);l.click();setTimeout(()=>{URL.revokeObjectURL(l.href);l.remove();},1500);
+  toast('Excel de órdenes descargado.');
+ }catch(e){console.error(e);toast('No se pudo armar el Excel de órdenes: '+(e.message||'error'));}
 };
 })();
 </script>
