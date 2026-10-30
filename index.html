@@ -9405,7 +9405,7 @@ render = function(){
       {id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}
     ];
     tabsEl.innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
-    if(!tabs.some(t=>t.id===activeTab))activeTab='inicio';updateKPlaceNav();
+    if(!tabs.some(t=>t.id===activeTab)&&!/^kplace_/.test(String(activeTab)))activeTab='inicio';updateKPlaceNav();
   };
   const prevToggleMenu=toggleMenu;
   toggleMenu=function(){
@@ -9968,7 +9968,7 @@ render = function(){
       const nr=countRetrasosPendientes();
       const a=[{id:'inicio',label:'Inicio'},{id:'principal',label:'Chat',badge:(CHAT_UNREAD.principal||0)||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},{id:'boxful',label:'Envíos nacionales',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreo de pedidos'},{id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidor'},{id:'adminOrdersInventory',label:'Inventario y ubicaciones'},{id:'admin',label:'Usuarios y equipo'},{id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}];
       tabsEl.innerHTML=a.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
-      if(!a.some(t=>t.id===activeTab)) activeTab='inicio'; updateKPlaceNav();
+      if(!a.some(t=>t.id===activeTab)&&!/^kplace_/.test(String(activeTab))) activeTab='inicio'; updateKPlaceNav();
     };
   }
 
@@ -21795,7 +21795,7 @@ let docked=false,dragMoved=false,fpos=null;
 try{const z=JSON.parse(localStorage.getItem(FABK)||'{}');docked=!!z.docked;if(z.x!=null&&z.y!=null)fpos={x:z.x,y:z.y}}catch(e){}
 const saveF=()=>{try{localStorage.setItem(FABK,JSON.stringify({docked,x:fpos&&fpos.x,y:fpos&&fpos.y}))}catch(e){}};
 function placeDock(){const h=document.querySelector('.topbar');dock.style.top=h?Math.max(4,h.getBoundingClientRect().top+(h.offsetHeight-44)/2)+'px':'calc(env(safe-area-inset-top,0px) + 12px)'}
-function fabSet(on){const show=!!on;fab.style.display=show&&!docked?'block':'none';dock.style.display=show&&docked?'block':'none';if(show&&docked)placeDock()}
+function fabSet(on){const show=on&&(homeTab()||inUse());fab.style.display=show&&!docked?'block':'none';dock.style.display=show&&docked?'block':'none';if(show&&docked)placeDock()}
 function placeFab(x,y){const w=fab.offsetWidth||64,h=fab.offsetHeight||64;x=Math.max(4,Math.min(innerWidth-w-4,x));y=Math.max(4,Math.min(innerHeight-h-4,y));fab.style.setProperty('left',x+'px','important');fab.style.setProperty('top',y+'px','important');fab.style.setProperty('right','auto','important');fab.style.setProperty('bottom','auto','important');return{x,y}}
 /* Posición inicial: borde derecho. La ✕ para guardarlo está abajo al centro, así que nunca se deja ahí. */
 function sidePos(y){const w=fab.offsetWidth||64,h=fab.offsetHeight||64,def=innerHeight-h-(innerWidth>700?96:164);return{x:innerWidth-w-12,y:Math.max(80,Math.min(innerHeight-h-90,Number.isFinite(y)?y:def))}}
@@ -23715,7 +23715,7 @@ function syncMikeVisibility(){
   const menuOpen=!!document.querySelector('#kpMenuDrawer.open, #kpMenuDrawer.show, .kp-drawer.open, .kp-drawer.show');
   const flowOpen=!!K.page;
   const notHome=(String(window.activeTab||'')!=='inicio');
-  document.body.classList.toggle('kp-hide-mike', settingsOpen||menuOpen);
+  document.body.classList.toggle('kp-hide-mike', settingsOpen||flowOpen||menuOpen||notHome);
  }catch(e){}
 }
 function positionSyncNextToMike(){
@@ -23732,12 +23732,13 @@ setInterval(positionSyncNextToMike,950);
 setTimeout(positionSyncNextToMike,1100);
 const nativeVerOrden=window.verOrden;
 if(typeof nativeVerOrden==='function')window.verOrden=function(id){const result=nativeVerOrden.apply(this,arguments);if(admin()){setTimeout(()=>{let sheet=[...document.querySelectorAll('.sheet.show')].slice(-1)[0];if(sheet&&!sheet.querySelector('[data-kf-order-invoice]')){let b=document.createElement('button');b.type='button';b.className='btn primary';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=id;sheet.appendChild(b)}},0)}return result};
-window.syncMikeVisibility=syncMikeVisibility;setTimeout(()=>{loadConfig();injectNavigation();syncMikeVisibility()},800);setInterval(()=>{if(user()){injectNavigation();syncMikeVisibility()}},300000);
+window.syncMikeVisibility=syncMikeVisibility;setInterval(function(){try{syncMikeVisibility()}catch(e){}},1200);setInterval(function(){try{highlightNav()}catch(e){}},1000);setTimeout(()=>{loadConfig();injectNavigation();syncMikeVisibility()},800);setInterval(()=>{if(user()){injectNavigation();syncMikeVisibility()}},300000);
 })();
 
 </script>
 
 <!-- KPlace · Ajustes organizados: experiencia visual, se conserva la lógica y datos existentes -->
+<style id="kp-nav-touch-fix">@media (hover:none){.kp-drawer-nav button:hover:not(.active),.kp-nav button:hover:not(.active){background:transparent!important;color:inherit!important}body.kp-dark .kp-drawer-nav button:hover:not(.active){background:transparent!important;color:#d6def0!important}body.kp-dark .kp-nav button:hover:not(.active){background:transparent!important}}</style>
 <style id="kp-settings-organized-css">
 body.kp-hide-mike #kpMikeFab,body.kp-hide-mike #kpMikeDock,body.kp-hide-mike #kpMikeFill,body.kp-hide-mike #kpMikeTarget{display:none!important;}
 .sheet.kp-settings-org-sheet{
