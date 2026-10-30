@@ -718,7 +718,7 @@ body.kp-dark .login-card{background:#1a2029;color:var(--ink);}
   .kp-return-card{box-shadow:0 10px 28px rgba(15,23,42,.07)!important}
 }
 
-/* ──────── kp-v22-orders-inventory-style · Estilos de la pestaña "Órdenes e Inventario" (tarjeta y sección de exportar). ──────── */
+/* ──────── kp-v22-orders-inventory-style · Estilos de la pestaña "Inventario y ubicaciones" (tarjeta y sección de exportar). ──────── */
 .kpOrdersInventoryCard{overflow:hidden;}
 .kpExportSection{padding:14px 0;}
 .kpExportSectionHead{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
@@ -3050,7 +3050,7 @@ new MutationObserver(function(){var e=document.getElementById('loginError');if(!
       <button data-section="envios" onclick="setTab('boxful')"><span class="ico">🚚</span>Envíos</button>
       <button data-section="rastreos" onclick="setTab('rastreosNacionales')"><span class="ico">📍</span>Rastreos nacionales</button>
       <button data-section="repartidores" onclick="setTab('repartidor')"><span class="ico">🛵</span>Repartidores</button>
-      <button data-section="inventario" onclick="setTab('adminOrdersInventory')"><span class="ico">🗃️</span>Órdenes e Inventario</button>
+      <button data-section="inventario" onclick="setTab('adminOrdersInventory')"><span class="ico">🗃️</span>Inventario y ubicaciones</button>
       <button data-section="chat" onclick="setTab(CURRENT_USER?.esRepartidor?'repartidor':'principal')"><span class="ico">💬</span>Chat interno</button>
       <button data-section="usuarios" onclick="openUsersPanel()"><span class="ico">👥</span>Usuarios</button>
       <button data-section="reportes" onclick="setTab('inicio')"><span class="ico">◒</span>Reportes</button>
@@ -3309,7 +3309,7 @@ function toggleMenu(){
     ['programadas','🕒','Programadas'],
     ['retrasos','🚩','Retrasos'],
     ['repartidores','🛵','Repartidores'],
-    ['inventario','🗃️','Órdenes e Inventario'],
+    ['inventario','🗃️','Inventario y ubicaciones'],
     ['usuarios','👥','Usuarios y equipo'],
     ['devoluciones','↩️','Devoluciones'],
     ['ayuda','📖','Ayuda'],
@@ -3873,7 +3873,7 @@ function renderTutorial(){
       'El administrador ve el estado de cada repartidor: "Activo" o "No activo" (según si inició turno).',
       'Desde el panel de administración se puede activar/desactivar manualmente a un repartidor.'
     ]],
-    ['🗃️','Órdenes e Inventario','Administra productos, existencias por ubicación/sucursal, transferencias, códigos y etiquetas.','Admin / Enc. de envíos',[
+    ['🗃️','Inventario y ubicaciones','Administra productos, existencias por ubicación/sucursal, transferencias, códigos y etiquetas.','Admin / Enc. de envíos',[
       '＋ Agregar crea un producto nuevo; ✎ Editar modifica uno existente.',
       '⇄ Transferir mueve unidades de un producto entre ubicaciones o sucursales.',
       '📥 Importar Excel: sube un archivo de tu proveedor y KPlace usa IA (Gemini) para leer automáticamente SKU, código de barras y precio de cada producto, y arma el borrador de productos por ti.',
@@ -5594,7 +5594,7 @@ function renderAdmin(){
       </div>
       <div class="adminSide">
         <div class="card adminToolsCard kpOrdersInventoryCard">
-          <div class="adminToolTitle"><span class="adminToolIcon">📦</span><div><h3>Órdenes e Inventario</h3><p class="small">Herramientas de descarga y gestión de órdenes e inventario.</p></div></div>
+          <div class="adminToolTitle"><span class="adminToolIcon">📦</span><div><h3>Inventario y ubicaciones</h3><p class="small">Herramientas de descarga y gestión de inventario por ubicación.</p></div></div>
 
           <div class="kpExportSection">
             <div class="kpExportSectionHead"><span class="kpExportIcon">📊</span><div><h4>Exportar órdenes</h4><p class="small">Descargá órdenes por rango de fechas.</p></div></div>
@@ -8777,11 +8777,11 @@ render = function(){
     }).join('')||'<div class="adminEmpty">No hay miembros activos todavía.</div>';
   };
 
-  /* ---------- Órdenes e Inventario: una sola pestaña, dos bloques ---------- */
+  /* ---------- Inventario y ubicaciones: gestión y exportación ---------- */
   window.renderOrdenesInventario=function(){
     const view=document.getElementById('view');
     view.innerHTML=`
-      <div class="kp-v23-hero"><div class="kp-v23-icon">📦</div><div><div class="kp-kicker">Herramientas</div><h2>Órdenes e Inventario</h2><p class="small">Ambas funciones están juntas en una sola pestaña.</p></div></div>
+      <div class="kp-v23-hero"><div class="kp-v23-icon">📦</div><div><div class="kp-kicker">Herramientas</div><h2>Inventario y ubicaciones</h2><p class="small">Gestiona productos y existencias por bodega o tienda.</p></div></div>
       <div class="kp-v23-export-grid">
                 <div class="kp-v23-export-card">
           <div class="kp-v23-section-head"><span class="ico">📦</span><div><h3>Exportar inventario</h3><p class="small">Plantilla, descarga y actualización del inventario.</p></div></div>
@@ -9283,7 +9283,7 @@ render = function(){
       {id:'inicio',label:'Inicio'},{id:'principal',label:'Chat',badge:(CHAT_UNREAD.principal||nPrincipal)||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},
       {id:'boxful',label:'Nivel Nacional',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreos Envíos Nacionales'},
       {id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidor'},
-      {id:'adminOrdersInventory',label:'Órdenes e Inventario'},{id:'admin',label:'Usuarios y equipo'},
+      {id:'adminOrdersInventory',label:'Inventario y ubicaciones'},{id:'admin',label:'Usuarios y equipo'},
       {id:'adminEnviosDevoluciones',label:'Devoluciones',badge:nd||null}
     ];
     tabsEl.innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}" onclick="setTab('${t.id}')">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
@@ -19865,7 +19865,7 @@ const sumBy=(arr,kf,vf)=>{const m={};arr.forEach(x=>{const raw=String(kf(x)||'')
 KP.exportReportExcel=async function(){
   if(typeof Chart==='undefined'){toast('Abre primero la pantalla de Reportes para cargar las gráficas');return;}
   try{
-    toast('Armando el Excel con todas las gráficas…');
+    toast('Generando el Excel con todas las gráficas…');
     await loadExcelJS();
     const branchSel=KP._reportBranch||'todas',orders=ordersNow().slice().sort(sortFecha),a=agg(orders);
     const MON='"L" #,##0.00';let mon='L.';try{mon=kpMoneda()||'L.';}catch(e){}
@@ -19934,7 +19934,7 @@ KP.exportReportExcel=async function(){
 window.exportExcel=KP.exportOrdersDetail=async function(){
  try{
   const desde=document.getElementById('expDesde')?.value||'',hasta=document.getElementById('expHasta')?.value||'';
-  toast('Armando el Excel de órdenes…');await loadExcelJS();
+  toast('Generando el Excel de órdenes…');await loadExcelJS();
   const snap=await db.collection('orders').get();
   let os=snap.docs.map(d=>({id:d.id,...d.data()}));
   const branchSel=KP._reportBranch||'todas';
@@ -20393,6 +20393,7 @@ window.__kpDevConCtx=conCtx;
  <div class="kpm-chips">
   <button class="kpm-chip" data-kpm-prompt="¿Cómo van los pedidos de hoy?">📦 Pedidos de hoy</button>
   <button class="kpm-chip" data-kpm-prompt="Quiero crear una guía de envío. Muéstrame las órdenes nacionales que todavía no tienen guía.">🚚 Crear guía</button>
+  <button class="kpm-chip" data-kpm-prompt="Quiero editar una o varias órdenes ya guardadas. Ayúdame a encontrarlas y a preparar los cambios para confirmar.">✏️ Editar órdenes</button>
   <button class="kpm-chip" data-kpm-prompt="Quiero crear una orden nueva. Dime qué datos necesitas o pégame el mensaje del cliente.">🧾 Crear orden</button>
   <button class="kpm-chip" data-kpm-attach="1">📷 Enviar imagen</button>
   <button class="kpm-chip" data-kpm-prompt="Necesito ayuda con la app. Pregúntame qué estoy tratando de hacer.">🛠 Ayuda</button>
@@ -20483,7 +20484,7 @@ function toolBuscar(a){
 let kpAgregarAOrdenGuardada=null;
 async function agregarProductoOrden(a){
  a=a||{};
- if(a.pedido){const o=findOrder(a.pedido);if(!o)return{error:'No encontré la orden. Usa buscar_pedidos e indica el cliente o referencia.'};kpAgregarAOrdenGuardada=String(o.id);}
+ if(a.pedido){const r=mikeBuscarUnico(a.pedido);if(r.error)return{error:r.error,coincidencias:r.coincidencias};kpAgregarAOrdenGuardada=String(r.orden.id);}
  if(!kpAgregarAOrdenGuardada)return{error:'Primero indica a qué orden guardada agregar el producto.'};
  if(!Array.isArray(window.INVENTARIO)||!window.INVENTARIO.length)return{error:'No tengo el inventario cargado.'};
  if(a.reiniciar){psel={};pult=null;pcant=1;}
@@ -20502,7 +20503,7 @@ async function quitarProductoOrden(a){
   try{window._renderProdList?.();if(typeof recalcularTotalDesdeProductos==='function')recalcularTotalDesdeProductos()}catch(e){}
   return{ok:true,quitado:x.n,productos:arr.map(p=>({producto:describe(p),cantidad:p.cantidad||1})),nota:'Producto quitado del borrador. Indica la lista actualizada y el total visible si está disponible.'};
  }
- const o=findOrder(a.pedido||'');if(!o)return{ok:false,error:'No encontré la orden. Usa buscar_pedidos o indica el cliente.'};
+ const found=mikeBuscarUnico(a.pedido||'');if(found.error)return{ok:false,error:found.error,coincidencias:found.coincidencias};const o=found.orden;
  const arr=Array.isArray(o.productos)?o.productos.slice():[];if(!query)return{ok:true,cliente:o.cliente,productos:arr.map((p,i)=>({numero:i+1,producto:describe(p),cantidad:p.cantidad||1})),nota:'Lista los productos numerados y pregunta cuál quiere quitar si desea eliminar alguno.'};
  const m=matches(arr);
  if(m.length!==1)return{ok:false,productos:arr.map((p,i)=>({numero:i+1,producto:describe(p),cantidad:p.cantidad||1})),nota:m.length?'Hay más de una coincidencia. Pregunta cuál número quitar antes de cambiar la orden.':'No encontré ese producto. Muestra la lista numerada y pregunta cuál quiere quitar.'};
@@ -20518,7 +20519,7 @@ function invMatch(txt,n){
  const inv=Array.isArray(window.INVENTARIO)?window.INVENTARIO:[],toks=norm(txt).split(/[\s,;]+/).filter(t=>t.length>1);
  if(!toks.length)return[];
  return inv.map(i=>{const h=norm([i.categoria,i.modelo,i.tamano,i.colorEs,i.colorEn,i.etiqueta].join(' '));return{i,s:toks.filter(t=>h.includes(t)).length/toks.length}}).filter(x=>x.s>=.5).sort((a,b)=>b.s-a.s).slice(0,n||8)
-  .map(x=>({producto:[x.i.categoria,x.i.modelo&&x.i.modelo!==x.i.categoria?x.i.modelo:'',x.i.tamano,x.i.colorEs||x.i.colorEn].filter(Boolean).join(' '),cantidad:x.i.cantidad,etiqueta:x.i.etiqueta||undefined,coincidencia:Math.round(x.s*100)+'%'}));
+  .map(x=>({producto:[x.i.categoria,x.i.modelo&&x.i.modelo!==x.i.categoria?x.i.modelo:'',x.i.tamano,x.i.colorEs||x.i.colorEn].filter(Boolean).join(' '),cantidad:x.i.cantidad,inventario_id:String(x.i.id||''),etiqueta:x.i.etiqueta||undefined,coincidencia:Math.round(x.s*100)+'%'}));
 }
 const SECCIONES={inicio:'inicio',cotizaciones:'cotizaciones',chat:'principal',ordenes:'hoy',nivel_nacional:'boxful',rastreos:'rastreosNacionales',programadas:'programadas',retrasos:'retrasos',repartidor:'repartidor',admin:'admin',devoluciones:'adminEnviosDevoluciones'};
 
@@ -20536,14 +20537,188 @@ const TOOLS=[{functionDeclarations:[
  {name:'editar_orden',description:'EDITA el pago u otros datos de una orden ya creada (la última que creaste si no das pedido). Úsala cuando el usuario corrija algo: "no, era transferencia", pago dividido, otro total, etc. Transferencia o link de pago requieren banco. Pago dividido (metodo_pago=mitad) requiere metodo_1, monto_1 y metodo_2.',parameters:{type:'OBJECT',properties:{pedido:{type:'STRING',description:'id, ref de 5 caracteres o cliente; vacío = última orden creada'},metodo_pago:{type:'STRING',enum:['efectivo','transferencia','link de pago','pos','mitad']},estado_pago:{type:'STRING',enum:['pagado','pendiente']},banco:{type:'STRING'},metodo_1:{type:'STRING',enum:['efectivo','transferencia','link de pago','pos']},monto_1:{type:'NUMBER'},banco_1:{type:'STRING'},metodo_2:{type:'STRING',enum:['efectivo','transferencia','link de pago','pos']},monto_2:{type:'NUMBER'},banco_2:{type:'STRING'},total:{type:'NUMBER'},cliente:{type:'STRING'},numero:{type:'STRING'},direccion:{type:'STRING'}}}},
  {name:'resumen_ventas',description:'Historial y totales de ventas de un periodo: total vendido, número de órdenes, cuánto vendió cada vendedor, por método de pago y lo que está sin pagar. Sin fechas = todo el historial.',parameters:{type:'OBJECT',properties:{periodo:{type:'STRING',enum:['hoy','ayer','semana','mes','todo']},desde:{type:'STRING',description:'YYYY-MM-DD'},hasta:{type:'STRING',description:'YYYY-MM-DD'},vendedor:{type:'STRING'},por_dia:{type:'BOOLEAN'}}}},
  {name:'etiquetas_inventario',description:'Lista las etiquetas (categorías) del inventario con variantes y unidades. No incluye códigos QR.'},
- {name:'buscar_en_internet',description:'Busca en internet datos que no son de KPlace: clima, distancias entre ciudades, noticias, cualquier pregunta general.',parameters:{type:'OBJECT',properties:{consulta:{type:'STRING'}},required:['consulta']}},
+ {name:'buscar_en_internet',description:'Busca resultados deportivos de fútbol y baloncesto de hoy o históricos, partidos, fechas, noticias, clima, cultura general y datos que cambian. Si no hay búsqueda verificable, dilo, no inventes resultados.',parameters:{type:'OBJECT',properties:{consulta:{type:'STRING'}},required:['consulta']}},
  {name:'cambiar_estado_entrega',description:'Cambia el estado de un pedido: entregado, no_entregado (requiere motivo y reprogramar_para YYYY-MM-DD, el pedido pasa a Programadas) o pendiente (quita el estado).',parameters:{type:'OBJECT',properties:{pedido:{type:'STRING',description:'id, ref de 5 caracteres o cliente; vacío = última orden creada'},estado:{type:'STRING',enum:['entregado','no_entregado','pendiente']},motivo:{type:'STRING'},reprogramar_para:{type:'STRING',description:'YYYY-MM-DD'}},required:['estado']}},
  {name:'crear_cotizacion',description:'ARMA una cotización (documento PDF para el cliente) en la pestaña Cotizaciones con cliente, productos con cantidad y precio, descuento, envío e impuesto. Si el producto está en el inventario toma su precio; si no, pide el precio. NO descarga ni envía: deja la cotización lista para que el usuario la revise y toque Descargar o Compartir. Usa agregar=true solo para sumar productos a la cotización que ya está armada.',parameters:{type:'OBJECT',properties:{cliente:{type:'STRING',description:'Nombre del cliente'},empresa:{type:'STRING'},telefono:{type:'STRING'},correo:{type:'STRING'},rtn:{type:'STRING'},productos:{type:'ARRAY',items:{type:'OBJECT',properties:{nombre:{type:'STRING',description:'Producto, por ejemplo "Owala 24 oz"'},detalle:{type:'STRING',description:'Color, talla u otro detalle'},cantidad:{type:'NUMBER'},precio:{type:'NUMBER',description:'Precio unitario; vacío = el del inventario'}},required:['nombre']}},agregar:{type:'BOOLEAN'},descuento:{type:'NUMBER',description:'Descuento en dinero'},descuento_pct:{type:'NUMBER',description:'Descuento en %'},impuesto_pct:{type:'NUMBER'},envio:{type:'NUMBER',description:'Costo de envío'},dias_validez:{type:'NUMBER'},vendedor:{type:'STRING'}}}},
  {name:'ir_a_seccion',description:'Abre una sección de la app.',parameters:{type:'OBJECT',properties:{seccion:{type:'STRING',enum:Object.keys(SECCIONES)}},required:['seccion']}}
 ]}];
+/* ===== Mike: editor seguro de órdenes guardadas, individual y masivo ===== */
+const MIKE_EDIT_FIELDS={
+ cliente:{type:'STRING'},numero:{type:'STRING'},numero2:{type:'STRING'},direccion:{type:'STRING'},
+ departamento:{type:'STRING'},municipio:{type:'STRING'},tipo_entrega:{type:'STRING',enum:['tegucigalpa','nacional','roatan','programada']},
+ fecha:{type:'STRING',description:'YYYY-MM-DD'},fecha_programada:{type:'STRING',description:'YYYY-MM-DD'},
+ plataforma:{type:'STRING'},vendedor:{type:'STRING'},notas:{type:'STRING'},tipo_orden:{type:'STRING'},
+ total:{type:'NUMBER'},metodo_pago:{type:'STRING',enum:['efectivo','transferencia','link de pago','pos','mitad']},
+ estado_pago:{type:'STRING',enum:['pagado','pendiente']},banco:{type:'STRING'},
+ metodo_1:{type:'STRING'},monto_1:{type:'NUMBER'},banco_1:{type:'STRING'},
+ metodo_2:{type:'STRING'},monto_2:{type:'NUMBER'},banco_2:{type:'STRING'},
+ estado_entrega:{type:'STRING',enum:['entregado','pendiente','no_entregado']},
+ productos_acciones:{type:'ARRAY',description:'Ajustes de productos existentes: agregar (requiere inventario_id), quitar (identificación única), cantidad (unidades nuevas). No descuenta ni devuelve existencias automáticamente.',items:{type:'OBJECT',properties:{accion:{type:'STRING',enum:['agregar','quitar','cantidad']},producto:{type:'STRING'},inventario_id:{type:'STRING'},indice:{type:'NUMBER',description:'Número de fila del producto, empezando en 1'},cantidad:{type:'NUMBER'}},required:['accion']}}
+};
+const mikeEditarDecl=TOOLS[0].functionDeclarations.find(x=>x.name==='editar_orden');
+if(mikeEditarDecl){mikeEditarDecl.description='EDITA una orden guardada de cualquier fecha, no solo la última creada: usa el id/referencia o nombre único del cliente. Permite cambiar datos, fechas, entrega, pago, notas y productos. Siempre muestra una tarjeta para confirmar antes de guardar; para varias órdenes a la vez usa editar_ordenes.';Object.assign(mikeEditarDecl.parameters.properties,MIKE_EDIT_FIELDS);}
+TOOLS[0].functionDeclarations.push({
+ name:'editar_ordenes',description:'Editar UNA o VARIAS órdenes guardadas en una sola solicitud. Usa seleccion con IDs/referencias/nombres únicos y cambios para aplicar lo mismo a todas; o ediciones [{pedido,cambios}] para cambios diferentes. También admite filtro (fecha/estado/vendedor) con cambios comunes. Muestra SIEMPRE una tarjeta de revisión que el usuario debe confirmar tocando Guardar cambios; no afirmes que se guardó antes. Si nombres se repiten, solicita el ID. Máximo 40 órdenes por confirmación.',
+ parameters:{type:'OBJECT',properties:{seleccion:{type:'ARRAY',items:{type:'STRING'},description:'IDs completos, referencias de 5 caracteres o nombres de clientes únicos'},filtro:{type:'OBJECT',properties:{fecha:{type:'STRING',description:'hoy, ayer o YYYY-MM-DD'},desde:{type:'STRING'},hasta:{type:'STRING'},estado:{type:'STRING',enum:['todos','pendientes','entregados','sin_pagar','pagados','sin_guia']},vendedor:{type:'STRING'},texto:{type:'STRING'}}},cambios:{type:'OBJECT',properties:MIKE_EDIT_FIELDS},ediciones:{type:'ARRAY',items:{type:'OBJECT',properties:{pedido:{type:'STRING'},cambios:{type:'OBJECT',properties:MIKE_EDIT_FIELDS}},required:['pedido','cambios']}}}}
+});
+/* ===== Mike PRO: análisis de órdenes, cálculos y memoria personal ===== */
+const MIKE_ANALYSIS_PROPS={
+ periodo:{type:'STRING',enum:['hoy','ayer','semana','mes','mes_anterior','todo']},mes:{type:'STRING',description:'Mes exacto YYYY-MM, ej. 2026-10'},desde:{type:'STRING',description:'YYYY-MM-DD'},hasta:{type:'STRING',description:'YYYY-MM-DD'},
+ referencias:{type:'ARRAY',items:{type:'STRING'},description:'IDs completos o referencias únicas, o nombre único de cliente'},
+ plataforma:{type:'STRING',description:'sin_plataforma para campos vacíos, todas o Instagram/WhatsApp/Facebook/etc.'},
+ vendedor:{type:'STRING'},sucursal:{type:'STRING'},metodo_pago:{type:'STRING'},estado_pago:{type:'STRING'},estado_entrega:{type:'STRING'},
+ cliente:{type:'STRING'},incluir_canceladas:{type:'BOOLEAN'},agrupar_por:{type:'STRING',enum:['ninguno','plataforma','vendedor','sucursal','fecha','metodo_pago','estado_pago']},mostrar:{type:'BOOLEAN',description:'Incluir lista de órdenes y referencias, máximo 40'}
+};
+TOOLS[0].functionDeclarations.push(
+ {name:'analizar_ordenes',description:'CONTAR, SUMAR y agrupar órdenes reales por mes, fechas, cliente, vendedor, sucursal, estado y plataforma. ÚSALA SIEMPRE si preguntan "cuántas órdenes SIN PLATAFORMA este mes", ventas por Instagram/WhatsApp, o sumas de varias órdenes. No estima: opera sobre órdenes cargadas y visibles. Para sin plataforma: plataforma="sin_plataforma"; para mes actual: periodo="mes"; mes específico: mes="YYYY-MM". Para órdenes puntuales usa referencias; si nombre es ambiguo pide ID.',parameters:{type:'OBJECT',properties:MIKE_ANALYSIS_PROPS}},
+ {name:'calcular_matematica',description:'Calculadora determinista para aritmética exacta: suma/resta/multiplicación/división, porcentajes, potencias, raíz, promedio o regla de tres. Usa datos numéricos dados por el usuario, sin inventarlos.',parameters:{type:'OBJECT',properties:{operacion:{type:'STRING',enum:['sumar','restar','multiplicar','dividir','porcentaje','potencia','raiz','promedio','regla_de_tres']},numeros:{type:'ARRAY',items:{type:'NUMBER'},description:'Operandos en orden'},precision:{type:'NUMBER',description:'Decimales, de 0 a 8'}},required:['operacion','numeros']}},
+ {name:'calcular_comisiones',description:'Calcula comisiones o utilidades sobre VARIAS órdenes con las REGLAS explícitas del usuario, EN ORDEN, siempre con centavos exactos. Primero usa analizar_ordenes si necesita saber cuántas coinciden. Cada regla puede ser descuento o suma, fija o porcentual, condicional por nacional/local, método de pago, contra entrega o plataforma. La comisión porcentual final debe ser la ÚLTIMA regla con base="restante" para aplicarla después de cargos. NO inventes porcentajes, ni tarifas: pide reglas faltantes. Se muestran los montos por orden y total.',parameters:{type:'OBJECT',properties:{periodo:MIKE_ANALYSIS_PROPS.periodo,mes:MIKE_ANALYSIS_PROPS.mes,desde:MIKE_ANALYSIS_PROPS.desde,hasta:MIKE_ANALYSIS_PROPS.hasta,referencias:MIKE_ANALYSIS_PROPS.referencias,vendedor:MIKE_ANALYSIS_PROPS.vendedor,sucursal:MIKE_ANALYSIS_PROPS.sucursal,plataforma:MIKE_ANALYSIS_PROPS.plataforma,estado_pago:MIKE_ANALYSIS_PROPS.estado_pago,incluir_canceladas:MIKE_ANALYSIS_PROPS.incluir_canceladas,reglas:{type:'ARRAY',items:{type:'OBJECT',properties:{nombre:{type:'STRING'},tipo:{type:'STRING',enum:['porcentaje','fijo']},valor:{type:'NUMBER',description:'4 = 4%, no 0.04'},efecto:{type:'STRING',enum:['restar','sumar']},base:{type:'STRING',enum:['original','restante'],description:'Monto original o lo restante tras cargos previos'},condicion:{type:'OBJECT',properties:{entrega:{type:'STRING',enum:['nacional','local','todas']},metodo_pago:{type:'STRING'},contra_entrega:{type:'BOOLEAN'},plataforma:{type:'STRING'}}}},required:['nombre','tipo','valor']}}},required:['reglas']}},
+ {name:'recordar_para_mi',description:'Guarda un dato o preferencia personal que el usuario pide recordar a futuro (no datos sensibles de clientes). Cada cuenta de KPlace tiene memoria local separada.',parameters:{type:'OBJECT',properties:{dato:{type:'STRING'}},required:['dato']}},
+ {name:'ver_mis_recuerdos',description:'Consulta la memoria personal de este usuario, separada de los demás.'},
+ {name:'olvidar_mis_recuerdos',description:'Borra los recuerdos personales y el historial guardado de Mike de este usuario. Úsala SOLO cuando lo solicite explícitamente.'}
+);
+
+const MIKE_MEM_LIMIT=18;
+let mikeIdentity='',mikeRemembered=[],mikeJustForgot=false;
+function mikeUserIdentity(){
+ const u=U(),ctx=window.KPLACE_ACTIVE_CONTEXT||{};
+ const who=norm(u.email||u.usuario||u.numeroUsuario||'').trim();
+ if(!who)return '';
+ return String(ctx.companyId||u.companyId||'default')+'|'+who;
+}
+function mikeStorageKey(){const v=mikeUserIdentity();return v?'kp_mike_chat_v4_'+encodeURIComponent(v):''}
+function mikeSavedTurns(){
+ return hist.filter(m=>['user','model'].includes(m.role)&&Array.isArray(m.parts)&&m.parts.length===1&&typeof m.parts[0].text==='string'&&!/(AIza[0-9A-Za-z_-]{20}|AQ\.[0-9A-Za-z_-]{20})/.test(m.parts[0].text))
+    .slice(-30).map(m=>({role:m.role,parts:[{text:m.parts[0].text.slice(0,1500)}]}));
+}
+function mikePersist(){
+ if(!mikeIdentity||mikeIdentity!==mikeUserIdentity())return;
+ const k=mikeStorageKey();if(!k)return;
+ if(mikeJustForgot){try{localStorage.removeItem(k)}catch(e){};return;}
+ try{localStorage.setItem(k,JSON.stringify({v:4,turns:mikeSavedTurns(),memories:mikeRemembered.slice(-MIKE_MEM_LIMIT),saved:Date.now()}))}catch(e){console.warn('Mike: no se pudo guardar memoria local',e)}
+}
+function mikeEnsureIdentity(){
+ const id=mikeUserIdentity();if(id===mikeIdentity)return !!id;
+ mikeIdentity=id;hist=[];mikeRemembered=[];mikeJustForgot=false;if(msgs)msgs.innerHTML='';
+ if(!id)return false;
+ try{const x=JSON.parse(localStorage.getItem(mikeStorageKey())||'null');
+  if(x&&x.v===4){mikeRemembered=(Array.isArray(x.memories)?x.memories:[]).filter(t=>typeof t==='string').slice(-MIKE_MEM_LIMIT);hist=(Array.isArray(x.turns)?x.turns:[]).filter(m=>m&&['user','model'].includes(m.role)&&Array.isArray(m.parts)&&m.parts.length===1&&typeof m.parts[0].text==='string').slice(-22);}
+ }catch(e){console.warn('Mike: memoria no disponible',e)}
+ // Solo restaura texto de la conversación; nunca restaura comandos ni escrituras.
+ for(const m of hist.slice(-12))addMsg(m.parts[0].text,m.role==='user'?'user':'bot');
+ return true;
+}
+function mikeMemoriaInfo(){return{usuario:U().nombre||'',recuerdos:mikeRemembered.slice(),mensajes_guardados:mikeSavedTurns().length,almacenamiento:'Este dispositivo y navegador; separada por usuario y empresa. No se sincroniza con otros dispositivos.'}}
+function mikeMemoriaTool(name,a){
+ if(!mikeEnsureIdentity())return{error:'Inicia sesión con tu cuenta antes de utilizar la memoria.'};
+ if(name==='ver_mis_recuerdos')return mikeMemoriaInfo();
+ if(name==='olvidar_mis_recuerdos'){mikeRemembered=[];hist=[];mikeJustForgot=true;try{localStorage.removeItem(mikeStorageKey())}catch(e){};return{ok:true,nota:'Recuerdos e historial personal borrados en este dispositivo.'}}
+ const d=String((a||{}).dato||'').trim();if(!d||d.length>300)return{error:'El recuerdo debe contener entre 1 y 300 caracteres.'};
+ if(/(?:api.?key|contraseñ|password|token|pin de acceso|tarjeta de cr[eé]dito)/i.test(d))return{error:'Por seguridad, Mike no guarda contraseñas, tokens ni claves como recuerdos.'};
+ if(!mikeRemembered.some(x=>norm(x)===norm(d)))mikeRemembered.push(d);mikeJustForgot=false;
+ mikeRemembered=mikeRemembered.slice(-MIKE_MEM_LIMIT);mikePersist();return{ok:true,guardado:d};
+}
+const mikeCent=x=>{const n=Number(x);if(!Number.isFinite(n)||Math.abs(n)>1e12)throw Error('Monto no válido o demasiado grande.');return Math.round((n+Math.sign(n)*Number.EPSILON)*100)};
+const mikeLemp=c=>Math.round(c)/100;
+const mikeNumeric=x=>{const n=Number(x);if(!Number.isFinite(n))throw Error('Necesito números válidos.');return n};
+function mikeCalculo(a){
+ const ns=(a.numeros||[]).map(mikeNumeric),p=Math.max(0,Math.min(8,Number.isFinite(+a.precision)?Math.floor(+a.precision):4));
+ if(!ns.length)throw Error('Indica al menos un número para calcular.');let v,op=a.operacion;
+ if(op==='sumar')v=ns.reduce((t,n)=>t+n,0);
+ else if(op==='restar')v=ns.slice(1).reduce((t,n)=>t-n,ns[0]);
+ else if(op==='multiplicar')v=ns.reduce((t,n)=>t*n,1);
+ else if(op==='dividir')v=ns.slice(1).reduce((t,n)=>{if(!n)throw Error('No se puede dividir entre cero.');return t/n},ns[0]);
+ else if(op==='porcentaje'){if(ns.length!==2)throw Error('Porcentaje: [base, porcentaje].');v=ns[0]*ns[1]/100}
+ else if(op==='potencia'){if(ns.length!==2)throw Error('Potencia: [base, exponente].');v=Math.pow(ns[0],ns[1])}
+ else if(op==='raiz'){if(ns.length!==1||ns[0]<0)throw Error('Raíz: un número no negativo.');v=Math.sqrt(ns[0])}
+ else if(op==='promedio')v=ns.reduce((t,n)=>t+n,0)/ns.length;
+ else if(op==='regla_de_tres'){if(ns.length!==3||ns[0]===0)throw Error('Regla de tres: [a, b, c] para a:b = c:x.');v=ns[1]*ns[2]/ns[0]}
+ else throw Error('Operación no reconocida.');
+ if(!Number.isFinite(v))throw Error('El resultado no es un número finito.');
+ return{operacion:op,numeros:ns,resultado:Number(v.toFixed(p)),nota:'Calculado con operaciones numéricas; en valores grandes y decimales infinitos puede haber redondeo.'};
+}
+function mikeFechas(a){
+ const t=hoy(),now=new Date(t+'T12:00:00');let d=a.desde||'',h=a.hasta||'';
+ if(a.mes){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(a.mes))throw Error('El mes debe ser YYYY-MM');d=a.mes+'-01';h=a.mes+'-'+String(new Date(Number(a.mes.slice(0,4)),Number(a.mes.slice(5)),0).getDate()).padStart(2,'0');}
+ else if(!d&&!h){const p=a.periodo||'todo';
+  if(p==='hoy')d=h=t;else if(p==='ayer')d=h=addDays(-1);
+  else if(p==='semana'){d=addDays(-6);h=t} else if(p==='mes'){d=t.slice(0,8)+'01';h=t}
+  else if(p==='mes_anterior'){const first=new Date(now.getFullYear(),now.getMonth()-1,1),last=new Date(now.getFullYear(),now.getMonth(),0);// Usamos componentes locales para evitar incompatibilidades entre navegadores.
+    d=first.getFullYear()+'-'+String(first.getMonth()+1).padStart(2,'0')+'-01';h=last.getFullYear()+'-'+String(last.getMonth()+1).padStart(2,'0')+'-'+String(last.getDate()).padStart(2,'0')}
+ }
+ if(d)mikeFecha(d,'desde');if(h)mikeFecha(h,'hasta');if(d&&h&&d>h)throw Error('La fecha inicial es posterior a la final.');return{desde:d,hasta:h};
+}
+function mikePlataforma(o){return String(o.plataforma||'').trim()}
+function mikeMatchPlataforma(o,v){const a=norm(String(v||'').trim()),p=norm(mikePlataforma(o));if(!a||a==='todas'||a==='todos')return true;
+ if(['sin_plataforma','sin plataforma','vacia','vacío','ninguna','sin especificar'].includes(a))return !p||['ninguna','sin especificar','no especificada','no aplica','-'].includes(p);
+ return p.includes(a);
+}
+function mikeVisibleOrders(){
+ const u=U(),ctx=window.KPLACE_ACTIVE_CONTEXT||{},company=String(ctx.companyId||u.companyId||'').trim();
+ return visibles().filter(o=>{
+  if(company&&o.companyId&&String(o.companyId)!==company)return false;
+  if(u.esAdmin||u.esEncargadoEnvios)return true;
+  if(u.esRepartidor)return !!(repartidorDe(o)&&norm(repartidorDe(o))===norm(u.nombre));
+  return !o.vendedor||norm(o.vendedor)===norm(u.nombre);
+ });
+}
+function mikeSelectOrders(a){
+ a=a||{};const dates=mikeFechas(a);let r=mikeVisibleOrders().filter(o=>a.incluir_canceladas===true||!o.boxfulCancelled),missing=[];
+ if(Array.isArray(a.referencias)&&a.referencias.length){const m=new Map();for(const q of a.referencias){const qx=norm(String(q||'').trim());if(!qx)continue;
+  let found=r.filter(o=>String(o.id)===String(q));if(!found.length)found=r.filter(o=>String(o.id).slice(-5)===String(q));if(!found.length)found=r.filter(o=>norm(o.cliente)===qx);
+  if(found.length!==1){missing.push({consulta:q,problema:found.length?'Nombre o referencia ambigua. Da el ID exacto.':'Orden no encontrada o sin permiso.',coincidencias:found.slice(0,6).map(o=>({id:o.id,cliente:o.cliente,fecha:o.fecha}))});continue;}m.set(String(found[0].id),found[0]);}
+  if(missing.length)return{error:'No se puede calcular con referencias ambiguas o no disponibles.',coincidencias:missing};r=[...m.values()];}
+ const date=o=>String(o.fecha||o.fechaProgramada||'').slice(0,10);
+ if(dates.desde)r=r.filter(o=>date(o)>=dates.desde);if(dates.hasta)r=r.filter(o=>date(o)<=dates.hasta);
+ if(a.vendedor)r=r.filter(o=>norm(o.vendedor).includes(norm(a.vendedor)));
+ if(a.cliente)r=r.filter(o=>norm(o.cliente).includes(norm(a.cliente)));
+ if(a.sucursal)r=r.filter(o=>norm(o.sucursalNombre||o.sucursal||o.sucursalId).includes(norm(a.sucursal)));
+ if(a.metodo_pago)r=r.filter(o=>norm(o.metodoPago).includes(norm(a.metodo_pago)));
+ if(a.estado_pago)r=r.filter(o=>norm(o.estadoPago)===norm(a.estado_pago));
+ if(a.estado_entrega)r=r.filter(o=>norm(estadoDe(o))===norm(a.estado_entrega));
+ if(a.plataforma)r=r.filter(o=>mikeMatchPlataforma(o,a.plataforma));
+ return{ordenes:r,fechas:dates};
+}
+function mikeAnalizar(a){
+ const s=mikeSelectOrders(a||{});if(s.error)return s;const r=s.ordenes;let total=0;const grp={};
+ const key=a.agrupar_por||'ninguno';
+ const label=o=>key==='plataforma'?mikePlataforma(o)||'Sin plataforma':key==='vendedor'?o.vendedor||'Sin vendedor':key==='sucursal'?o.sucursalNombre||o.sucursalId||'Sin sucursal':key==='fecha'?String(o.fecha||o.fechaProgramada||'').slice(0,10):key==='metodo_pago'?o.metodoPago||'Sin método':key==='estado_pago'?o.estadoPago||'Sin estado':'';
+ for(const o of r){const amt=mikeCent(totalDe(o));total+=amt;if(key!=='ninguno'){const k=label(o);if(!grp[k])grp[k]={cantidad:0,monto_centavos:0};grp[k].cantidad++;grp[k].monto_centavos+=amt;}}
+ const agrupado=Object.fromEntries(Object.entries(grp).map(([k,v])=>[k,{cantidad:v.cantidad,monto:mikeLemp(v.monto_centavos)}]));
+ return{periodo:s.fechas,cantidad:r.length,total_lempiras:mikeLemp(total),promedio_lempiras:r.length?mikeLemp(Math.round(total/r.length)):0,agrupado,plataforma:a.plataforma||'todas',
+  ordenes:a.mostrar?r.slice(0,40).map(o=>({id:o.id,referencia:String(o.id).slice(-5),fecha:o.fecha,cliente:o.cliente,plataforma:mikePlataforma(o)||'Sin plataforma',total:totalDe(o)})):undefined,
+  nota:r.length>40&&a.mostrar?'Lista limitada a 40, pero el total y el conteo incluyen todas las coincidencias.':undefined};
+}
+function mikeIsNac(o){return esNac(o)}
+function mikeRuleApplies(o,c){if(!c)return true;const en=norm(c.entrega||'todas');if(en==='nacional'&&!mikeIsNac(o))return false;if(en==='local'&&mikeIsNac(o))return false;
+ if(c.metodo_pago&&!norm(o.metodoPago).includes(norm(c.metodo_pago)))return false;
+ if(c.plataforma&&!mikeMatchPlataforma(o,c.plataforma))return false;
+ if(c.contra_entrega!==undefined){const cod=mikeIsNac(o)&&norm(o.metodoPago)==='efectivo'&&norm(o.estadoPago)!=='pagado';if(cod!==!!c.contra_entrega)return false;}
+ return true;}
+function mikeComisiones(a){
+ a=a||{};if(!Array.isArray(a.reglas)||!a.reglas.length)return{error:'Decime las reglas: porcentajes, tarifas, condiciones y qué comisión aplicar al final.'};
+ const s=mikeSelectOrders(a);if(s.error)return s;
+ if(s.ordenes.length>1000)return{error:'Más de 1,000 órdenes: acota el periodo para calcular de forma segura.'};
+ for(const regla of a.reglas){if(!regla||!['porcentaje','fijo'].includes(regla.tipo)||!Number.isFinite(Number(regla.valor))||Number(regla.valor)<0||Number(regla.valor)>1e7)return{error:'Regla inválida: tipo fijo/porcentaje y monto positivo obligatorios.'};}
+ let totalOriginal=0,totalNeto=0,totalesRegla=a.reglas.map(()=>0),detalles=[];
+ for(const o of s.ordenes){const original=mikeCent(totalDe(o));let net=original;const desglose=[];
+  for(let i=0;i<a.reglas.length;i++){const reg=a.reglas[i];if(!mikeRuleApplies(o,reg.condicion))continue;
+   const base=reg.base==='original'?original:net;const sub=reg.tipo==='porcentaje'?Math.round(base*Number(reg.valor)/100):mikeCent(reg.valor);
+   if(!Number.isFinite(sub)||Math.abs(sub)>1e13)return{error:'Un cálculo sobrepasa los límites numéricos.'};
+   net+=(reg.efecto==='sumar'?sub:-sub);totalesRegla[i]+=sub;desglose.push({concepto:reg.nombre||'Ajuste',tipo:reg.tipo,valor:reg.valor,efecto:reg.efecto||'restar',importe:mikeLemp(sub)});
+  }
+  totalOriginal+=original;totalNeto+=net;detalles.push({id:String(o.id),ref:String(o.id).slice(-5),cliente:o.cliente||'',original:mikeLemp(original),descuentos_y_comisiones:desglose,restante:mikeLemp(net)});
+ }
+ return{cantidad:s.ordenes.length,periodo:s.fechas,total_original:mikeLemp(totalOriginal),total_despues_de_reglas:mikeLemp(totalNeto),reglas:a.reglas.map((r,i)=>({nombre:r.nombre,valor:r.valor,tipo:r.tipo,efecto:r.efecto||'restar',total_aplicado:mikeLemp(totalesRegla[i])})),comisiones_totales:mikeLemp(a.reglas.reduce((sum,r,i)=>/comisi[oó]n/i.test(r.nombre||'')?sum+totalesRegla[i]:sum,0)),ordenes:detalles.slice(0,50),nota:detalles.length>50?'Mostrando primeras 50; el total sí incluye todas.':undefined,metodologia:'Reglas aplicadas en el orden indicado, redondeando cada ajuste por orden a centavos. No cambia las órdenes ni guarda las comisiones.'};
+}
+
 async function runTool(name,a){
  a=a||{};
  if(name==='resumen_pedidos')return stats();
+ if(name==='analizar_ordenes')return mikeAnalizar(a);
+ if(name==='calcular_matematica')return mikeCalculo(a);
+ if(name==='calcular_comisiones')return mikeComisiones(a);
+ if(['recordar_para_mi','ver_mis_recuerdos','olvidar_mis_recuerdos'].includes(name))return mikeMemoriaTool(name,a);
  if(name==='buscar_pedidos')return toolBuscar(a);
  if(name==='detalle_pedido'){const o=findOrder(a.pedido);if(!o)return{error:'No encontré ese pedido.'};return Object.assign(compact(o),{direccion:o.direccion||'',telefono2:o.numero2||'',plataforma:o.plataforma||'',tipo_orden:o.tipoOrden||'normal',notas:o.notas||o.nota||'',retraso_comentario:o.retrasoComentario||'',pago_dividido:o.metodoPago==='mitad'?{p1:o.metodoPagoMitad1,m1:o.montoMitad1,b1:o.bancoMitad1,p2:o.metodoPagoMitad2,m2:o.montoMitad2,b2:o.bancoMitad2}:undefined})}
  if(name==='agregar_producto_orden')return agregarProductoOrden(a);
@@ -20559,6 +20734,7 @@ async function runTool(name,a){
  if(name==='elegir_producto')return elegirProducto(a);
  if(name==='crear_cotizacion'){if(!window.kpCot||!kpCot.fill)return{error:'La pestaña Cotizaciones no está disponible.'};try{const r=kpCot.fill(a);setTab('cotizaciones');minimize();return Object.assign({ok:true,nota:'La cotización quedó armada en la pestaña Cotizaciones. Dile al usuario que la revise y use Descargar o Compartir PDF. Si hay productos sin precio, avísale.'},r)}catch(e){return{error:String(e.message||e)}}}
  if(name==='ir_a_seccion'){const id=SECCIONES[a.seccion];if(!id||typeof setTab!=='function')return{error:'No puedo abrir esa sección.'};try{setTab(id);minimize();return{ok:true}}catch(e){return{error:String(e.message||e)}}}
+ if(name==='editar_ordenes')return editarOrdenes(a);
  if(name==='editar_orden')return editarOrden(a);if(name==='cambiar_estado_entrega')return cambiarEntrega(a);if(name==='resumen_ventas')return toolVentas(a);if(name==='etiquetas_inventario')return toolEtiquetas();if(name==='buscar_en_internet')return buscarWeb(a);
  return{error:'Herramienta desconocida: '+name};
 }
@@ -20653,8 +20829,8 @@ async function elegirProducto(a){
   const it=r.items[0],prod={inventarioId:it.id,producto:it.categoria,modelo:(it.modelo&&it.modelo!==it.categoria)?it.modelo:'',tamano:it.tamano||'',color:it.colorEs||it.colorEn||'',cantidad:pcant};
   const txt=[prod.producto,prod.modelo,prod.color,prod.tamano].filter(Boolean).join(' ');
   if(kpAgregarAOrdenGuardada){
-   const oid=kpAgregarAOrdenGuardada;const o=findOrder(oid);
-   if(!o){kpAgregarAOrdenGuardada=null;return{error:'No encontré la orden guardada para completar el cambio.'};}
+   const oid=kpAgregarAOrdenGuardada,found=mikeBuscarUnico(oid),o=found.orden;
+   if(!o){kpAgregarAOrdenGuardada=null;return{error:found.error||'No encontré la orden guardada para completar el cambio.'};}
    const nuevos=(Array.isArray(o.productos)?o.productos:[]).slice();
    nuevos.push({categoria:prod.producto,modelo:prod.modelo||'',tamano:prod.tamano||'',colorEs:prod.color||'',cantidad:prod.cantidad||1,inventarioId:prod.inventarioId});
    try{await db.collection('orders').doc(oid).update({productos:nuevos});}catch(e){return{error:'No se pudo guardar el producto: '+String(e.message||e).slice(0,120)}}
@@ -20741,8 +20917,8 @@ function trimHist(){while(hist.length>22)hist.shift();while(hist.length&&!(hist[
 
 let lastOrderId='';
 async function cambiarEntrega(a){
- a=a||{};const o=a.pedido?findOrder(a.pedido):visibles().find(x=>String(x.id)===lastOrderId);
- if(!o)return{ok:false,error:'No encontré ese pedido. Usa buscar_pedidos para obtener el id.'};
+ a=a||{};const found=mikeBuscarUnico(a.pedido||lastOrderId),o=found.orden;
+ if(!o)return{ok:false,error:found.error||'No encontré ese pedido.',coincidencias:found.coincidencias};
  if(!window.db||!window.firebase)return{ok:false,error:'Sin conexión a la base de datos.'};
  const ref=db.collection('orders').doc(String(o.id)),e=a.estado;let txt='';
  try{
@@ -20757,34 +20933,195 @@ async function cambiarEntrega(a){
  const c=cardWrap();c.appendChild(el('h4','','📦 '+(o.cliente||'Pedido')));c.appendChild(el('div','l',txt));
  return{ok:true,cliente:o.cliente,estado:e};
 }
-async function editarOrden(a){
- a=a||{};const o=a.pedido?findOrder(a.pedido):visibles().find(x=>String(x.id)===lastOrderId);
- if(!o)return{editada:false,error:'No encontré el pedido. Usa buscar_pedidos para obtener el id.'};
- if(!window.db||!window.firebase)return{editada:false,error:'Sin conexión a la base de datos.'};
- const FV=firebase.firestore.FieldValue,u={},del=k=>{u[k]=FV.delete()},num=v=>Number(String(v).replace(/[^\d.]/g,''))||0,bk=x=>x==='transferencia'||x==='link de pago';
- if(a.cliente)u.cliente=a.cliente;if(a.numero)u.numero=tel8(a.numero);if(a.direccion)u.direccion=a.direccion;
- if(a.total!=null&&a.total!=='')u.totalPedido=num(a.total);
- if(a.estado_pago)u.estadoPago=a.estado_pago;
- const m=a.metodo_pago?nm(a.metodo_pago):a.metodo_pago;
- if(m){u.metodoPago=m;del('montoContraEntrega');
-  if(m==='mitad'){
-   const t=u.totalPedido!=null?u.totalPedido:totalDe(o),m1=nm(a.metodo_1),m2=nm(a.metodo_2),v1=num(a.monto_1)||Math.round(t/2*100)/100;
-   if(!m1||!m2||!v1)return{editada:false,error:'Para pago dividido necesito método y monto de la primera parte y el método de la segunda. Pregúntaselo al usuario.'};
-   const b1=a.banco_1||o.bancoMitad1||'',b2=a.banco_2||o.bancoMitad2||'';
-   if(bk(m1)&&!b1||bk(m2)&&!b2)return{editada:false,error:'Falta el banco de la parte que es transferencia o link de pago. Pregúntaselo al usuario.'};
-   Object.assign(u,{metodoPagoMitad1:m1,metodoPagoMitad2:m2,montoMitad1:v1,montoMitad2:a.monto_2!=null?num(a.monto_2):Math.max(0,t-v1),bancoMitad1:bk(m1)?b1:'',bancoMitad2:bk(m2)?b2:'',banco:''});
-  }else{
-   ['metodoPagoMitad1','metodoPagoMitad2','montoMitad1','montoMitad2','bancoMitad1','bancoMitad2'].forEach(del);
-   const b=a.banco||o.banco||'';if(bk(m)&&!b)return{editada:false,error:'Falta el banco. Pregúntale al usuario a qué banco fue.'};
-   u.banco=bk(m)?b:'';
+/* Las operaciones se preparan sin escribir; un único clic confirma todas las seleccionadas. */
+const MIKE_EDIT_LIMIT=40;
+function mikePuedeEditar(o){
+ const u=U(),ctx=window.KPLACE_ACTIVE_CONTEXT||{};
+ if(!u||!u.nombre||u.esRepartidor)return false;
+ const empresa=String(u.companyId||ctx.companyId||'').trim();
+ if(empresa&&o.companyId&&String(o.companyId)!==empresa)return false;
+ if(u.esAdmin||u.esEncargadoEnvios)return true;
+ return !!(o.vendedor&&norm(o.vendedor)===norm(u.nombre));
+}
+function mikeBuscarUnico(query){
+ const q=String(query||'').trim();if(!q)return{error:'Falta identificar la orden.'};
+ const a=(window.ORDERS||[]).filter(mikePuedeEditar);
+ let matches=a.filter(x=>String(x.id)===q);
+ if(!matches.length)matches=a.filter(x=>String(x.id).slice(-5)===q);
+ if(!matches.length)matches=a.filter(x=>norm(x.cliente)===norm(q));
+ if(!matches.length&&q.length>=4)matches=a.filter(x=>norm(x.cliente).includes(norm(q)));
+ if(matches.length>1)return{error:'Hay '+matches.length+' órdenes que coinciden con "'+q+'". Usa la referencia exacta obtenida con buscar_pedidos.',coincidencias:matches.slice(0,8).map(x=>({ref:String(x.id).slice(-5),id:x.id,cliente:x.cliente,fecha:x.fecha}))};
+ return matches.length?{orden:matches[0]}:{error:'No encontré la orden "'+q+'" dentro de tus permisos. Busca su referencia primero.'};
+}
+function mikeFiltroOrdenes(f){
+ f=f||{};const h=hoy(),dia=f.fecha==='hoy'?h:f.fecha==='ayer'?addDays(-1):f.fecha;
+ return (window.ORDERS||[]).filter(mikePuedeEditar).filter(o=>{
+  const fecha=String(o.fecha||o.fechaProgramada||'').slice(0,10);
+  if(dia&&fecha!==dia)return false;
+  if(f.desde&&fecha<f.desde)return false;
+  if(f.hasta&&fecha>f.hasta)return false;
+  if(f.vendedor&&!norm(o.vendedor).includes(norm(f.vendedor)))return false;
+  if(f.texto&&!norm([o.cliente,o.numero,o.direccion,prodTxt(o)].join(' ')).includes(norm(f.texto)))return false;
+  const e=f.estado||'todos';
+  if(e==='pendientes'&&estadoDe(o)==='entregado')return false;
+  if(e==='entregados'&&estadoDe(o)!=='entregado')return false;
+  if(e==='sin_pagar'&&o.estadoPago==='pagado')return false;
+  if(e==='pagados'&&o.estadoPago!=='pagado')return false;
+  if(e==='sin_guia'&&(!esNac(o)||guiaDe(o)))return false;
+  return true;
+ }).sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
+}
+function mikeMoney(v,k){const n=typeof v==='number'?v:Number(String(v).replace(/[^\d.]/g,''));if(!Number.isFinite(n)||n<0)throw Error(k+': monto inválido.');return Math.round(n*100)/100}
+function mikeFecha(v,k){const d=new Date(String(v)+'T12:00:00');if(!/^\d{4}-\d{2}-\d{2}$/.test(String(v))||Number.isNaN(d.valueOf())||d.getFullYear()!==Number(String(v).slice(0,4))||d.getMonth()+1!==Number(String(v).slice(5,7))||d.getDate()!==Number(String(v).slice(8,10)))throw Error('Fecha inválida en '+k+'. Usa YYYY-MM-DD.');return v}
+function mikeProductoName(p){return [p.categoria==='__custom__'?p.categoriaManual:p.categoria,p.modelo,p.tamano,p.colorEs||p.colorEn].filter(Boolean).join(' ')}
+function mikeProductos(o,acts){
+ let productos=JSON.parse(JSON.stringify(o.productos||[]));
+ const stock=window.INVENTARIO||[];
+ for(const a of acts){
+  if(!['agregar','quitar','cantidad'].includes(a.accion))throw Error('Acción de producto no válida.');
+  if(a.accion==='agregar'){
+   const id=String(a.inventario_id||'');if(!id)throw Error('Para agregar un producto indica su inventario_id exacto (buscar_inventario).');
+   const i=stock.find(x=>String(x.id)===id);if(!i)throw Error('No encontré el producto de inventario con ID '+id+'.');
+   const cant=Number(a.cantidad||1);if(!Number.isInteger(cant)||cant<1||cant>9999)throw Error('Cantidad de producto inválida.');
+   productos.push({categoria:i.categoria||'',modelo:i.modelo||'',tamano:i.tamano||'',colorEs:i.colorEs||'',colorEn:i.colorEn||'',inventarioId:i.id,cantidad:cant,precio:Number(i.precio)||0});
+   continue;
   }
- }else if(a.banco)u.banco=a.banco;
- if(Object.keys(u).length<1)return{editada:false,error:'No indicaste qué cambiar.'};
- try{await db.collection('orders').doc(String(o.id)).update(u)}catch(e){return{editada:false,error:'No se pudo guardar: '+String(e.message||e).slice(0,120)}}
- const c=cardWrap();c.appendChild(el('h4','','✏️ Orden actualizada · '+(o.cliente||'')));
- if(m)c.appendChild(el('div','l','Pago: '+(m==='mitad'?'dividido ('+a.metodo_1+' L'+num(a.monto_1)+' + '+a.metodo_2+')':m)+(u.banco?' · '+u.banco:'')));
- if(a.estado_pago)c.appendChild(el('div','l','Estado: '+a.estado_pago));if(u.totalPedido!=null)c.appendChild(el('div','l','Total: L'+u.totalPedido));
- return{editada:true,cliente:o.cliente,cambios:Object.keys(u)};
+  let matches=[];
+  if(a.indice!=null){const j=Number(a.indice)-1;if(Number.isInteger(j)&&j>=0&&j<productos.length)matches=[j];}
+  else if(a.inventario_id)matches=productos.map((p,j)=>String(p.inventarioId||'')===String(a.inventario_id)?j:-1).filter(j=>j>=0);
+  else {const q=norm(a.producto||'');if(!q)throw Error('Indica un producto único o el número de fila.');matches=productos.map((p,j)=>norm(mikeProductoName(p)).includes(q)?j:-1).filter(j=>j>=0);}
+  if(matches.length!==1)throw Error('El producto "'+(a.producto||a.inventario_id||a.indice)+'" tiene '+matches.length+' coincidencias; usa índice de fila.');
+  const j=matches[0];
+  if(a.accion==='quitar')productos.splice(j,1);
+  else {const cant=Number(a.cantidad);if(!Number.isInteger(cant)||cant<1||cant>9999)throw Error('Indica la nueva cantidad entera (>0).');productos[j].cantidad=cant;}
+ }
+ return productos;
+}
+function mikePlanEditar(o,c){
+ if(!c||typeof c!=='object'||Array.isArray(c))throw Error('No indicaste cambios válidos.');
+ const u={},des=[],del=k=>{u[k]=firebase.firestore.FieldValue.delete()},money=k=>mikeMoney(c[k],k);
+ const textFields={cliente:'cliente',direccion:'direccion',departamento:'departamento',municipio:'municipio',plataforma:'plataforma',notas:'notas',tipo_orden:'tipoOrden'};
+ for(const [k,d] of Object.entries(textFields))if(Object.prototype.hasOwnProperty.call(c,k)){
+  if(typeof c[k]!=='string'||c[k].length>2000)throw Error(k+': texto inválido.');
+  if(['cliente','direccion'].includes(k)&&!c[k].trim())throw Error(k+' no puede quedar vacío.');
+  u[d]=c[k].trim();des.push(k+': '+(u[d]||'(vacío)'));
+ }
+ for(const [k,d] of [['numero','numero'],['numero2','numero2']])if(Object.prototype.hasOwnProperty.call(c,k)){
+  const raw=String(c[k]||'');const t=tel8(raw);
+  if((k==='numero'&&!/^\d{8}$/.test(t))||(k==='numero2'&&t&&!/^\d{8}$/.test(t)))throw Error(k+': el teléfono debe tener 8 dígitos.');
+  u[d]=t;des.push(k+': '+t);
+ }
+ if(c.vendedor!==undefined){if(!U().esAdmin&&!U().esEncargadoEnvios)throw Error('Solo supervisión puede reasignar vendedor.');if(!String(c.vendedor).trim())throw Error('Vendedor vacío.');u.vendedor=String(c.vendedor).trim();des.push('vendedor: '+u.vendedor)}
+ if(c.fecha!==undefined){u.fecha=mikeFecha(c.fecha,'fecha');des.push('fecha: '+u.fecha)}
+ if(c.fecha_programada!==undefined){u.fechaProgramada=mikeFecha(c.fecha_programada,'fecha programada');des.push('programada: '+u.fechaProgramada)}
+ if(c.tipo_entrega!==undefined){if(!['tegucigalpa','nacional','roatan','programada'].includes(c.tipo_entrega))throw Error('Tipo de entrega desconocido.');u.tipoEntrega=c.tipo_entrega;des.push('entrega: '+u.tipoEntrega)}
+ const destino=u.tipoEntrega||o.tipoEntrega;
+ if((destino==='nacional'||destino==='roatan')&&(!(u.departamento||o.departamento)||!(u.municipio||o.municipio)))throw Error('Para entrega nacional faltan departamento y municipio.');
+ if(destino==='programada'&&!(u.fechaProgramada||o.fechaProgramada))throw Error('Para entrega programada falta la fecha.');
+ if(c.total!==undefined){u.totalPedido=money('total');u.subtotal=u.totalPedido;des.push('total: L '+u.totalPedido)}
+ if(c.estado_pago!==undefined){if(!['pagado','pendiente'].includes(c.estado_pago))throw Error('Estado de pago inválido.');u.estadoPago=c.estado_pago;des.push('pago: '+c.estado_pago)}
+ const pay=(c.metodo_pago!==undefined?nm(c.metodo_pago):o.metodoPago)||'efectivo';
+ const hasSplit=['metodo_1','metodo_2','monto_1','monto_2','banco_1','banco_2'].some(k=>c[k]!==undefined);
+ if(c.metodo_pago!==undefined||c.banco!==undefined||hasSplit){
+  if(!['efectivo','transferencia','link de pago','pos','mitad'].includes(pay))throw Error('Método de pago inválido.');
+  u.metodoPago=pay;
+  if(pay==='mitad'){
+   const m1=nm(c.metodo_1!==undefined?c.metodo_1:o.metodoPagoMitad1),m2=nm(c.metodo_2!==undefined?c.metodo_2:o.metodoPagoMitad2);
+   const monto1=c.monto_1!==undefined?money('monto_1'):Number(o.montoMitad1||0);
+   const monto2=c.monto_2!==undefined?money('monto_2'):Number(o.montoMitad2||0);
+   if(!['efectivo','transferencia','link de pago','pos'].includes(m1)||!['efectivo','transferencia','link de pago','pos'].includes(m2)||monto1<0||monto2<0||monto1+monto2<=0)throw Error('Completa ambos métodos y montos del pago dividido.');
+   const b1=String(c.banco_1!==undefined?c.banco_1:o.bancoMitad1||''),b2=String(c.banco_2!==undefined?c.banco_2:o.bancoMitad2||'');
+   if((bkk(m1)&&!b1)||(bkk(m2)&&!b2))throw Error('Falta el banco de la transferencia o link en el pago dividido.');
+   Object.assign(u,{metodoPagoMitad1:m1,metodoPagoMitad2:m2,montoMitad1:monto1,montoMitad2:monto2,bancoMitad1:bkk(m1)?b1:'',bancoMitad2:bkk(m2)?b2:'',banco:''});
+  }else{
+   if(hasSplit)throw Error('Hay datos de pago dividido sin seleccionar "mitad".');
+   const b=String(c.banco!==undefined?c.banco:o.banco||'').trim();if(bkk(pay)&&!b)throw Error('Falta indicar banco para transferencia o link de pago.');
+   u.banco=bkk(pay)?b:'';
+   ['metodoPagoMitad1','metodoPagoMitad2','montoMitad1','montoMitad2','bancoMitad1','bancoMitad2'].forEach(del);
+  }
+  des.push('método de pago: '+pay);
+ }
+ if(c.estado_entrega!==undefined){const e=c.estado_entrega;
+  if(e==='entregado'){u.entregado=true;u.entregadoFecha=hoy();u.motivoNoEntrega='';}
+  else if(e==='pendiente'){u.entregado=null;del('entregadoFecha');u.motivoNoEntrega='';}
+  else if(e==='no_entregado'){u.entregado=false;}
+  else throw Error('Estado de entrega inválido.');
+  des.push('entrega: '+e);
+ }
+ if(c.productos_acciones!==undefined){
+  if(!Array.isArray(c.productos_acciones)||!c.productos_acciones.length||c.productos_acciones.length>25)throw Error('Acciones de productos inválidas.');
+  u.productos=mikeProductos(o,c.productos_acciones);des.push('productos: '+c.productos_acciones.map(a=>a.accion+' '+(a.producto||a.inventario_id||a.indice)).join(', '));
+ }
+ if(!des.length)throw Error('No indicaste qué editar.');
+ return{patch:u,des,productos:!!c.productos_acciones,guiaDestino:!!guiaDe(o)&&['cliente','numero','direccion','departamento','municipio','tipo_entrega'].some(k=>c[k]!==undefined)};
+}
+async function editarOrdenes(a){
+ a=a||{};if(!window.db||!window.firebase)return{ok:false,error:'Firebase no está disponible.'};
+ if(U().esRepartidor)return{ok:false,error:'Este rol no puede editar órdenes con Mike.'};
+ const objetivos=new Map();
+ const agregar=(o,c)=>{if(!mikePuedeEditar(o))throw Error('No tienes permiso para editar una orden seleccionada.');const id=String(o.id);const previo=objetivos.get(id)||{};objetivos.set(id,{o,c:Object.assign({},previo.c||{},c||{})})};
+ try{
+  if(Array.isArray(a.ediciones))for(const e of a.ediciones){const x=mikeBuscarUnico(e.pedido);if(x.error)return{ok:false,...x};agregar(x.orden,e.cambios)}
+  if(Array.isArray(a.seleccion))for(const q of a.seleccion){const x=mikeBuscarUnico(q);if(x.error)return{ok:false,...x};agregar(x.orden,a.cambios)}
+  if(a.filtro){if(!Object.keys(a.filtro).some(k=>a.filtro[k]&&a.filtro[k]!=='todos'))return{ok:false,error:'Indica un filtro concreto (fecha, vendedor, estado o texto) para evitar modificar todo el historial sin querer.'};
+   const lst=mikeFiltroOrdenes(a.filtro);if(!lst.length)return{ok:false,error:'No hay órdenes que coincidan con el filtro.'};if(lst.length>MIKE_EDIT_LIMIT)return{ok:false,error:'Hay '+lst.length+' coincidencias; afina el filtro (máximo '+MIKE_EDIT_LIMIT+' a la vez).'};for(const o of lst)agregar(o,a.cambios);
+  }
+  if(!objetivos.size)return{ok:false,error:'Indica los pedidos por referencia, nombre único o filtro y los cambios deseados.'};
+  if(objetivos.size>MIKE_EDIT_LIMIT)return{ok:false,error:'Demasiadas órdenes: máximo '+MIKE_EDIT_LIMIT+' por confirmación.'};
+  const planes=[];
+  for(const [id,x] of objetivos){const plan=mikePlanEditar(x.o,x.c);planes.push({id,o:x.o,c:x.c,...plan});}
+  const c=cardWrap();c.classList.add('kpm-bulk-edit');
+  c.appendChild(el('h4','','Revisar cambios · '+planes.length+' '+(planes.length===1?'orden':'órdenes')));
+  c.appendChild(el('div','l','Aún no se guardó nada. Revisa las referencias y confirma.'));
+  const list=el('div','kpm-edit-list');list.style.cssText='max-height:260px;overflow-y:auto;margin:9px 0;padding:8px;border:1px solid #45405c;border-radius:11px';
+  for(const p of planes){const item=el('div','kpm-edit-entry');item.style.cssText='border-bottom:1px solid #383447;padding:8px 4px;line-height:1.5';
+   item.appendChild(el('b','',String(p.o.cliente||'Sin nombre')+' · #'+p.id.slice(-5)+' · '+String(p.o.fecha||'')));
+   item.appendChild(el('div','l',p.des.join(' | ')));
+   list.appendChild(item);
+  }
+  c.appendChild(list);
+  if(planes.some(x=>x.productos))c.appendChild(el('div','st','Atención: modificar productos aquí no descuenta ni reintegra existencias. Revisa también el total.'));
+  if(planes.some(x=>x.guiaDestino))c.appendChild(el('div','st','Atención: hay guías Boxful creadas; cambiar la dirección o destinatario NO actualiza automáticamente las guías existentes.'));
+  const row=el('div','row'),yes=el('button','kpm-btn ok','Guardar cambios'),no=el('button','kpm-btn sec','Cancelar');
+  [yes,no].forEach(b=>{b.type='button';row.appendChild(b)});c.appendChild(row);
+  const state=el('div','st','');c.appendChild(state);
+  no.onclick=()=>{yes.disabled=no.disabled=true;state.textContent='Cambios cancelados: no se modificó ninguna orden.'};
+  yes.onclick=async()=>{
+   yes.disabled=no.disabled=true;state.textContent='Comprobando y guardando '+planes.length+' órdenes…';
+   try{
+    // Una única transacción: lee primero todos los documentos y escribe solo si todos son válidos.
+    await db.runTransaction(async tx=>{
+     const refs=planes.map(p=>db.collection('orders').doc(p.id));
+     const snaps=[];for(const ref of refs)snaps.push(await tx.get(ref));
+     const patches=[];
+     for(let i=0;i<planes.length;i++){
+      if(!snaps[i].exists)throw Error('La orden #'+planes[i].id.slice(-5)+' ya no existe.');
+      const current={...snaps[i].data(),id:snaps[i].id};
+      if(!mikePuedeEditar(current))throw Error('Ya no tienes permiso para #'+planes[i].id.slice(-5)+'.');
+      // Revalidar sobre el último estado para no pisar cambios recientes de otros usuarios.
+      const before=planes[i].o;
+      for(const k of Object.keys(planes[i].patch)){
+       if(JSON.stringify(before[k]??null)!==JSON.stringify(current[k]??null))throw Error('La orden #'+plansRef(i)+' cambió desde la vista previa; vuelve a revisar.');
+      }
+      const fresh=mikePlanEditar(current,planes[i].c);patches.push(fresh.patch);
+     }
+     for(let i=0;i<refs.length;i++)tx.update(refs[i],patches[i]);
+    });
+    state.textContent='Guardado correctamente: '+planes.length+' '+(planes.length===1?'orden actualizada.':'órdenes actualizadas.');
+    try{addMsg('Cambios guardados en '+planes.length+' '+(planes.length===1?'orden.':'órdenes.')+' Los datos se actualizarán en KPlace.','bot')}catch(e){}
+   }catch(e){state.textContent='No se guardaron los cambios: '+String(e.message||e).slice(0,260);yes.disabled=false;no.disabled=false;}
+  };
+  function plansRef(i){return planes[i].id.slice(-5)}
+  return{ok:true,pendiente_confirmacion:true,ordenes:planes.map(p=>({id:p.id,cliente:p.o.cliente,ref:p.id.slice(-5)})),nota:'Muestra la tarjeta de revisión y pide al usuario tocar "Guardar cambios". Ningún dato fue modificado todavía.'};
+ }catch(e){return{ok:false,error:String(e.message||e)}}
+}
+async function editarOrden(a){
+ a=a||{};
+ const pedido=a.pedido||lastOrderId;
+ if(!pedido)return{editada:false,error:'Indica la referencia, ID o nombre único de la orden guardada (o busca con buscar_pedidos).'};
+ const cambios={...a};delete cambios.pedido;
+ const r=await editarOrdenes({ediciones:[{pedido,cambios}]});
+ return r.ok?{editada:null,pendiente_confirmacion:true,nota:'Ya mostré la tarjeta. El usuario debe tocar "Guardar cambios" para confirmar.'}: {editada:false,error:r.error,coincidencias:r.coincidencias};
 }
 function toolVentas(a){
  a=a||{};const h=hoy();let d=a.desde,hh=a.hasta;
@@ -20798,9 +21135,17 @@ function toolVentas(a){
 function toolEtiquetas(){const g={};(window.INVENTARIO||[]).forEach(i=>{if(!i.etiqueta)return;const e=g[i.etiqueta]=g[i.etiqueta]||{variantes:0,unidades:0};e.variantes++;e.unidades+=Number(i.cantidad)||0});return{etiquetas:g,nota:'Son categorías de producto, no códigos QR.'}}
 async function buscarWeb(a){
  const q=String(a&&a.consulta||'').trim();if(!q)return{error:'Falta la consulta.'};
- try{const r=await gfetch(API+'models/'+TEXT_MODEL+':generateContent',{systemInstruction:{parts:[{text:'Responde en español, breve y exacto, con cifras concretas (km, tiempo de viaje, temperatura). Hoy es '+hoy()+'. Si no dicen el lugar, asume Honduras.'}]},contents:[{role:'user',parts:[{text:q}]}],tools:[{googleSearch:{}}],generationConfig:{temperature:.2,maxOutputTokens:600}});
-  const j=await r.json(),t=(((j.candidates||[])[0]||{}).content||{}).parts;const x=(t||[]).map(p=>p.text||'').join('').trim();return x?{respuesta:x}:{error:'No encontré respuesta.'}}
- catch(e){try{const r=await gfetch(API+'models/'+TEXT_MODEL+':generateContent',{contents:[{role:'user',parts:[{text:'Responde en español, breve y con datos concretos: '+q}]}],generationConfig:{temperature:.2,maxOutputTokens:900}});const j=await r.json(),t=(((j.candidates||[])[0]||{}).content||{}).parts,x=(t||[]).map(p=>p.text||'').join('').trim();return x?{respuesta:x,nota:'Sin internet en vivo; es de memoria, puede ser aproximado.'}:{error:'No encontré respuesta.'}}catch(e2){return{error:'No pude buscar: '+String(e2.message||e2).slice(0,120)}}}
+ const reciente=/(?:hoy|ayer|anoche|en vivo|últim|ultim|marcador|resultado|partido|juego|jugaron|jug[oó]|termin[oó]|qued[oó]|gan[oó]|perdi[oó]|fútbol|futbol|basket|baloncesto|nba|champions|liga|lakers|celtics|noticias|actual|mañana|manana|pron[oó]stico|precio actual)/i.test(q);
+ try{
+  const r=await gfetch(API+'models/'+TEXT_MODEL+':generateContent',{systemInstruction:{parts:[{text:'Eres un verificador de información actual. Fecha local en Honduras: '+hoy()+'. Para partidos y resultados indica el día exacto, equipos, competencia, marcador y si fue resultado final o sigue en juego; si no aparece evidencia de Google Search di que no hay datos confirmados. No inventes resultados. Responde en español. Incluye fuentes cuando estén disponibles.'}]},contents:[{role:'user',parts:[{text:q}]}],tools:[{googleSearch:{}}],generationConfig:{temperature:0,maxOutputTokens:1300}});
+  const j=await r.json(),cand=(j.candidates||[])[0]||{},parts=(cand.content||{}).parts||[],t=parts.map(p=>p.text||'').join('').trim();
+  const md=cand.groundingMetadata||{},chunks=md.groundingChunks||[],fuentes=chunks.map(c=>c.web&&c.web.uri?{titulo:String(c.web.title||'Fuente').slice(0,90),url:c.web.uri}:null).filter(Boolean).slice(0,5);
+  if(reciente&&!fuentes.length)return{error:'No pude verificar esta información en internet en este momento. No voy a inventar marcadores ni resultados.',verificado:false};
+  return t?{respuesta:t,fuentes,verificado:fuentes.length>0,fecha_consulta:hoy()}:{error:'No encontré una respuesta verificable.'};
+ }catch(e){
+  if(reciente)return{error:'No tengo conexión a resultados actualizados en este momento: '+String(e.message||e).slice(0,110),verificado:false};
+  try{const r=await gfetch(API+'models/'+TEXT_MODEL+':generateContent',{contents:[{role:'user',parts:[{text:'Responde sobre conocimiento general (sin datos en vivo), en español: '+q}]}],generationConfig:{temperature:.2,maxOutputTokens:800}});const j=await r.json(),t=(((j.candidates||[])[0]||{}).content||{}).parts||[],x=t.map(p=>p.text||'').join('').trim();return x?{respuesta:x,verificado:false,nota:'Respuesta sin búsqueda en vivo; puede estar desactualizada.'}:{error:'No encontré respuesta.'}}catch(e2){return{error:'No pude buscar: '+String(e2.message||e2).slice(0,120)}}
+ }
 }
 /* ===== Integraciones: clave de Gemini ===== */
 const baseInteg=window.renderIntegraciones;
@@ -20825,8 +21170,8 @@ function sysPrompt(live){
  const u=U(),rol=u.esAdmin?'administrador':u.esEncargadoEnvios?'encargado de envíos':u.esRepartidor?'repartidor':'vendedor';
  return 'Eres Mike, compañero de trabajo de KPlace (gestión de órdenes, inventario y envíos en Honduras) y además un asistente general muy capaz: respondes CUALQUIER pregunta (cultura, distancias, clima, cálculos, consejos, redacción) con la calidad de un buen chat general, sin decir que eso no es de KPlace. Hablas español natural de Honduras, cercano y directo, como una persona real, sin sonar a manual. ENTENDER BIEN: entiendes jerga hondureña, errores de ortografía, abreviaturas y audio mal transcrito (tegus = Tegucigalpa, lps = lempiras, la orden de Carlos, el de ayer); usas el contexto de lo que ya dijeron (ese, esa orden, cámbialo); si algo es ambiguo eliges la lectura más probable y la dices en media frase; solo preguntas cuando equivocarte podría crear o cambiar algo mal; nunca contestes solo no entendí: di qué crees que quisieron decir. '+
  (live?'Esta es una conversación por VOZ en tiempo real: responde hablando, en 1 a 3 frases, sin listas ni símbolos, deja que te interrumpan y no leas más de 3 pedidos seguidos. En preguntas que no son de KPlace puedes extenderte hasta unas 5 frases. Si no se entendió el audio, pide que lo repitan en vez de adivinar. ':'Respuestas cortas (1 a 4 frases) en temas de KPlace; en preguntas generales o de otros temas respóndelas completas (lo que haga falta, con datos concretos). Usa **negrita** y guiones solo si ayudan. ')+
- 'Usuario: '+(u.nombre||'sin identificar')+' ('+rol+'). Hoy es '+hoy()+'. Cifras al momento: '+JSON.stringify(stats())+'. '+
- 'REGLAS (la 1 a la 12 son para temas de KPlace; en cualquier otro tema respondes libre y completo, sin negarte): 1) Para datos de pedidos o inventario usa SIEMPRE las herramientas (o las cifras de arriba); nunca inventes pedidos, stock, precios ni guías. Si preguntan qué productos lleva una orden o el borrador actual, consulta detalle_pedido o quitar_producto_orden para obtener la lista real; enumera los productos antes de quitar uno. Si el usuario pide agregar producto a una orden YA GUARDADA, usa agregar_producto_orden indicando primero el cliente/id/referencia; sigue la selección guiada del inventario paso a paso hasta que se confirme que quedó guardado. No uses crear_orden para eso. Solo quita el producto que identifique claramente el usuario; si hay coincidencias ambiguas, pregunta cuál. 2) Si piden crear o cotizar una guía: busca el pedido (buscar_pedidos), si hay duda pregunta cuál, y usa preparar_guia con el id exacto. Esa herramienta solo muestra una tarjeta: la guía la crea el usuario tocando el botón. Nunca digas que ya se creó. 3) CREAR ORDEN: cuando el usuario pida crear una orden, reúne nombre, teléfono y dirección (más producto, forma de pago y total si los da; envío en Tegucigalpa por defecto, y si es nacional pide departamento y municipio). Llama crear_orden en cuanto tengas nombre, teléfono y dirección: el formulario se abre y se va llenando a la vista del usuario y el chat se achica. Si responde creada:false con una lista faltan, la orden NO se guardó: NO vuelvas a llamar crear_orden hasta que el usuario responda; pregunta solo lo que falta (plataforma, producto, forma de pago, total, banco, departamento y municipio) y cuando responda vuelve a llamar crear_orden solo con los datos nuevos (los anteriores se recuerdan). Si no dijo la forma de pago, pregúntala. Pago dividido (mitad, mixto, parte y parte): usa metodo_pago mitad con metodo_1 y metodo_2 (y monto_1/monto_2 si los dice; si dice mitad y mitad, son la mitad del total; banco_1/banco_2 si alguna parte es transferencia). Si creada:true, confírmalo en una frase. NO uses ni menciones el cuadro de pegar/extraer datos del formulario: tú llenas los campos directo, SOLO los que están vacíos, y nunca reescribes lo que el usuario ya llenó o corrigió a mano salvo que él te lo pida (entonces crear_orden con reemplazar=true). Si el formulario ya está abierto, se reutiliza tal cual. PRODUCTO (flujo guiado): si piden agregar o falta el producto, usa elegir_producto SIN pedir que lo escriban: primero la CATEGORÍA, luego los MODELOS, luego los COLORES y por último los TAMAÑOS. En cada paso muestra la lista_texto numerada tal cual la devuelve la herramienta (un paso por mensaje) y espera. Cuando el usuario diga "el primero", "el 2", "ese" o el nombre, llama elegir_producto con numero (o texto). Un solo resultado se salta solo. Al completar, el producto queda en la orden; pregunta si lleva otro. Cuando ya esté todo, llama crear_orden para guardar la orden. 4) Preguntas sobre cómo usar la app: responde con pasos concretos según este manual: '+MANUAL+' Si algo no está en el manual, dilo sin inventar. 5) No muestres claves ni datos de otros vendedores. 6) Haz una sola pregunta a la vez. 7) EDITAR: si el usuario corrige una orden ("no, era transferencia", pago dividido, otro total) usa editar_orden sobre la última orden creada o la que indique; en transferencia o link de pago pide el banco si falta; en pago dividido pide método y monto de cada parte; confirma en una frase. 8) VENTAS: para historial, totales o lo que vendió cada vendedor usa resumen_ventas. 9) SIN PAGAR: buscar_pedidos con estado sin_pagar (devuelve cantidad y monto_total). 10) RETRASO: cada pedido trae dias_retraso; el repartidor asignado viene en el campo repartidor (null si no se ha enviado). 11) PREGUNTAS GENERALES: también puedes responder cosas que no son de KPlace (distancias, clima, cultura general); para clima, distancias o datos que cambian usa buscar_en_internet, asumiendo Honduras si no dicen lugar. 12) INVENTARIO: puedes ver etiquetas (etiquetas_inventario o buscar_inventario) pero nunca hables de códigos QR. 13) ENTREGAS: puedes cambiar el estado con cambiar_estado_entrega: entregado y pendiente se hacen directo; para no_entregado pide el motivo y para qué día se reprograma (así lo hace KPlace). Confirma en una frase. 14) Preguntas que no son de KPlace: respóndelas bien y completas; usa buscar_en_internet para clima, distancias, precios o noticias, y si falla contesta con lo que sepas aclarando que es aproximado.';
+ 'Usuario: '+(u.nombre||'sin identificar')+' ('+rol+'). Hoy es '+hoy()+'. Recuerdos personales de este usuario (NO los compartas con otros): '+JSON.stringify(mikeRemembered.slice(-MIKE_MEM_LIMIT))+'. Cifras al momento: '+JSON.stringify(stats())+'. '+
+ 'REGLAS (los datos de KPlace siempre deben salir de las herramientas; en cualquier otro tema responde libre y completo): 1) Para datos de pedidos o inventario usa SIEMPRE las herramientas (o las cifras de arriba); nunca inventes pedidos, stock, precios ni guías. Si preguntan qué productos lleva una orden o el borrador actual, consulta detalle_pedido o quitar_producto_orden para obtener la lista real; enumera los productos antes de quitar uno. Si el usuario pide agregar producto a una orden YA GUARDADA, usa agregar_producto_orden indicando primero el cliente/id/referencia; sigue la selección guiada del inventario paso a paso hasta que se confirme que quedó guardado. No uses crear_orden para eso. Solo quita el producto que identifique claramente el usuario; si hay coincidencias ambiguas, pregunta cuál. 2) Si piden crear o cotizar una guía: busca el pedido (buscar_pedidos), si hay duda pregunta cuál, y usa preparar_guia con el id exacto. Esa herramienta solo muestra una tarjeta: la guía la crea el usuario tocando el botón. Nunca digas que ya se creó. 3) CREAR ORDEN: cuando el usuario pida crear una orden, reúne nombre, teléfono y dirección (más producto, forma de pago y total si los da; envío en Tegucigalpa por defecto, y si es nacional pide departamento y municipio). Llama crear_orden en cuanto tengas nombre, teléfono y dirección: el formulario se abre y se va llenando a la vista del usuario y el chat se achica. Si responde creada:false con una lista faltan, la orden NO se guardó: NO vuelvas a llamar crear_orden hasta que el usuario responda; pregunta solo lo que falta (plataforma, producto, forma de pago, total, banco, departamento y municipio) y cuando responda vuelve a llamar crear_orden solo con los datos nuevos (los anteriores se recuerdan). Si no dijo la forma de pago, pregúntala. Pago dividido (mitad, mixto, parte y parte): usa metodo_pago mitad con metodo_1 y metodo_2 (y monto_1/monto_2 si los dice; si dice mitad y mitad, son la mitad del total; banco_1/banco_2 si alguna parte es transferencia). Si creada:true, confírmalo en una frase. NO uses ni menciones el cuadro de pegar/extraer datos del formulario: tú llenas los campos directo, SOLO los que están vacíos, y nunca reescribes lo que el usuario ya llenó o corrigió a mano salvo que él te lo pida (entonces crear_orden con reemplazar=true). Si el formulario ya está abierto, se reutiliza tal cual. PRODUCTO (flujo guiado): si piden agregar o falta el producto, usa elegir_producto SIN pedir que lo escriban: primero la CATEGORÍA, luego los MODELOS, luego los COLORES y por último los TAMAÑOS. En cada paso muestra la lista_texto numerada tal cual la devuelve la herramienta (un paso por mensaje) y espera. Cuando el usuario diga "el primero", "el 2", "ese" o el nombre, llama elegir_producto con numero (o texto). Un solo resultado se salta solo. Al completar, el producto queda en la orden; pregunta si lleva otro. Cuando ya esté todo, llama crear_orden para guardar la orden. 4) Preguntas sobre cómo usar la app: responde con pasos concretos según este manual: '+MANUAL+' Si algo no está en el manual, dilo sin inventar. 5) No muestres claves ni datos de otros vendedores. 6) Haz una sola pregunta a la vez. 7) EDITAR ÓRDENES GUARDADAS: puedes cambiar cualquier orden existente, antigua o reciente, con editar_orden (una) o editar_ordenes (varias en la misma petición). Primero buscar_pedidos si el nombre es ambiguo y usar referencias exactas. Para aplicar el MISMO cambio a varios pedidos, editar_ordenes con seleccion y cambios; para cambios DISTINTOS, ediciones con pedido y cambios; para todos los pedidos de hoy/ayer/etc., filtro y cambios. Permite corregir cliente, teléfono, dirección, vendedor, fecha, entrega, productos, pago, notas y total. IMPORTANTE: ambas herramientas muestran una TARJETA que la persona confirma tocando Guardar cambios: nunca digas que están guardados hasta que confirme. Para transferencias solicita banco, en pago dividido los métodos, montos y bancos. No inventes destinatarios ni actualices guías Boxful ya creadas; cambiar productos no ajusta stock automáticamente. No uses crear_orden cuando están editando pedidos guardados. 8) VENTAS: para historial, totales o lo que vendió cada vendedor usa resumen_ventas. 9) SIN PAGAR: buscar_pedidos con estado sin_pagar (devuelve cantidad y monto_total). 10) RETRASO: cada pedido trae dias_retraso; el repartidor asignado viene en el campo repartidor (null si no se ha enviado). 11) PREGUNTAS GENERALES: también puedes responder cosas que no son de KPlace (distancias, clima, cultura general); para clima, distancias o datos que cambian usa buscar_en_internet, asumiendo Honduras si no dicen lugar. 12) INVENTARIO: puedes ver etiquetas (etiquetas_inventario o buscar_inventario) pero nunca hables de códigos QR. 13) ENTREGAS: puedes cambiar el estado con cambiar_estado_entrega: entregado y pendiente se hacen directo; para no_entregado pide el motivo y para qué día se reprograma (así lo hace KPlace). Confirma en una frase. 14) Preguntas que no son de KPlace: contéstalas bien; para fútbol, baloncesto, partidos de HOY, resultados, clasificaciones, deportes, clima, distancias, precios o noticias utiliza buscar_en_internet. Si la búsqueda EN VIVO falla no inventes marcadores ni fechas: aclara que no pudiste verificar el resultado. 15) CONSULTAS Y CÁLCULOS: usa analizar_ordenes para contar cuántas órdenes no tienen plataforma, por mes, sucursal, vendedor o sumar varias órdenes. Si piden sin plataforma este mes usa periodo mes y plataforma sin_plataforma. Si piden ventas por cada plataforma usa agrupar_por plataforma. Usa calcular_matematica para cualquier cálculo aritmético complejo, no improvises resultados. Usa calcular_comisiones cuando indiquen reglas (4%, envíos, 10% después de descuentos, etc): respeta cada condición y el ORDEN, comisión final siempre con base restante. No inventes descuentos ni tarifas. Las cuentas deben coincidir con los datos reales. 16) MEMORIA PERSONAL: recuerda conversaciones recientes de este usuario en su navegador, NO mezcles conversaciones de cuentas. Si pide recordar una preferencia para el futuro usa recordar_para_mi; si pregunta qué recuerdas usa ver_mis_recuerdos; si solicita borrar lo recordado usa olvidar_mis_recuerdos. La memoria no se sincroniza entre distintos dispositivos. Nunca reveles datos privados de otros usuarios. 17) Plataformas vacías no son WhatsApp ni Instagram aunque el canal técnico diga KPlace; para contarlas usa analizar_ordenes con sin_plataforma.';
 }
 
 /* ===== Llamadas a Gemini (streaming + herramientas) ===== */
@@ -20881,6 +21226,7 @@ async function chat(text){
   for(let round=0;round<5;round++){
    cardAdded=false;
    const parts=await gStream(hist,sys,t=>tp.add(t),abortCtl.signal);
+   if(mikeUserIdentity()!==mikeIdentity)throw Error('Cambió el usuario durante la conversación; vuelve a abrir Mike.');
    const calls=parts.filter(p=>p.functionCall);
    if(parts.length)hist.push({role:'model',parts});
    if(!calls.length){const t0=tp.text();if((!t0.trim()&&!cardAdded)||REFUSE.test(t0)){tp.drop();hideTyping();showTyping();setStatus('Buscando la respuesta…');let g=null;try{g=await buscarWeb({consulta:text})}catch(x){}hideTyping();setStatus('');tp=typer();if(g&&g.respuesta){tp.add(g.respuesta);if(hist.length&&hist[hist.length-1].role==='model')hist.pop();hist.push({role:'model',parts:[{text:g.respuesta}]})}else tp.add('No pude responder eso ahora. ¿Me lo repites de otra forma?')}break}
@@ -21057,7 +21403,20 @@ function guideCard(o){
 }
 
 /* ===== Enviar / detener ===== */
-async function chatSafe(text){if(busy)return;busy=true;setSendMode(true);try{await chat(text)}finally{busy=false;setSendMode(false);input.focus()}}
+function mikeCurrentSportsQuestion(q){
+ const v=norm(q||'');return /(futbol|football|soccer|baloncesto|basket|nba|partido|marcador|goles|lakers|warriors|celtics|nuggets|barcelona|real madrid|champions|mundial)/.test(v)&&/(hoy|ayer|anoche|en vivo|actual|ultimo|ultimos|esta semana|esta noche|qued|termin|resultado|ganar|gan[oó]|perd|jugaron|marcador)/.test(v);
+}
+async function chatSafe(text){
+ if(busy)return;mikeEnsureIdentity();busy=true;setSendMode(true);
+ try{
+  if(mikeCurrentSportsQuestion(text)){
+   setStatus('Consultando resultados deportivos…');const result=await buscarWeb({consulta:text});
+   const answer=result.respuesta||result.error||'No pude verificar los resultados.';
+   const src=(result.fuentes||[]).slice(0,3).map((f,i)=>(i+1)+'. '+f.titulo+': '+f.url).join('\n');
+   addMsg(answer+(src?'\nFuentes: '+src:''),'bot');hist.push({role:'user',parts:[{text}]},{role:'model',parts:[{text:answer}]});trimHist();
+  }else await chat(text);
+ }catch(e){showError(e)}finally{setStatus('');mikePersist();busy=false;setSendMode(false);input.focus()}
+}
 function setSendMode(stop){sendBtn.textContent=stop?'■':'➤';sendBtn.classList.toggle('stop',stop);sendBtn.setAttribute('aria-label',stop?'Detener':'Enviar')}
 async function sendNow(){
  if(busy){if(abortCtl)abortCtl.abort();return}
@@ -21112,7 +21471,7 @@ function playPcm(base64){
 function stopPlayback(){live.sources.forEach(s=>{try{s.stop()}catch(e){}});live.sources=[];live.nextT=0}
 function finishTurn(){
  const i=live.inT.trim(),o=live.outT.trim();
- if(i&&o){hist.push({role:'user',parts:[{text:i}]},{role:'model',parts:[{text:o}]});trimHist()}
+ if(i&&o){hist.push({role:'user',parts:[{text:i}]},{role:'model',parts:[{text:o}]});trimHist();mikePersist()}
  live.inB=null;live.inT='';live.outB=null;live.outT='';
 }
 async function onLiveMsg(ev){
@@ -21160,6 +21519,7 @@ function openLive(i,key){
 }
 async function startLive(){
  if(live.ws)return;
+ mikeEnsureIdentity();
  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.WebSocket||!AC){addMsg('Este navegador no permite voz en tiempo real. Abre KPlace en Chrome o Safari reciente y da permiso al micrófono.','bot');return}
  live.stopping=false;liveUI(true,'Conectando con Mike…',false);
  try{
@@ -21187,7 +21547,7 @@ function greet(){
  if(msgs.children.length)return;const n=(U().nombre||'').split(' ')[0];
  addMsg('¡Hola'+(n?' '+n:'')+'! 👋 Soy Mike. Toca el micrófono y háblame normal. Puedes preguntarme por pedidos, crear órdenes o guías; verás aquí la transcripción de lo que dices y mis respuestas.','bot');
 }
-function open(){if(!window.CURRENT_USER)return;greet();panel.classList.add('open');panel.setAttribute('aria-hidden','false');fabSet(false);}
+function open(){if(!window.CURRENT_USER)return;mikeEnsureIdentity();greet();panel.classList.add('open');panel.setAttribute('aria-hidden','false');fabSet(false);}
 function setCompact(on){panel.classList.toggle('compact',!!on);const b=$('kpMikeCompact');if(b)b.textContent=on?'▴':'▾';msgs.scrollTop=msgs.scrollHeight}
 function minimize(){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');fabSet(!!window.CURRENT_USER)}
 function closeAll(){stopLive();if(abortCtl)try{abortCtl.abort()}catch(e){}minimize()}
@@ -21206,7 +21566,7 @@ document.querySelectorAll('[data-kpm-attach]').forEach(b=>b.addEventListener('cl
 /* Mike solo se ve en Inicio; en otras pestañas únicamente mientras lo estás usando (panel abierto, voz en vivo o respondiendo). */
 function homeTab(){const u=window.CURRENT_USER||{},t=window.activeTab;return t==='inicio'||(!!u.esRepartidor&&!u.esAdmin&&t==='repartidor')}
 function inUse(){return panel.classList.contains('open')||!!live.ws||!!abortCtl}
-function visibility(){const logged=!!window.CURRENT_USER;if(!logged){if(panel.classList.contains('open')||live.ws)closeAll();fabSet(false);return}if(!panel.classList.contains('open')){fabSet(true);clearOfPlus()}}
+function visibility(){const logged=!!window.CURRENT_USER;if(!logged){if(mikeIdentity)mikeEnsureIdentity();if(panel.classList.contains('open')||live.ws)closeAll();fabSet(false);return}if(!panel.classList.contains('open')){fabSet(true);clearOfPlus()}}
 /* ===== Burbuja flotante: se arrastra, y al soltarla sobre la X se guarda en la esquina izquierda ===== */
 const FABK='kp_mike_fab',dock=document.createElement('button'),tgt=document.createElement('div');
 dock.id='kpMikeDock';dock.type='button';dock.title='Mike';dock.setAttribute('aria-label','Sacar a Mike');tgt.id='kpMikeTarget';tgt.textContent='✕';
@@ -22188,5 +22548,472 @@ sync();
 (function(){function ordenarCotizaciones(){var side=document.getElementById('kpSideNav'),sb=side&&side.querySelector('[data-section="cotizaciones"]'),sr=side&&side.querySelector('[data-section="reportes"]');if(side&&sr&&sb&&sr.nextElementSibling!==sb)sr.after(sb);var nav=document.querySelector('#kpMenuDrawer .kp-drawer-nav'),cb=nav&&nav.querySelector('[data-section="cotizaciones"]'),rb=nav&&nav.querySelector('[data-section="reportes"]');if(nav&&rb&&cb&&rb.nextElementSibling!==cb)rb.after(cb)}document.addEventListener('click',function(e){if(e.target.closest('#menuBtn'))setTimeout(ordenarCotizaciones,80)});new MutationObserver(function(){ordenarCotizaciones()}).observe(document.body,{childList:true,subtree:true});setTimeout(ordenarCotizaciones,300);})();
 </script>
 
+
+<style id="kp-flow-2026-css">
+/* KPlace · módulos operativos 2026 · responsive, scoping total */
+#kpFlowRoot{color:#e9e8f5;font-family:inherit;line-height:1.5;max-width:1500px;margin:0 auto;padding:12px 0 60px}
+#kpFlowRoot *{box-sizing:border-box}
+#kpFlowRoot .kf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+#kpFlowRoot h1{font-size:clamp(25px,3vw,34px);font-weight:850;margin:0;color:#f3efff;line-height:1.16}
+#kpFlowRoot h2{font-size:19px;margin:0;color:#f0eefb}
+#kpFlowRoot h3{font-size:15px;margin:0 0 10px;color:#f4efff}
+#kpFlowRoot p{margin:5px 0 0;color:#a9a9bd;font-size:13px}
+#kpFlowRoot .kf-eyebrow{letter-spacing:2px;font-size:10px;font-weight:800;color:#ba8df2}
+#kpFlowRoot .kf-subnav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+#kpFlowRoot button{font-family:inherit;cursor:pointer}
+#kpFlowRoot .kf-btn{border:1px solid #3e405c;border-radius:13px;background:#1b2133;color:#f2effc;padding:10px 14px;font-weight:750;font-size:13px;min-height:40px;display:inline-flex;gap:8px;align-items:center;justify-content:center}
+#kpFlowRoot .kf-btn.primary{border-color:#a74be2;background:linear-gradient(110deg,#9546d3,#7a2ee2);color:white}
+#kpFlowRoot .kf-btn.warn{border-color:#754348;background:#3c232a;color:#f7c3c7}
+#kpFlowRoot .kf-btn.sm{padding:7px 10px;font-size:12px;min-height:32px}
+#kpFlowRoot .kf-btn:disabled{opacity:.43;cursor:not-allowed}
+#kpFlowRoot .kf-btn.active{border-color:#b687fd;background:#34204e}
+#kpFlowRoot .kf-panel{background:linear-gradient(145deg,#141d30,#111824);border:1px solid #303b57;border-radius:19px;padding:19px;min-width:0}
+#kpFlowRoot .kf-panel+.kf-panel{margin-top:12px}
+#kpFlowRoot .kf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr));gap:12px}
+#kpFlowRoot .kf-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#kpFlowRoot .kf-numbers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#kpFlowRoot .kf-stat{background:#181b30;border:1px solid #353355;border-radius:16px;padding:16px;min-width:0}
+#kpFlowRoot .kf-stat span{display:block;color:#a7a9c1;font-size:12px}
+#kpFlowRoot .kf-stat strong{display:block;font-size:clamp(17px,2vw,25px);font-weight:850;margin-top:4px;overflow-wrap:anywhere;color:#eae8fa}
+#kpFlowRoot .kf-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+#kpFlowRoot .kf-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#kpFlowRoot .kf-entry{padding:12px 0;border-bottom:1px solid #2a344b;display:flex;gap:12px;align-items:center;justify-content:space-between}
+#kpFlowRoot .kf-entry:last-child{border-bottom:0}
+#kpFlowRoot .kf-entry-text{min-width:0;flex:1}
+#kpFlowRoot .kf-entry strong{display:block;font-size:14px;color:#eeeaff}
+#kpFlowRoot .kf-entry small{display:block;color:#aaadbe;font-size:12px;overflow-wrap:anywhere}
+#kpFlowRoot .kf-status{display:inline-block;border-radius:99px;padding:3px 9px;font-size:11px;font-weight:750;border:1px solid #3d405d;color:#c0c5d5;white-space:nowrap}
+#kpFlowRoot .kf-status.ok{color:#83edbd;border-color:#216a53;background:#113c30}
+#kpFlowRoot .kf-status.busy{color:#ffda87;border-color:#69522a;background:#3c3022}
+#kpFlowRoot .kf-status.error{color:#ffa8af;border-color:#69343b;background:#40212a}
+#kpFlowRoot label{font-size:12px;color:#babcd0;font-weight:650;display:flex;flex-direction:column;gap:5px;margin:0}
+#kpFlowRoot input:not([type=checkbox]):not([type=radio]):not([type=file]),#kpFlowRoot select,#kpFlowRoot textarea{width:100%;border:1px solid #39445f;border-radius:12px;background:#11192a;color:#f7f5ff;padding:11px 12px;outline:none;font:inherit;font-size:14px;min-width:0}
+#kpFlowRoot select{min-height:43px}
+#kpFlowRoot textarea{min-height:78px;resize:vertical}
+#kpFlowRoot input:focus,#kpFlowRoot select:focus,#kpFlowRoot textarea:focus{border-color:#a976eb}
+#kpFlowRoot input[type=checkbox]{accent-color:#9851de;width:17px;height:17px;flex-shrink:0}
+#kpFlowRoot .kf-check{display:flex;align-items:center;flex-direction:row;gap:7px;cursor:pointer}
+#kpFlowRoot .kf-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#kpFlowRoot .kf-muted{font-size:12px;color:#abb0c1}
+#kpFlowRoot .kf-help{color:#b8a5dc;background:#251e38;border:1px solid #493766;padding:11px 13px;border-radius:13px;font-size:12px;margin:10px 0}
+#kpFlowRoot .kf-danger{color:#ffc6c6;background:#39242c;border:1px solid #76424c;padding:11px 13px;border-radius:13px;font-size:12px;margin:10px 0}
+#kpFlowRoot .kf-receipt{background:#fff;border-radius:15px;padding:21px;color:#182034;box-shadow:0 16px 45px #0003;min-width:0}
+#kpFlowRoot .kf-receipt *{color:inherit}
+#kpFlowRoot .kf-receipt h2{color:#151d2e;font-size:22px}
+#kpFlowRoot .kf-receipt p{color:#525d72}
+#kpFlowRoot .kf-receipt .kf-entry{border-color:#e8eaf0}
+#kpFlowRoot .kf-receipt .kf-entry strong{color:#1d2c46}
+#kpFlowRoot .kf-receipt .kf-entry small{color:#626d7e}
+#kpFlowRoot .kf-receipt .kf-tot{font-size:24px;color:#41236a;font-weight:850}
+#kpFlowRoot .kf-divider{border-top:1px solid #30384f;margin:15px 0}
+#kpFlowRoot .kf-pill{font-size:11px;background:#392351;border:1px solid #694c91;border-radius:20px;padding:4px 10px;color:#e3cfff;font-weight:750}
+#kpFlowRoot .kf-empty{text-align:center;padding:35px 12px;color:#b0b3c5}
+#kpFlowRoot .kf-actions{display:flex;gap:7px;flex-wrap:wrap}
+#kpFlowRoot .kf-table-scroll{overflow-x:auto}
+#kpFlowRoot table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
+#kpFlowRoot th{text-align:left;color:#d7c3f3;font-size:11px;border-bottom:1px solid #44445f;padding:10px}
+#kpFlowRoot td{padding:10px;border-bottom:1px solid #282e44;color:#e7eaf1}
+#kpFlowRoot .kf-tag{font-size:11px;color:#9aa1b6;font-weight:650}
+#kpFlowRoot .kf-item{background:#151d2d;border:1px solid #323a51;border-radius:13px;padding:11px;margin-bottom:8px}
+#kpFlowRoot .kf-inline-logo{max-width:90px;max-height:64px;object-fit:contain}
+#kpFlowRoot .kf-denoms{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+#kpFlowRoot .kf-denoms label{text-align:center}
+#kpFlowRoot .kf-denoms input{text-align:center;padding:7px 4px!important}
+#kpFlowRoot .kf-setup{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+#kpFlowRoot .kf-setup label{flex:1;min-width:170px}
+.kf-global-search{border:1px solid #7553a7!important;color:#d8b8ff!important;border-radius:13px!important;background:#241b36!important;cursor:pointer;min-height:36px;min-width:38px}
+#kpGlobalSearchOverlay{position:fixed;z-index:999998;inset:0;background:#060813df;display:flex;justify-content:center;align-items:flex-start;padding:8vh 15px 20px;overflow:auto}
+#kpGlobalSearchOverlay .kgs-box{background:#141d30;color:#f3f1ff;border:1px solid #63558c;border-radius:20px;padding:17px;max-width:750px;width:100%;box-shadow:0 20px 80px #0009}
+#kpGlobalSearchOverlay input{width:100%;background:#0e1626;color:white;border:1px solid #4c4c70;border-radius:13px;padding:14px;font-size:16px;outline:none}
+#kpGlobalSearchOverlay .kgs-row{padding:12px 5px;border-bottom:1px solid #313952;cursor:pointer;display:flex;justify-content:space-between;gap:9px}
+#kpGlobalSearchOverlay .kgs-row small{display:block;color:#a6aabe}
+#kpGlobalSearchOverlay .kgs-close{border:0;background:#322347;color:#efe6ff;border-radius:9px;padding:7px 12px;cursor:pointer}
+@media(max-width:800px){#kpFlowRoot .kf-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}#kpFlowRoot .kf-2{grid-template-columns:1fr}#kpFlowRoot .kf-panel{padding:14px}#kpFlowRoot .kf-denoms{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:480px){#kpFlowRoot .kf-fields{grid-template-columns:1fr}#kpFlowRoot .kf-row{align-items:flex-start}#kpFlowRoot .kf-stat{padding:12px}#kpFlowRoot .kf-btn{font-size:12px;padding:9px 10px}}
+
+</style>
+<script id="kp-flow-2026-js">
+/* KPlace: Operación adaptable, empaque, caja, búsqueda, automatizaciones y documentos.
+   Nota de seguridad: las autorizaciones de escritura DEBEN imponerse también mediante reglas de Firestore.
+   Este módulo genera únicamente recibos comerciales NO fiscales. */
+(function(){
+'use strict';
+if(window.KP_FLOW)return;
+const K={page:'',tab:'',selection:new Set(),branch:'',order:null,doc:null,cashDate:'',counts:{},note:'',pick:null,config:null,rules:[],incidents:[],cashRows:[],settlements:[],closures:[],drafts:[],_unsubs:[],_loading:false};
+window.KP_FLOW=K;
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const str=v=>String(v??'').trim();
+const norm=v=>str(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const n=v=>Number.isFinite(Number(v))?Number(v):0;
+const amt=v=>Math.max(0,Math.round((n(v)+Number.EPSILON)*100)/100);
+const money=v=>(K.page==='documents'&&K.doc?.currency||K.config?.currency||'L')+' '+n(v).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pad=x=>String(x).padStart(2,'0');
+const today=()=>typeof window.todayStr==='function'?window.todayStr():new Date().toLocaleDateString('en-CA',{timeZone:'America/Tegucigalpa'});
+const uid=()=>str(window.CURRENT_USER?.email||window.CURRENT_USER?.usuario||window.CURRENT_USER?.nombre||'');
+const username=()=>str(window.CURRENT_USER?.nombre||'Usuario');
+const admin=()=>!!window.CURRENT_USER?.esAdmin;
+const user=()=>!!window.CURRENT_USER;
+const employee=()=>{const self=window.CURRENT_USER||{};return (window.VENDEDORES||[]).find(u=>[u.email,u.usuario,u.nombre].some(x=>x&&[self.email,self.usuario,self.nombre].some(y=>norm(x)===norm(y))))||self};
+const packer=()=>admin()||!!employee().esEmpacador||!!window.CURRENT_USER?.esEmpacador;
+const driver=()=>!!window.CURRENT_USER?.esRepartidor;
+const seller=()=>user()&&!admin()&&!driver()&&!packer();
+const company=()=>{let c=str(window.KPLACE_ACTIVE_CONTEXT?.companyId||window.CURRENT_USER?.companyId);return c||'kplace_legacy_company';};
+const root=()=>window.db?.collection('kp_operation_2026')?.doc(company());
+const collection=section=>root().collection(section);
+const branches=()=>{const b=(window.KP?.branches||[]).filter(x=>x&&x.activa!==false);return b.length?b:[{id:'sucursal_1',nombre:'Sucursal principal'}]};
+const ownBranch=()=>str(window.CURRENT_USER?.sucursalId||employee()?.sucursalId||branches()[0].id);
+const branchName=id=>branches().find(x=>x.id===id)?.nombre||id||'Principal';
+const currentBranch=()=>K.branch||ownBranch();
+const orderBranch=o=>str(o.sucursalId||ownBranch());
+const orders=()=>Array.isArray(window.ORDERS)?window.ORDERS.filter(o=>!window.kpOrderBelongsToCurrentCompany||window.kpOrderBelongsToCurrentCompany(o)):[];
+const orderNo=o=>str(o.numeroOrden||o.codigoOrden||(typeof window.kpNumeroOrdenSafe==='function'?window.kpNumeroOrdenSafe(o):o.id?.slice(-6)||''));
+const findOrder=id=>orders().find(o=>str(o.id)===str(id));
+const isAccessible=o=>!!o&&(admin()||orderBranch(o)===ownBranch());
+const branchOrders=()=>orders().filter(o=>K.branch==='all'&&admin()||orderBranch(o)===currentBranch());
+const stamp=()=>window.firebase?.firestore?.FieldValue?.serverTimestamp?.()||new Date();
+const notice=msg=>{if(typeof window.toast==='function')window.toast(msg);else alert(msg)};
+const header=(title,description,actions='')=>`<div class="kf-head"><div><span class="kf-eyebrow">KPLACE · OPERACIÓN</span><h1>${title}</h1><p>${description||''}</p></div><div class="kf-actions">${actions}</div></div>`;
+const button=(text,cmd,cls='')=>`<button type="button" class="kf-btn ${cls}" data-kf="${esc(cmd)}">${esc(text)}</button>`;
+const card=(inner,cls='')=>`<section class="kf-panel ${cls}">${inner}</section>`;
+const stat=(label,value)=>`<div class="kf-stat"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
+const status=(t,cls='')=>`<span class="kf-status ${cls}">${esc(t)}</span>`;
+const field=(name,content)=>`<label>${name}${content}</label>`;
+const inp=(id,value='',type='text',extra='')=>`<input id="${id}" type="${type}" value="${esc(value)}" ${extra}>`;
+const select=(id,options,value='',extra='')=>`<select id="${id}" ${extra}>${options.map(x=>`<option value="${esc(x[0])}" ${String(x[0])===String(value)?'selected':''}>${esc(x[1])}</option>`).join('')}</select>`;
+const msg=t=>`<div class="kf-help">${esc(t)}</div>`;
+const optsBranch=(all=false)=>[...(all&&admin()?[['all','Todas las sucursales']]:[]),...branches().map(b=>[b.id,b.nombre])];
+const modalError=(e,action)=>{console.error('KPlace · '+action,e);notice('No se pudo '+action+': '+(e?.message||'revisá los permisos y conexión Firebase'))};
+function clearListeners(){K._unsubs.forEach(u=>{try{u()}catch(e){}});K._unsubs=[]}
+function listen(name,fn){try{K._unsubs.push(collection(name).onSnapshot(s=>{fn(s.docs.map(d=>({id:d.id,...d.data()})));if(K.page)draw()},e=>console.warn('KP Flow listener '+name,e)))}catch(e){console.warn('KP Flow listen',e)}}
+async function loadConfig(){
+  if(K._loading)return;K._loading=true;
+  try{let sn=await root().get();const v=sn.exists?sn.data():{};
+    K.config={mode:'solo',cashMode:'rapido',autoAssign:true,currency:'L',businessName:str(window.KPLACE_ACTIVE_CONTEXT?.companyName||'Mi negocio'),businessAddress:'',businessPhone:'',logo:'',...v.settings};
+  }catch(e){K.config=K.config||{mode:'solo',cashMode:'rapido',autoAssign:true,currency:'L',businessName:'Mi negocio',logo:''}}
+  K._loading=false;if(K.page)draw();
+}
+async function saveConfig(next){if(!admin()){notice('Solo el Administrador general puede cambiar la configuración');return}try{await root().set({settings:{...K.config,...next,updatedAt:stamp(),updatedBy:uid()}},{merge:true});Object.assign(K.config,next);notice('Configuración guardada');draw()}catch(e){modalError(e,'guardar la configuración')}}
+function ensureRoot(){let v=$('view');if(!v)return null;v.innerHTML='<div id="kpFlowRoot"></div>';return $('kpFlowRoot')}
+function tabBar(){const list=[['packing','Empaque'],['cash','Caja'],['documents','Recibos'],['automations','Automatizaciones'],['settings','Modos y permisos']];return `<div class="kf-subnav">${list.filter(x=>x[0]!=='settings'&&x[0]!=='automations'||admin()).map(([id,label])=>`<button class="kf-btn sm ${K.page===id?'active':''}" data-kf="go:${id}">${label}</button>`).join('')}</div>`}
+function draw(){if(!K.page||!user())return;let v=$('view');if(!v)return;let node=$('kpFlowRoot')||ensureRoot();if(!node)return;
+ const renderers={packing:packingScreen,cash:cashScreen,documents:documentsScreen,automations:automationsScreen,settings:settingsScreen};
+ const allowed=K.page==='packing'?packer():['cash','documents','automations','settings'].includes(K.page)?admin()||K.page==='cash'&&(driver()||seller()):false;
+ node.innerHTML=allowed?tabBar()+renderers[K.page]():card(msg('No tenés permisos para esta sección. Contactá al Administrador general.'));
+}
+K.open=function(page,orderId){
+ if(!user()){notice('Iniciá sesión para continuar.');return}
+ if(!['packing','cash','documents','automations','settings'].includes(page))return;
+ if(K.page!==page){K.note='';K.pick=null;K.doc=null}
+ if(page==='packing'&&!packer()){notice('Acceso exclusivo de Empacador o Administrador general.');return}
+ if(['documents','automations','settings'].includes(page)&&!admin()){notice('Solo el Administrador general puede acceder aquí.');return}
+ if(page==='cash'&&!admin()&&!driver()&&!seller()){notice('No tenés acceso a Caja.');return}
+ clearListeners();K.page=page;window.activeTab='kplace_'+page;K.selection.clear();K.order=orderId||null;K.pick=null;K.branch=admin()?(K.branch||ownBranch()):ownBranch();K.cashDate=K.cashDate||today();
+ if(page==='packing'){listen('packing_incidents',a=>K.incidents=a)}
+ if(page==='cash'){listen('cash_movements',a=>K.cashRows=a);listen('cash_settlements',a=>K.settlements=a);listen('cash_closures',a=>K.closures=a)}
+ if(page==='automations'){listen('automation_rules',a=>K.rules=a);listen('automation_alerts',a=>K.alerts=a)}
+ if(page==='documents'){listen('document_drafts',a=>K.drafts=a);if(orderId){K.doc=null;K.newDocument(orderId)}}
+ draw();setTimeout(highlightNav,60);window.scrollTo({top:0,behavior:'smooth'});
+};
+K.leave=()=>{clearListeners();K.page=''};
+function branchChooser(all=false){return admin()?`<div class="kf-tools">${field('Sucursal',select('kfBranch',optsBranch(all),K.branch))}</div>`:`<div class="kf-tools"><span class="kf-pill">${esc(branchName(ownBranch()))}</span></div>`}
+function isCompleted(o){return !!(o.entregado===true||o.estadoEntrega==='entregada'||o.estadoEntrega==='cancelada'||o.cancelada===true)}
+/* === Empaque: las asignaciones se confirman en transacciones Firestore === */
+function packState(o){return o.kpPacking||{}}
+function canTake(o){let s=packState(o);return !isCompleted(o)&&s.status!=='listo'&&s.status!=='preparando'}
+function mine(o){return packState(o).byId===uid()}
+function packingScreen(){
+ const oo=branchOrders().filter(o=>!isCompleted(o));const available=oo.filter(canTake),work=oo.filter(o=>packState(o).status==='preparando'),ready=oo.filter(o=>packState(o).status==='listo');
+ let tools=branchChooser(true)+`<div class="kf-tools">${button('Seleccionar órdenes', 'selectToggle',K.pick==='selection'?'active':'')}${K.pick==='selection'?button('Seleccionar las mías','selectMine')+button('Liberar seleccionadas ('+K.selection.size+')','releaseMany','warn'):''}</div>`;
+ let rows=oo.sort((a,b)=>{const rank=o=>packState(o).status==='preparando'?1:packState(o).status==='listo'?2:0;return rank(a)-rank(b)}).map(o=>{let s=packState(o),my=mine(o),busy=s.status==='preparando',done=s.status==='listo';return `<div class="kf-entry">
+ ${K.pick==='selection'?`<label class="kf-check"><input type="checkbox" data-kf-select="${esc(o.id)}" ${K.selection.has(o.id)?'checked':''} ${(!admin()&&!my||!busy)?'disabled':''}></label>`:''}
+ <div class="kf-entry-text"><strong>Orden #${esc(orderNo(o))} · ${esc(o.cliente||'Sin nombre')}</strong><small>${esc((o.productos||[]).map(p=>[p.categoria==='__custom__'?p.categoriaManual:p.categoria,p.modelo,p.tamano,p.colorEn||p.colorEs].filter(Boolean).join(' ')).join(' · ').slice(0,190)||'Sin productos')}</small><small>${esc(branchName(orderBranch(o)))}</small>${busy?`<small>La está empacando: <b>${esc(s.byName||'Un empacador')}</b></small>`:''}</div>
+ <div class="kf-actions">${status(done?'Listo':busy?'En preparación':'Disponible',done?'ok':busy?'busy':'')}${done?'':busy?my||admin()?button('Abrir','packOpen:'+o.id,'sm')+button('Liberar','release:'+o.id,'sm warn'):'' :button(K.config?.mode==='solo'?'Preparar ahora':'Empezar a empacar','claim:'+o.id,'sm primary')}</div></div>`}).join('');
+ return header('Empaque','Todos ven las órdenes de su sucursal. El primero que toma una queda identificado en tiempo real.')+
+ `<div class="kf-numbers">${stat('Disponibles',available.length)}${stat('Empacando',work.length)}${stat('Listas',ready.length)}${stat('Incidencias abiertas',K.incidents.filter(i=>i.state!=='resuelta'&&(K.branch==='all'||i.branch===currentBranch())).length)}</div>`+tools+
+ card(`<h2>Órdenes por preparar</h2>${rows||'<div class="kf-empty">No hay órdenes pendientes de empaque.</div>'}`)+
+ (K.order?packDetail(findOrder(K.order)):'')+
+ card(`<h2>Incidencias de empaque</h2>${K.incidents.filter(i=>K.branch==='all'||i.branch===currentBranch()).slice().sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,30).map(i=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(i.product||'Producto')} · ${esc(i.type||'')}</strong><small>Orden #${esc(i.orderNo)} · ${esc(i.note||'Sin observaciones')}</small><small>${esc(i.byName||'')}, ${esc(branchName(i.branch))}</small></div>${status(i.state==='resuelta'?'Resuelta':'Pendiente',i.state==='resuelta'?'ok':'busy')}${i.state!=='resuelta'?button('Resolver','incidentResolve:'+i.id,'sm'):''}</div>`).join('')||'<p>No hay incidencias registradas.</p>'}`);
+}
+function packDetail(o){if(!o||!isAccessible(o))return '';let state=packState(o);return card(`<div class="kf-row"><h2>Preparar orden #${esc(orderNo(o))}</h2>${button('Cerrar','packClose','sm')}</div><p>${esc(o.cliente||'')} · ${status(state.status==='listo'?'Lista':state.status==='preparando'?'En preparación':'Disponible')}</p><div class="kf-divider"></div>${(o.productos||[]).map((p,i)=>`<div class="kf-item"><div class="kf-row"><div><strong>${esc([p.categoria==='__custom__'?p.categoriaManual:p.categoria,p.modelo].filter(Boolean).join(' ')||'Producto')}</strong><p>${esc([p.tamano,p.colorEn||p.colorEs].filter(Boolean).join(' · '))} · Cantidad ${esc(p.cantidad||1)}</p></div><label class="kf-check"><input type="checkbox" data-kf-verified="${i}" ${state.verified&&state.verified[i]?'checked':''} ${!mine(o)&&!admin()?'disabled':''}> Verificado</label></div>${button('Reportar problema','incidentForm:'+i,'sm')}</div>`).join('')||'<p>La orden no tiene productos.</p>'}<div class="kf-actions">${state.status==='preparando'&&(mine(o)||admin())?button('Empaque completado','packingDone','primary'):''}${mine(o)||admin()?button('Liberar orden','release:'+o.id,'warn'):''}</div>${K.pick==='incident'?incidentForm(o):''}`)}
+function incidentForm(o){return `<div class="kf-panel" style="margin-top:12px"><h3>Reportar un problema de producto</h3><div class="kf-fields">${field('Producto',select('kfIncidentIndex',(o.productos||[]).map((p,i)=>[i,[p.categoria,p.modelo,p.tamano,p.colorEn||p.colorEs].filter(Boolean).join(' ')]),K.note?.index||0))}${field('Tipo',select('kfIncidentType',[['defectuoso','Defectuoso o dañado'],['faltante','No encontrado / faltante'],['equivocado','Variante equivocada']]))}</div>${field('Descripción',`<textarea id="kfIncidentNote" placeholder="Ej. Rayón en la tapa; no estaba en el estante..."></textarea>`)}${field('Fotografía (opcional)',`<input id="kfIncidentPhoto" type="file" accept="image/*">`)}${msg('Registrar una incidencia no descuenta inventario otra vez. El ajuste se revisa desde Inventario para evitar movimientos duplicados.')}${button('Guardar incidencia','incidentSave','primary')}${button('Cancelar','incidentCancel')}</div>`}
+K.claim=async id=>{let o=findOrder(id);if(!isAccessible(o)){notice('No tenés permiso para esta orden.');return}try{
+  await window.db.runTransaction(async tx=>{let ref=window.db.collection('orders').doc(id),sn=await tx.get(ref);if(!sn.exists)throw Error('La orden fue eliminada');let current=sn.data(),p=current.kpPacking||{};if(p.status==='preparando'&&p.byId!==uid())throw Error('Esta orden ya la está empacando '+(p.byName||'otra persona'));if(p.status==='listo')throw Error('El empaque ya fue completado');tx.update(ref,{kpPacking:{status:'preparando',byId:uid(),byName:username(),startedAt:p.startedAt||Date.now(),verified:p.byId===uid()?p.verified||{}:{}}})});K.order=id;notice('Orden tomada para empacar');draw();
+ }catch(e){modalError(e,'tomar la orden')}};
+K.verify=async(index,checked)=>{let o=findOrder(K.order);if(!o||!mine(o)&&!admin())return;try{await window.db.runTransaction(async tx=>{let ref=window.db.collection('orders').doc(o.id),s=await tx.get(ref),p=s.data()?.kpPacking;if(!p||p.status!=='preparando'||!admin()&&p.byId!==uid())throw Error('La orden ya no te pertenece');tx.update(ref,{kpPacking:{...p,verified:{...(p.verified||{}),[index]:!!checked}}})})}catch(e){modalError(e,'verificar el producto')}};
+K.done=async()=>{let o=findOrder(K.order);if(!o||!isAccessible(o))return;let p=packState(o);if(!admin()&&!mine(o))return;if(K.incidents.some(i=>i.orderId===o.id&&i.state!=='resuelta')){notice('Esta orden tiene incidencias pendientes. Resolvelas antes de marcar el empaque como listo.');return}if((o.productos||[]).some((x,i)=>!p.verified?.[i])){notice('Verificá todos los productos antes de completar el empaque.');return}if(!confirm('¿Confirmás que esta orden está completamente empacada?'))return;
+ try{await window.db.runTransaction(async tx=>{let ref=window.db.collection('orders').doc(o.id),s=await tx.get(ref),p=s.data()?.kpPacking||{};if(p.status!=='preparando'||!admin()&&p.byId!==uid())throw Error('La orden ya fue liberada');if((s.data()?.productos||[]).some((x,i)=>!p.verified?.[i]))throw Error('Faltan productos por verificar');tx.update(ref,{kpPacking:{...p,status:'listo',completedAt:Date.now(),completedBy:username()}})});K.order=null;notice('Empaque completado');draw()}catch(e){modalError(e,'completar el empaque')}};
+K.release=async ids=>{ids=[...new Set(ids.map(str).filter(Boolean))].slice(0,40);if(!ids.length)return;if(!confirm('¿Liberar '+ids.length+' orden(es) de empaque? No se eliminarán ni cambiarán sus productos o pagos.'))return;
+ try{await window.db.runTransaction(async tx=>{const refs=ids.map(id=>window.db.collection('orders').doc(id));const snaps=await Promise.all(refs.map(r=>tx.get(r)));snaps.forEach((sn,i)=>{if(!sn.exists)throw Error('La orden ya no existe');let o=sn.data(),p=o.kpPacking||{};if(!admin()&&p.byId!==uid())throw Error('No podés liberar una orden de otro empacador');if(p.status!=='preparando')throw Error('La orden '+ids[i]+' no está en preparación');tx.update(refs[i],{kpPacking:{status:'disponible',byId:'',byName:'',releasedAt:Date.now(),releasedBy:username(),verified:{}}})})});K.selection.clear();K.order=null;notice(ids.length+' orden(es) liberada(s)');draw()}catch(e){modalError(e,'liberar las órdenes')}};
+K.incidentSave=async()=>{let o=findOrder(K.order);if(!o||!isAccessible(o)||!admin()&&!mine(o))return;
+ let index=Number($('kfIncidentIndex')?.value||0),p=o.productos?.[index];if(!p)return;let type=$('kfIncidentType')?.value||'faltante',note=str($('kfIncidentNote')?.value),photo=$('kfIncidentPhoto')?.files?.[0];if(!note){notice('Describí qué sucedió con el producto.');return}if(photo&&photo.size>5e6){notice('La fotografía supera 5 MB');return}
+ try{let id=window.db.collection('orders').doc().id,photoUrl='';if(photo){let storage=window.firebase.storage().ref('kp_empaque/'+company()+'/'+id+'/'+photo.name.replace(/[^a-zA-Z0-9.\-_]/g,'_'));await storage.put(photo);photoUrl=await storage.getDownloadURL()}
+ await collection('packing_incidents').doc(id).set({orderId:o.id,orderNo:orderNo(o),branch:orderBranch(o),product:[p.categoria,p.modelo,p.tamano,p.colorEn||p.colorEs].filter(Boolean).join(' '),type,note,photoUrl,state:'pendiente',createdAt:stamp(),createdMillis:Date.now(),byId:uid(),byName:username(),companyId:company()});K.pick=null;notice('Incidencia registrada. El inventario no se descontó de nuevo.');draw();}catch(e){modalError(e,'registrar la incidencia')}};
+K.resolveIncident=async id=>{let item=K.incidents.find(x=>x.id===id);if(!item||!admin()&&(!packer()||item.branch!==ownBranch()))return;const note=prompt('¿Cómo se resolvió? (reemplazo, encontrada, ajuste pendiente, etc.)');if(note===null||!note.trim())return;try{await collection('packing_incidents').doc(id).update({state:'resuelta',resolution:note.trim(),resolvedBy:username(),resolvedAt:stamp()});notice('Incidencia resuelta. Si requiere ajuste de stock, registralo en Inventario.')}catch(e){modalError(e,'resolver la incidencia')}};
+/* === Caja y liquidaciones: cálculo conservador / auditable === */
+const isPaid=o=>norm(o.estadoPago)==='pagado'||norm(o.estadoPago)==='pagada';
+const payParts=o=>{
+ if(o.metodoPago==='mitad')return [1,2].map(i=>({method:o['metodoPagoMitad'+i],value:amt(o['montoMitad'+i]),paid:norm(o['estadoMitad'+i])==='pagado'}));
+ return [{method:str(o.metodoPago),value:amt(o.totalPedido||o.total||0),paid:isPaid(o)}];
+};
+const isCash=m=>/efectivo|contraentrega|contra entrega|cash|cod/i.test(str(m));
+const isBank=m=>/transferencia|link|tarjeta|pos/i.test(str(m));
+const orderDay=o=>str(o.fecha||o.fechaOrden||'').slice(0,10);
+function cashProjection(){const list=branchOrders().filter(o=>orderDay(o)===K.cashDate&&o.cancelada!==true);let sold=0,confirmed=0,cashLocal=0,heldByDriver=0,pending=0,bank=0;
+ list.forEach(o=>{sold+=amt(o.totalPedido||o.total||0);payParts(o).forEach(p=>{if(!p.paid){pending+=p.value;return}confirmed+=p.value;if(isCash(p.method)){if(o.enviadoRepartidor&&o.repartidorId)heldByDriver+=p.value;else cashLocal+=p.value}else if(isBank(p.method))bank+=p.value})});
+ const moves=K.cashRows.filter(x=>x.date===K.cashDate&&(K.branch==='all'||x.branch===currentBranch()));
+ const settlements=K.settlements.filter(x=>x.status==='confirmada'&&x.confirmedDate===K.cashDate&&(K.branch==='all'||x.branch===currentBranch()));
+ const cashIn=moves.filter(m=>m.type==='ingreso'||m.type==='fondo').reduce((a,m)=>a+amt(m.amount),0);
+ const cashOut=moves.filter(m=>m.type==='gasto'||m.type==='retiro').reduce((a,m)=>a+amt(m.amount),0);
+ const paidSettlement=settlements.reduce((a,m)=>a+amt(m.confirmedAmount),0);
+ const expected=Math.round((cashLocal+cashIn+paidSettlement-cashOut)*100)/100;
+ return {list,sold,confirmed,cashLocal,heldByDriver,pending,bank,moves,settlements,expected,cashIn,cashOut,paidSettlement};
+}
+const denoms=[500,200,100,50,20,10,5,2,1,.5];
+function counted(){return K.config?.cashMode==='rapido'&&!K.expandDenoms?amt(K.quickCount||0):denoms.reduce((a,x)=>a+x*Math.max(0,Math.floor(n(K.counts[x]))),0)}
+function cashScreen(){if(!admin())return driverCashScreen();const x=cashProjection();const clos=K.closures.find(z=>z.date===K.cashDate&&z.branch===currentBranch());let pending=K.settlements.filter(z=>z.status==='solicitada'&&(K.branch==='all'||z.branch===currentBranch()));
+ const dateField=field('Fecha',inp('kfCashDate',K.cashDate,'date'));
+ return header('Cierre de caja inteligente','Ventas, efectivo bajo custodia, liquidaciones y arqueos, separados de los cobros pendientes.')+
+ `<div class="kf-tools">${branchChooser(true)}${dateField}${button('Actualizar','cashUpdate')}</div>`+
+ `<div class="kf-numbers">${stat('Ventas del día',money(x.sold))}${stat('Pagos marcados pagados',money(x.confirmed))}${stat('Efectivo teórico en caja',money(x.expected))}${stat('Por cobrar en órdenes',money(x.pending))}</div>`+
+ `<div class="kf-2">${card(`<h2>Conciliación</h2>${rowInfo('Efectivo local pagado',money(x.cashLocal))}${rowInfo('Liquidaciones confirmadas recibidas',money(x.paidSettlement))}${rowInfo('Fondo / ingresos manuales',money(x.cashIn))}${rowInfo('Gastos y retiros',money(x.cashOut))}<div class="kf-divider"></div>${rowInfo('Efectivo esperado',money(x.expected),true)}${msg('El cálculo toma el estado actual de las órdenes. Los cobros con repartidor se muestran aparte, para no contarlos dos veces. Verificá los movimientos históricos antes de cerrar.')}`)}
+ ${card(`<h2>Cobros por conciliar</h2>${rowInfo('Efectivo asignado a repartidores',money(x.heldByDriver))}${rowInfo('Transferencias, links y tarjeta marcados pagados',money(x.bank))}${rowInfo('Contraentrega / otros pendientes',money(x.pending))}${msg('Un comprobante de transferencia no equivale a acreditación bancaria verificada. Confirmá los ingresos reales antes del cierre.')}`)}</div>`+
+ card(`<div class="kf-row"><h2>Liquidaciones de repartidores y vendedores</h2>${button('Registrar solicitud','settlementNew')}</div>${pending.map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(z.byName||'Empleado')} · ${money(z.amount)}</strong><small>${esc(z.date)} · ${esc(z.note||'Sin observaciones')}</small></div>${status('Por recibir','busy')}${button('Confirmar recepción','settlementConfirm:'+z.id,'sm primary')}</div>`).join('')||'<p>No hay liquidaciones esperando recepción.</p>'}${K.settlements.filter(z=>z.status==='confirmada'&&(K.branch==='all'||z.branch===currentBranch())).slice(-8).map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(z.byName)} · ${money(z.confirmedAmount)}</strong><small>Recibió: ${esc(z.confirmedBy)} · ${esc(z.confirmedDate||'')}</small></div>${status('Confirmada','ok')}</div>`).join('')}`)+
+ card(`<h2>Movimientos de efectivo</h2><div class="kf-tools">${button('Nuevo movimiento','cashMovement')}</div>${x.moves.slice().sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,20).map(m=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(m.type)} · ${money(m.amount)}</strong><small>${esc(m.note||'')} · ${esc(m.byName||'')}</small></div>${status(m.type==='gasto'||m.type==='retiro'?'Salida':'Entrada')}</div>`).join('')||'<p>No hay movimientos adicionales.</p>'}`)+
+ card(`<div class="kf-row"><h2>Arqueo de efectivo</h2>${clos?status('Cierre guardado','ok'):status('Sin cerrar','busy')}</div>${clos?`<div class="kf-help">Caja cerrada por ${esc(clos.closedBy)}. Efectivo contado ${money(clos.counted)}; diferencia ${money(clos.difference)}. Los cambios posteriores se deben reflejar mediante ajustes documentados.</div>`:''}
+ <p>Registrá cuánto efectivo contaste físicamente. En modo individual podés usar el cierre rápido; el arqueo detallado queda disponible cuando lo necesités.</p><div class="kf-divider"></div>${K.config?.cashMode==='rapido'&&!K.expandDenoms?field('Efectivo contado (cierre rápido)',inp('kfQuickCount',K.quickCount??'','number','step="0.01" min="0" placeholder="Ingresá el importe contado"'))+button('Contar por denominaciones','expandDenoms','sm'): `<div class="kf-denoms">${denoms.map(d=>field(money(d),inp('kfD'+String(d).replace('.','_'),K.counts[d]||0,'number','min="0" step="1"'))).join('')}</div>`}<div class="kf-divider"></div><div class="kf-row"><b>Contado</b><b id="kfCashArqueoResume">${money(counted())}</b></div><div class="kf-row"><b>Diferencia</b><b id="kfCashDifference">${money(counted()-x.expected)}</b></div>${field('Motivo de la diferencia, si la hay',`<textarea id="kfCashReason" placeholder="Ej. Cambio adicional, retiro pendiente de registrar...">${esc(K.note||'')}</textarea>`)}${clos?'':button('Confirmar cierre de caja','cashClose','primary')}${clos?button('Descargar comprobante PDF','cashPDF','sm'):''}${button('Exportar Excel','cashExcel','sm')}`)+cashForm();
+}
+const rowInfo=(a,b,bold=false)=>`<div class="kf-row" style="margin:8px 0"><span class="${bold?'':'kf-muted'}">${esc(a)}</span><strong>${esc(b)}</strong></div>`;
+function driverCashScreen(){let mine=K.settlements.filter(x=>x.byId===uid()).sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0));let own=orders().filter(o=>{let assigned=driver()?str(o.repartidorId||o.repartidorUsuario)===uid()||norm(o.repartidorNombre)===norm(username()):norm(o.vendedor)===norm(username());return assigned&&orderDay(o)===K.cashDate});let due=own.reduce((a,o)=>a+payParts(o).reduce((b,p)=>b+(p.paid&&isCash(p.method)?p.value:0),0),0);
+ return header('Mis liquidaciones','Consultá tus órdenes cobradas y solicitá entregar el dinero a caja.')+`<div class="kf-tools">${field('Fecha',inp('kfCashDate',K.cashDate,'date'))}</div><div class="kf-numbers">${stat('Efectivo cobrado (según órdenes)',money(due))}${stat('Órdenes asignadas',own.length)}</div>`+
+ card(`<h2>Entregar liquidación</h2>${msg('Al solicitar no se marca como recibido. El administrador confirmará el efectivo real entregado.')}${button('Solicitar liquidación','settlementNew','primary')}`)+
+ card(`<h2>Historial</h2>${mine.map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${money(z.amount)} · ${esc(z.date)}</strong><small>${esc(z.note||'')}</small></div>${status(z.status==='confirmada'?'Recibida':'Pendiente',z.status==='confirmada'?'ok':'busy')}</div>`).join('')||'<p>Sin liquidaciones registradas.</p>'}`)+cashForm();
+}
+K.newMovement=async()=>{if(!admin())return;let type=$('kfMoveType')?.value,amount=amt($('kfMoveAmount')?.value),note=str($('kfMoveNote')?.value),date=K.cashDate,branch=currentBranch();if(K.branch==='all'){notice('Seleccioná una sucursal específica para registrar movimientos');return}if(!amount||!note){notice('Completá monto y motivo');return}if(K.closures.some(c=>c.branch===branch&&c.date===date)){notice('Esta caja ya cerró. No podés agregar movimientos retroactivos en un cierre confirmado.');return}
+ try{await collection('cash_movements').add({type,amount,note,date,branch,createdAt:stamp(),createdMillis:Date.now(),byId:uid(),byName:username()});K.pick=null;notice('Movimiento registrado');draw()}catch(e){modalError(e,'registrar el movimiento')}};
+K.requestSettlement=async()=>{const amount=amt($('kfSetAmount')?.value),note=str($('kfSetNote')?.value),b=currentBranch();if(!amount){notice('Ingresá el importe a entregar');return}if(b==='all'){notice('Seleccioná una sucursal');return}
+ try{await collection('cash_settlements').add({date:K.cashDate,branch:b,amount,note,byId:uid(),byName:username(),status:'solicitada',createdAt:stamp(),createdMillis:Date.now()});K.pick=null;notice('Liquidación solicitada, pendiente de confirmación');draw()}catch(e){modalError(e,'solicitar la liquidación')}};
+K.confirmSettlement=async id=>{if(!admin())return;let z=K.settlements.find(x=>x.id===id);if(!z||z.status!=='solicitada')return;let a=prompt('¿Cuánto efectivo recibiste físicamente de '+z.byName+'? (L)',z.amount);if(a===null)return;let amount=amt(a);if(amount<=0||amount>z.amount){notice('El monto recibido debe ser mayor a 0 y no superar el solicitado. Si hay saldo, registrá otra liquidación.');return}
+ if(!confirm('¿Confirmás haber recibido '+money(amount)+' en efectivo?'))return;
+ try{await window.db.runTransaction(async tx=>{let ref=collection('cash_settlements').doc(id),s=await tx.get(ref);if(!s.exists||s.data().status!=='solicitada')throw Error('La liquidación fue atendida por otra persona');tx.update(ref,{status:'confirmada',confirmedAmount:amount,remainingAmount:amt(s.data().amount-amount),confirmedBy:username(),confirmedById:uid(),confirmedDate:today(),confirmedAt:stamp()})});notice('Recepción confirmada');draw()}catch(e){modalError(e,'confirmar la liquidación')}};
+K.closeCash=async()=>{if(!admin())return;if(K.branch==='all'){notice('Seleccioná una sucursal concreta para cerrar caja');return}const x=cashProjection();if(K.config?.cashMode==='rapido'&&!K.expandDenoms&&(K.quickCount===''||K.quickCount==null)){notice('Introducí el efectivo que contaste antes de cerrar.');return}const countedAmount=amt(counted()),diff=Math.round((countedAmount-x.expected)*100)/100,reason=str($('kfCashReason')?.value);
+ if(Math.abs(diff)>.005&&!reason){notice('Explicá la diferencia antes de cerrar la caja');return}if(!confirm('¿Cerrar la caja de '+branchName(currentBranch())+' del '+K.cashDate+'? Este cierre no podrá modificarse.'))return;
+ try{const id=currentBranch()+'_'+K.cashDate;await window.db.runTransaction(async tx=>{const ref=collection('cash_closures').doc(id),s=await tx.get(ref);if(s.exists)throw Error('Esta caja ya fue cerrada');tx.set(ref,{date:K.cashDate,branch:currentBranch(),expected:x.expected,counted:countedAmount,difference:diff,reason,breakdown:{sold:x.sold,confirmed:x.confirmed,cashLocal:x.cashLocal,heldByDriver:x.heldByDriver,pending:x.pending,bank:x.bank,cashIn:x.cashIn,cashOut:x.cashOut,paidSettlement:x.paidSettlement},denominations:{...K.counts},closedBy:username(),closedById:uid(),closedAt:stamp(),companyId:company()})});notice('Cierre de caja registrado');draw()}catch(e){modalError(e,'cerrar la caja')}};
+/* Exportación de conciliaciones: los resultados son instantáneas, no certificaciones bancarias. */
+K.cashExcel=()=>{if(!admin())return;const x=cashProjection();if(!window.XLSX){notice('La librería Excel no está disponible');return}
+ const data=[['CIERRE DE CAJA KPLACE'],['Sucursal',branchName(currentBranch())],['Fecha',K.cashDate],['Concepto','Lempiras / moneda configurada'],['Ventas del día',x.sold],['Pagos marcados pagados',x.confirmed],['Efectivo local marcado pagado',x.cashLocal],['En manos de repartidores',x.heldByDriver],['Liquidaciones confirmadas',x.paidSettlement],['Fondo y entradas',x.cashIn],['Gastos y retiros',x.cashOut],['Efectivo esperado',x.expected],['Efectivo contado',counted()],['Diferencia',counted()-x.expected],[],['MOVIMIENTOS'],['Fecha','Tipo','Monto','Responsable','Motivo'],...x.moves.map(m=>[m.date,m.type,m.amount,m.byName,m.note])];
+ const sheet=window.XLSX.utils.aoa_to_sheet(data),book=window.XLSX.utils.book_new();sheet['!cols']=[{wch:32},{wch:32},{wch:18},{wch:25},{wch:35}];window.XLSX.utils.book_append_sheet(book,sheet,'Caja');window.XLSX.writeFile(book,'KPlace_Caja_'+K.cashDate+'.xlsx');};
+K.cashPdf=()=>{if(!admin())return;const c=K.closures.find(c=>c.date===K.cashDate&&c.branch===currentBranch());if(!c){notice('Primero tenés que cerrar la caja');return}
+ const PDF=window.jspdf?.jsPDF;if(!PDF){notice('No se cargó el generador PDF');return}let pdf=new PDF({unit:'pt',format:'a4'}),y=55;pdf.setFontSize(18);pdf.text('KPlace · Cierre de caja',42,y);y+=34;pdf.setFontSize(11);for(const [k,v] of [['Sucursal',branchName(c.branch)],['Fecha',c.date],['Cerró',c.closedBy],['Efectivo esperado',money(c.expected)],['Efectivo contado',money(c.counted)],['Diferencia',money(c.difference)],['Motivo',c.reason||'Sin diferencias']]){const lines=pdf.splitTextToSize(k+': '+String(v),500);pdf.text(lines,42,y);y+=15*lines.length+7}pdf.text('Registro del sistema. Sujeto a conciliación con cobros reales.',42,770);pdf.save('KPlace_Cierre_'+c.date+'.pdf')};
+/* === Recibos de compra: únicamente documentos comerciales no fiscales === */
+const receiptCurrencies=[['L','L · Lempiras'],['Q','Q · Quetzales'],['$','$ · Dólares'],['C$','C$ · Córdobas'],['₡','₡ · Colones'],['B/.','B/. · Balboas']];
+function productLabel(p){return [p.categoria==='__custom__'?p.categoriaManual:p.categoria,p.modelo,p.tamano,p.colorEn||p.colorEs].filter(Boolean).join(' · ')||'Producto'}
+function orderDoc(o){
+ let products=(o.productos||[]).map(p=>({name:productLabel(p),qty:Math.max(1,n(p.cantidad)||1),price:amt(p.precio||p.precioUnitario||p.precioVenta||0)}));
+ let pay=payParts(o).map(p=>({method:p.method||'efectivo',amount:p.value,paid:p.paid}));
+ return {kind:'recibo',orderId:o.id,orderNo:orderNo(o),currency:K.config?.currency||'L',businessName:K.config?.businessName||o.companyName||'Mi negocio',businessAddress:K.config?.businessAddress||'',businessPhone:K.config?.businessPhone||'',logo:K.config?.logo||'',client:o.cliente||'',clientId:'',phone:o.numero||'',address:o.direccion||'',platform:o.plataforma||'',branch:orderBranch(o),items:products.length?products:[{name:'Producto de la orden',qty:1,price:amt(o.totalPedido)}],shipping:0,other:0,discount:0,taxPct:0,taxIncluded:true,payments:pay,notes:'Gracias por tu compra.',createdMillis:Date.now(),status:'borrador',sourceTotal:amt(o.totalPedido||o.total||0)};
+}
+K.newDocument=function(id){let o=findOrder(id);if(!o||!isAccessible(o)){notice('No se encontró la orden o no tenés acceso.');return}K.order=id;K.doc=orderDoc(o);draw()};
+function documentTotals(d){let subtotal=(d.items||[]).reduce((a,i)=>a+amt(i.price)*Math.max(0,n(i.qty)),0),base=Math.max(0,subtotal-amt(d.discount)+amt(d.shipping)+amt(d.other)),pct=Math.min(100,amt(d.taxPct)),tax=d.taxIncluded?base*(pct/(100+pct)):base*pct/100,total=d.taxIncluded?base:base+tax,paid=(d.payments||[]).filter(p=>p.paid).reduce((a,p)=>a+amt(p.amount),0);return {subtotal,base,tax:amt(tax),total:amt(total),paid:amt(paid),pending:amt(Math.max(0,total-paid))}}
+const methods=[['efectivo','Efectivo'],['transferencia','Transferencia'],['link de pago','Link de pago'],['pos','Tarjeta / POS'],['contraentrega','Contraentrega'],['otro','Otro']];
+function documentsScreen(){const all=branchOrders();let left=card(`<h2>Órdenes guardadas</h2>${field('Buscar cliente, número de orden o teléfono',inp('kfDocSearch',K.note||'','search','placeholder="Buscar..."'))}<div id="kfDocRows">${docOrderRows(all)}</div>`);
+ if(K.doc){return header('Recibos de compra','Editá un recibo comercial, comprobá los montos y descargalo en PDF para compartirlo por WhatsApp.')+branchChooser(true)+`<div class="kf-2">${documentEditor()}${documentPreview()}</div>`+card(`<h2>Recibos guardados</h2>${draftList()}`)}
+ return header('Recibos de compra','Elegí una orden para generar un recibo comercial no fiscal.')+branchChooser(true)+left+card(`<h2>Recibos guardados</h2>${draftList()}`);
+}
+function docOrderRows(all){const q=norm(K.note||'');return all.filter(o=>!q||norm([o.cliente,o.numero,o.numero2,orderNo(o)].join(' ')).includes(q)).slice(-50).map(o=>`<div class="kf-entry"><div class="kf-entry-text"><strong>#${esc(orderNo(o))} · ${esc(o.cliente||'Sin nombre')}</strong><small>${esc(o.fecha||'')} · ${money(o.totalPedido)}</small></div><div class="kf-actions">${button('Generar recibo','newReceipt:'+o.id,'sm')}</div></div>`).join('')||'<p>No hay órdenes para mostrar.</p>'}
+function draftList(){return K.drafts.filter(d=>d.kind==='recibo'||!d.kind).slice().sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,35).map(d=>`<div class="kf-entry"><div class="kf-entry-text"><strong>Recibo · #${esc(d.orderNo||'')}</strong><small>${esc(d.client||'')} · ${esc(d.status||'borrador')} · ${money(d.finalTotal||0)}</small></div>${button('Editar','editDraft:'+d.id,'sm')}</div>`).join('')||'<p>No se guardaron recibos todavía.</p>'}
+function documentEditor(){let d=K.doc,t=documentTotals(d);return card(`<div class="kf-row"><div><h2>Editor de recibo comercial</h2><p>Orden #${esc(d.orderNo)} · ${esc(branchName(d.branch))}</p></div>${status('Borrador','busy')}</div>
+ <div class="kf-tools" style="margin-top:14px">${button('Cambiar de orden','docClose','sm')}</div>
+ ${msg('Comprobante comercial NO FISCAL. No incluye códigos de autorización ni reemplaza la factura que el negocio esté obligado a emitir.')}
+ <div class="kf-fields">${field('Nombre del negocio',inp('kfDocBiz',d.businessName))}${field('Teléfono del negocio',inp('kfDocBizPhone',d.businessPhone))}${field('Cliente',inp('kfDocClient',d.client))}${field('Referencia del cliente (opcional)',inp('kfDocClientId',d.clientId))}${field('Teléfono del cliente',inp('kfDocPhone',d.phone))}${field('Moneda',select('kfDocCurrency',receiptCurrencies,d.currency||'L'))}</div>
+ ${field('Dirección del negocio',inp('kfDocAddress',d.businessAddress))}${field('Origen de la venta (Instagram, WhatsApp, tienda...)',inp('kfDocPlatform',d.platform))}
+ <div class="kf-divider"></div><div class="kf-row"><h3>Productos</h3>${button('+ Producto','docAddItem','sm')}</div>${d.items.map((i,idx)=>`<div class="kf-item"><div class="kf-fields">${field('Descripción',`<input data-doc-item="${idx}" data-key="name" value="${esc(i.name)}">`)}${field('Cantidad',`<input type="number" min="0" step="1" data-doc-item="${idx}" data-key="qty" value="${esc(i.qty)}">`)}${field('Precio unitario',`<input type="number" min="0" step="0.01" data-doc-item="${idx}" data-key="price" value="${esc(i.price)}">`)}</div>${button('Quitar producto','docDelItem:'+idx,'sm warn')}</div>`).join('')}
+ <div class="kf-divider"></div><h3>Cargos, descuentos y desglose informativo</h3><div class="kf-fields">${field('Descuento',inp('kfDocDiscount',d.discount,'number','step="0.01" min="0"'))}${field('Envío al cliente',inp('kfDocShipping',d.shipping,'number','step="0.01" min="0"'))}${field('Otros cargos cobrados al cliente',inp('kfDocOther',d.other,'number','step="0.01" min="0"'))}${field('Impuesto (%) si corresponde',inp('kfDocTax',d.taxPct,'number','min="0" max="100" step="0.01"'))}</div><label class="kf-check" style="margin:12px 0"><input type="checkbox" id="kfDocTaxIncluded" ${d.taxIncluded?'checked':''}> Los precios ya incluyen el impuesto indicado</label>${msg('El porcentaje es opcional y manual: no representa cálculo ni validación tributaria. Verificá que el importe coincida con el cobro real.')}
+ <div class="kf-divider"></div><div class="kf-row"><h3>Por dónde se cobró</h3>${button('+ Forma de pago','docAddPay','sm')}</div>${d.payments.map((p,idx)=>`<div class="kf-item"><div class="kf-fields">${field('Método',`<select data-doc-pay="${idx}" data-key="method">${methods.map(([v,l])=>`<option value="${esc(v)}" ${norm(v)===norm(p.method)?'selected':''}>${esc(l)}</option>`).join('')}</select>`)}${field('Monto',`<input type="number" min="0" step="0.01" data-doc-pay="${idx}" data-key="amount" value="${esc(p.amount)}">`)}</div><div class="kf-row"><label class="kf-check"><input type="checkbox" data-doc-pay="${idx}" data-key="paid" ${p.paid?'checked':''}> Cobro confirmado</label>${button('Eliminar','docDelPay:'+idx,'sm warn')}</div></div>`).join('')}
+ ${field('Observaciones',`<textarea id="kfDocNotes">${esc(d.notes)}</textarea>`)}
+ ${Math.abs(d.sourceTotal-t.total)>0.01?`<div class="kf-danger">El total editado (${money(t.total)}) difiere de la orden original (${money(d.sourceTotal)}). Revisá productos, cargos e importes antes de compartir. Este editor no modifica la orden original.</div>`:''}
+ <div class="kf-actions">${button('Guardar borrador','docSave','primary')}${button('Descargar PDF','docPDF')}${button('Compartir por WhatsApp','docShare')}</div>`);
+}
+function documentPreview(){let d=K.doc,t=documentTotals(d);return `<div class="kf-receipt" id="kfDocPreview"><div class="kf-row" style="align-items:flex-start"><div><small>KPLACE · VISTA PREVIA</small><h2>RECIBO DE COMPRA</h2><p>COMPROBANTE COMERCIAL NO FISCAL</p></div>${d.logo?`<img class="kf-inline-logo" src="${esc(d.logo)}" alt="Logo del negocio">`:''}</div><hr><div class="kf-row"><div><b>${esc(d.businessName)}</b><p>${esc(d.businessAddress||'')}</p>${d.businessPhone?`<p>Tel: ${esc(d.businessPhone)}</p>`:''}</div><div style="text-align:right"><p>Orden #${esc(d.orderNo)}</p><p>${esc(today())}</p></div></div><hr><b>Cliente: ${esc(d.client)}</b><p>${esc(d.phone||'')} ${d.clientId?' · Ref. '+esc(d.clientId):''}</p><div style="margin-top:16px">${d.items.map(i=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(i.name)}</strong><small>${esc(i.qty)} × ${money(i.price)}</small></div><b>${money(n(i.qty)*n(i.price))}</b></div>`).join('')}</div>
+ <div style="margin-top:15px">${rowInfo('Subtotal',money(t.subtotal))}${rowInfo('Descuento','− '+money(d.discount))}${rowInfo('Envío',money(d.shipping))}${rowInfo('Otros cargos',money(d.other))}${rowInfo('Impuesto informado '+n(d.taxPct)+'%'+(d.taxIncluded?' incluido':''),money(t.tax))}<hr>${rowInfo('TOTAL',money(t.total),true)}${rowInfo('Pagado',money(t.paid))}${rowInfo('Saldo pendiente',money(t.pending))}</div><hr><b>Origen: ${esc(d.platform||'No indicado')}</b><p>Pagos: ${d.payments.map(p=>esc(p.method)+' '+money(p.amount)+(p.paid?' (confirmado)':' (pendiente)')).join(' · ')||'Ninguno'}</p><p style="margin-top:12px">${esc(d.notes||'')}</p><p style="text-align:center;font-weight:800;margin-top:18px">RECIBO COMERCIAL - NO VÁLIDO COMO FACTURA FISCAL</p></div>`}
+K.saveDoc=async()=>{let d=K.doc;if(!d)return;if(!str(d.client)||!(d.items||[]).length){notice('Indicá el cliente y al menos un producto');return}
+ try{const id=d.id||collection('document_drafts').doc().id;const allowed=['id','orderId','orderNo','currency','businessName','businessAddress','businessPhone','logo','client','clientId','phone','address','platform','branch','items','shipping','other','discount','taxPct','taxIncluded','payments','notes','createdMillis','status','sourceTotal'];let data={};for(const key of allowed){if(d[key]!==undefined)data[key]=d[key]}Object.assign(data,{id,kind:'recibo',finalTotal:documentTotals(d).total,status:'borrador',savedBy:uid(),savedAt:stamp(),companyId:company(),createdMillis:d.createdMillis||Date.now()});await collection('document_drafts').doc(id).set(data,{merge:true});d.id=id;d.kind='recibo';notice('Recibo guardado como borrador');draw()}catch(e){modalError(e,'guardar el recibo')} };
+function pdfObject(){
+ const {jsPDF}=window.jspdf||{};
+ if(!jsPDF)throw Error('No se cargó el generador PDF');
+ const d=K.doc;
+ if(!d)throw Error('Abrí primero un recibo');
+ const t=documentTotals(d),doc=new jsPDF({unit:'pt',format:'a4'}),w=doc.internal.pageSize.getWidth(),h=doc.internal.pageSize.getHeight(),m=42;
+ let y=55,page=1;
+ function nextPage(){doc.addPage();page++;y=48}
+ function check(need){if(y+need>h-70)nextPage()}
+ function txt(v,x,sz=10,bold=false,color=[30,34,48],max=w-2*m){doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(sz);doc.setTextColor(...color);let lines=doc.splitTextToSize(String(v??''),max);check(lines.length*(sz+3));doc.text(lines,x,y);y+=lines.length*(sz+3)+4}
+ if(d.logo&&/^data:image\//.test(d.logo)){try{doc.addImage(d.logo,'PNG',w-m-105,47,98,58)}catch(e){}}
+ doc.setFillColor(58,35,102);doc.rect(0,0,w,29,'F');doc.setTextColor(255,255,255);doc.setFontSize(10);doc.text('KPLACE  ·  RECIBOS',m,20);
+ txt('RECIBO DE COMPRA',m,20,true,[39,33,65]);txt('COMPROBANTE COMERCIAL NO FISCAL',m,10,true,[135,69,83]);y+=5;
+ txt(d.businessName,m,15,true);if(d.businessPhone)txt('Teléfono del negocio: '+d.businessPhone,m,9);if(d.businessAddress)txt(d.businessAddress,m,9);
+ y+=6;doc.setDrawColor(214,210,226);doc.line(m,y,w-m,y);y+=18;
+ txt('Cliente: '+d.client,m,11,true);txt('Orden #'+d.orderNo+'   |   '+today(),m,9);if(d.phone)txt('Teléfono: '+d.phone,m,9);if(d.clientId)txt('Referencia del cliente: '+d.clientId,m,9);
+ y+=8;doc.setFillColor(239,235,248);doc.rect(m,y-10,w-2*m,22,'F');txt('PRODUCTOS',m+10,10,true,[53,35,88]);
+ for(const item of d.items){check(48);let name=doc.splitTextToSize(str(item.name),w-2*m-125);doc.setTextColor(33,38,52);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(name,m,y);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(str(item.qty)+' x '+money(item.price),w-m,y,{align:'right'});y+=Math.max(1,name.length)*13+8;doc.setDrawColor(229,230,235);doc.line(m,y-3,w-m,y-3)}
+ y+=8;for(let [label,val] of [['Subtotal',t.subtotal],['Descuento',-amt(d.discount)],['Envío',amt(d.shipping)],['Otros cargos',amt(d.other)],['Impuesto informado '+n(d.taxPct)+'%',t.tax],['TOTAL',t.total],['Pago confirmado',t.paid],['Saldo pendiente',t.pending]]){check(18);doc.setFont('helvetica',label==='TOTAL'?'bold':'normal');doc.setFontSize(label==='TOTAL'?13:10);doc.setTextColor(35,40,55);doc.text(label,m,y);doc.text((val<0?'- ':'')+money(Math.abs(val)),w-m,y,{align:'right'});y+=19}
+ y+=12;txt('Origen de venta: '+(d.platform||'No especificado'),m,9);txt('Detalle de pagos:',m,9,true);
+ for(const pay of d.payments){txt('• '+pay.method+' · '+money(pay.amount)+' · '+(pay.paid?'Confirmado':'Pendiente'),m,9)}
+ if(d.notes){y+=8;txt('Observaciones: '+d.notes,m,9)}
+ check(65);y+=20;txt('RECIBO COMERCIAL - NO ES FACTURA FISCAL',m,10,true,[146,55,67]);
+ for(let i=1;i<=page;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(126,129,145);doc.text('Documento de KPlace · Página '+i+' de '+page,w-m,h-26,{align:'right'})}
+ return {blob:doc.output('blob'),file:'Recibo-Comercial-'+String(d.orderNo||'Orden').replace(/[^a-zA-Z0-9_-]/g,'')+'.pdf'};
+}
+K.downloadDoc=()=>{try{let p=pdfObject(),url=URL.createObjectURL(p.blob),a=document.createElement('a');a.href=url;a.download=p.file;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);notice('Recibo comercial en PDF generado')}catch(e){modalError(e,'generar el PDF')}};
+K.shareDoc=async()=>{try{const p=pdfObject(),file=new File([p.blob],p.file,{type:'application/pdf'});if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:p.file,text:'Recibo de compra'});return}K.downloadDoc();let phone=str(K.doc.phone).replace(/\D/g,'');let text=encodeURIComponent('Te comparto tu recibo de compra de la orden #'+K.doc.orderNo+'. Adjunto el PDF por este chat.');window.open('https://wa.me/'+(phone||'')+'?text='+text,'_blank','noopener');notice('Se descargó el PDF. Adjuntalo manualmente en WhatsApp; el enlace no adjunta archivos.')}catch(e){if(e?.name!=='AbortError')modalError(e,'compartir el PDF')}};
+/* === Configuración, roles y automatizaciones === */
+const ruleTypes=[['delay','Orden sin enviar'],['platform','Orden sin plataforma'],['stock','Inventario bajo'],['settlement','Liquidación pendiente'],['summary','Resumen del día']];
+function defaults(){return [{id:'delays',name:'Pedidos atrasados',type:'delay',threshold:2,enabled:false},{id:'platform',name:'Sin plataforma',type:'platform',threshold:1,enabled:false},{id:'stock',name:'Inventario bajo',type:'stock',threshold:3,enabled:false},{id:'settlement',name:'Liquidaciones pendientes',type:'settlement',threshold:1,enabled:false},{id:'summary',name:'Resumen diario',type:'summary',threshold:0,enabled:false}]}
+function automationsScreen(){return header('Automatizaciones','Reglas configurables por empresa. Se detectan incidencias mientras KPlace está abierta; para monitoreo permanente se necesita desplegar la función de servidor.')+
+ msg('Las reglas que guardés pueden producir avisos dentro de la app. Los avisos 24/7, correos y push requieren habilitar y asegurar el backend incluido por separado.')+
+ card(`<div class="kf-row"><h2>Reglas de tu empresa</h2>${button('+ Crear regla','ruleAdd','primary')}</div>${(K.rules.length?K.rules:defaults()).map((r,i)=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(r.name||'Nueva regla')}</strong><small>${esc(ruleTypes.find(x=>x[0]===r.type)?.[1]||r.type)} · Umbral: ${n(r.threshold)} ${r.type==='stock'?'unidades':r.type==='summary'?'':r.type==='platform'||r.type==='delay'||r.type==='settlement'?'días':''}</small></div>${status(r.enabled?'Activa':'Inactiva',r.enabled?'ok':'')}${button('Configurar','ruleEdit:'+r.id,'sm')}${button(r.enabled?'Desactivar':'Activar','ruleToggle:'+r.id,'sm')}</div>`).join('')}`)+
+ card(`<h2>Avisos registrados</h2>${(K.alerts||[]).slice().sort((a,b)=>str(b.date).localeCompare(str(a.date))).slice(0,30).map(a=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(a.message||'Aviso')}</strong><small>${esc(a.date||'')}</small></div>${status('Registrado')}</div>`).join('')||'<p>Todavía no hay avisos de automatizaciones.</p>'}`)+
+ (K.pick==='rule'?card(`<h2>Configurar regla</h2>${field('Nombre',inp('kfRuleName',K.note?.name||''))}<div class="kf-fields">${field('Qué vigilar',select('kfRuleType',ruleTypes,K.note?.type||'delay'))}${field('Umbral (días o unidades)',inp('kfRuleThreshold',K.note?.threshold??2,'number','min="0"'))}</div>${field('Sucursal',select('kfRuleBranch',[['all','Todas las sucursales'],...optsBranch()],K.note?.branch||'all'))}${msg('La regla genera avisos dentro de KPlace, no cambia pedidos, saldos ni inventario automáticamente.')}${button('Guardar regla','ruleSave','primary')}${button('Cancelar','ruleCancel')}`):'');
+}
+K.saveRule=async()=>{if(!admin())return;let name=str($('kfRuleName')?.value),type=$('kfRuleType')?.value,threshold=amt($('kfRuleThreshold')?.value),branch=$('kfRuleBranch')?.value||'all';if(!name||!ruleTypes.some(x=>x[0]===type)){notice('Completá el nombre y el tipo de regla');return}try{const id=K.note?.id||collection('automation_rules').doc().id;await collection('automation_rules').doc(id).set({name,type,threshold,branch,enabled:K.note?.enabled??false,updatedAt:stamp(),updatedBy:uid(),companyId:company()},{merge:true});K.pick=null;notice('Regla guardada');draw()}catch(e){modalError(e,'guardar la regla')}};
+K.toggleRule=async id=>{if(!admin())return;let r=K.rules.find(x=>x.id===id)||defaults().find(x=>x.id===id);if(!r)return;try{await collection('automation_rules').doc(id).set({...r,enabled:!r.enabled,updatedBy:uid(),updatedAt:stamp()},{merge:true});notice('Automatización '+(!r.enabled?'activada':'desactivada'))}catch(e){modalError(e,'actualizar la regla')}};
+K.evaluate=async()=>{if(!user()||!window.db||!K.rules.length)return;const ds=today(),now=new Date(ds+'T12:00:00');let events=[];
+ for(const r of K.rules.filter(x=>x.enabled)){
+  const b=orders().filter(o=>r.branch==='all'||orderBranch(o)===r.branch);
+  if(r.type==='delay')b.filter(o=>!o.boxfulShipment&&!o.entregado&&!o.enviadoRepartidor&&Math.floor((now-new Date((o.fecha||ds)+'T12:00:00'))/86400000)>=n(r.threshold)).forEach(o=>events.push({rule:r,record:o.id,label:'Orden #'+orderNo(o)+' sin envío'}));
+  else if(r.type==='platform')b.filter(o=>!str(o.plataforma)&&Math.floor((now-new Date((o.fecha||ds)+'T12:00:00'))/86400000)>=n(r.threshold)).forEach(o=>events.push({rule:r,record:o.id,label:'Orden #'+orderNo(o)+' sin plataforma'}));
+  else if(r.type==='stock')(window.INVENTARIO||[]).filter(x=>(r.branch==='all'||str(x.ubicacionId||x.sucursalId)===r.branch)&&n(x.cantidad)<=n(r.threshold)).forEach(x=>events.push({rule:r,record:x.id,label:'Stock bajo: '+productLabel(x)}));
+  else if(r.type==='settlement')K.settlements.filter(x=>x.status==='solicitada'&&(r.branch==='all'||r.branch===x.branch)&&Math.floor((now-new Date((x.date||ds)+'T12:00:00'))/86400000)>=n(r.threshold)).forEach(x=>events.push({rule:r,record:x.id,label:'Liquidación pendiente: '+x.byName}));
+  else if(r.type==='summary'){events.push({rule:r,record:ds,label:'Resumen diario: '+b.filter(o=>o.fecha===ds).length+' órdenes'})}
+ }
+ for(const e of events.slice(0,25)){
+  const id=[e.rule.id,e.record,ds].join('_').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,130);
+  try{await window.db.runTransaction(async tx=>{const ref=collection('automation_alerts').doc(id),snap=await tx.get(ref);if(!snap.exists)tx.set(ref,{ruleId:e.rule.id,record:e.record,date:ds,message:e.label,companyId:company(),createdAt:stamp()})})}catch(err){/* idempotencia: regla/record/fecha única; otros clientes la pueden evaluar también */}
+ }
+};
+function settingsScreen(){let c=K.config||{},list=window.VENDEDORES||[],isAdmin=admin();return header('Modos y permisos','KPlace se adapta al tamaño del negocio. El Administrador general conserva todas las herramientas existentes.')+
+ card(`<h2>Modo de operación de la empresa</h2><div class="kf-fields">${field('Cómo trabaja tu negocio',select('kfMode',[['solo','Individual · 1 persona'],['equipo','Equipo pequeño · 2 a 5'],['empresa','Empresarial · roles separados']],c.mode||'solo'))}${field('Cierre de caja',select('kfCashMode',[['rapido','Rápido'],['completo','Con arqueo completo']],c.cashMode||'rapido'))}</div><label class="kf-check" style="margin-top:14px"><input id="kfAutoAssign" type="checkbox" ${c.autoAssign?'checked':''}> Autoasignar tareas si hay un solo operador</label>${msg('Cambiar el modo no borra órdenes, inventario, empresas ni funciones, y no quita permisos al Administrador general.')}${button('Guardar modo de operación','saveMode','primary')}`)+
+ card(`<h2>Empacador: rol único</h2><p>Cualquier empacador ve todos los pedidos de su sucursal. El primero en tomar una orden la bloquea para los demás. El Administrador general puede liberar una o varias órdenes.</p>${list.map((u,i)=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(u.nombre||u.usuario||'Usuario')}</strong><small>${esc(branchName(u.sucursalId||ownBranch()))} · ${u.esAdmin?'Administrador general':u.esEmpacador?'Empacador':'Otro rol'}</small></div>${u.esAdmin?status('Acceso total','ok'):button(u.esEmpacador?'Quitar Empacador':'Dar rol Empacador','rolePacker:'+i,'sm')}</div>`).join('')||'<p>Creá usuarios desde «Usuarios y equipo» para asignarles el rol de Empacador.</p>'}`)+
+ card(`<h2>Datos del negocio y recibos</h2><div class="kf-fields">${field('Nombre comercial',inp('kfCfgName',c.businessName||''))}${field('Moneda',select('kfCfgCurrency',receiptCurrencies,c.currency||'L'))}${field('Dirección del negocio',inp('kfCfgAddress',c.businessAddress||''))}${field('Teléfono del negocio',inp('kfCfgPhone',c.businessPhone||''))}</div>${field('Logo (PNG o JPG, se redimensiona)',`<input type="file" id="kfCfgLogo" accept="image/png,image/jpeg,image/webp">`)}${c.logo?`<div style="margin:10px 0"><img class="kf-inline-logo" src="${esc(c.logo)}" alt="Logo configurado"></div>`:''}${button('Guardar datos para recibos','saveReceiptSettings','primary')}${msg('Estos datos se usan en recibos comerciales no fiscales. Los recibos no sustituyen los documentos fiscales exigibles.')}`)+
+ card(`<h2>Propiedad de KPlace</h2>${msg('El Superadministrador de la plataforma debe habilitarse con una declaración de identidad firmada por Firebase Admin SDK (custom claim). No se concede por ser el primer usuario ni cambiando datos en el navegador.')}<p>El Administrador general mantiene control completo sobre su empresa y sucursales. No accede a la información de otros negocios.</p>`);
+}
+K.togglePacker=async i=>{if(!admin())return;let x=(window.VENDEDORES||[])[i];if(!x||x.esAdmin)return;if(!confirm((x.esEmpacador?'Quitar':'Asignar')+' el rol de Empacador a '+x.nombre+'?'))return;
+ try{await window.db.runTransaction(async tx=>{const ref=window.db.collection('config').doc('vendedores'),sn=await tx.get(ref),list=sn.data()?.lista;if(!Array.isArray(list))throw Error('No hay usuarios');const target=list.find(u=>str(u.email||u.usuario||u.nombre)===str(x.email||x.usuario||x.nombre));if(!target)throw Error('El usuario ya no existe');target.esEmpacador=!target.esEmpacador;if(target.esEmpacador&&!target.esAdmin)target.cargo='Empacador';else if(!target.esAdmin)target.cargo=target.esRepartidor?'Repartidor':target.esEncargadoEnvios?'Administrador de envíos':'Vendedor';tx.set(ref,{lista:list},{merge:true})});notice('Rol actualizado');draw()}catch(e){modalError(e,'actualizar el rol')}};
+K.setLogo=async file=>{if(!file)return;if(file.size>5e6){notice('La imagen debe ser menor a 5 MB');return}try{let data=await new Promise((resolve,reject)=>{const im=new Image(),reader=new FileReader();reader.onload=()=>{im.onload=()=>{let canvas=document.createElement('canvas'),scale=Math.min(1,400/Math.max(im.width,im.height));canvas.width=Math.max(1,Math.round(im.width*scale));canvas.height=Math.max(1,Math.round(im.height*scale));canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/png'))};im.onerror=reject;im.src=reader.result};reader.onerror=reject;reader.readAsDataURL(file)});K._newLogo=data;notice('Logo preparado; guardalo en Configuración')}catch(e){modalError(e,'cargar el logo')}};
+/* === Búsqueda universal, sin accesos a sucursales ajenas al usuario === */
+K.openSearch=()=>{if(!user()){notice('Iniciá sesión primero');return}if($('kpGlobalSearchOverlay'))return;let ov=document.createElement('div');ov.id='kpGlobalSearchOverlay';ov.innerHTML='<div class="kgs-box"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:13px"><strong>Buscar en KPlace</strong><button class="kgs-close" data-kgs-close>✕ Cerrar</button></div><input id="kgsInput" type="search" autocomplete="off" placeholder="Cliente, teléfono, orden, producto, guía..."><div id="kgsResults"></div></div>';document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-kgs-close]'))K.closeSearch();else{let el=e.target.closest('[data-kgs-target]');if(el)K.searchNavigate(el.dataset.kgsTarget,el.dataset.kgsId)}});ov.querySelector('input').addEventListener('input',e=>K.searchResults(e.target.value));ov.querySelector('input').focus();K.searchResults('')};
+K.closeSearch=()=>$('kpGlobalSearchOverlay')?.remove();
+K.searchResults=query=>{let node=$('kgsResults');if(!node)return;let q=norm(query);if(q.length<2){node.innerHTML='<p style="padding:14px 5px;color:#babacd">Escribí al menos dos caracteres para encontrar órdenes, inventario o usuarios autorizados.</p>';return}
+ let accessible=orders().filter(o=>isAccessible(o)&&(!driver()||str(o.repartidorId||o.repartidorUsuario)===uid()));let results=[];
+ accessible.filter(o=>norm([o.cliente,o.numero,o.numero2,orderNo(o),o.id,o.direccion,o.plataforma,o.boxfulShipment?.trackingNumber].join(' ')).includes(q)).slice(0,25).forEach(o=>results.push({type:'orden',id:o.id,title:'Orden #'+orderNo(o)+' · '+(o.cliente||''),sub:(o.fecha||'')+' · '+money(o.totalPedido)}));
+ if(!driver())(window.INVENTARIO||[]).filter(p=>(admin()||str(p.ubicacionId||p.sucursalId)===ownBranch())&&norm([p.categoria,p.modelo,p.colorEn,p.colorEs,p.tamano,p.id].join(' ')).includes(q)).slice(0,15).forEach(p=>results.push({type:'inventario',id:p.id,title:productLabel(p),sub:'Inventario · '+(p.cantidad||0)+' unidades'}));
+ if(admin())(window.VENDEDORES||[]).filter(u=>norm([u.nombre,u.usuario,u.numeroUsuario].join(' ')).includes(q)).slice(0,10).forEach(u=>results.push({type:'usuario',id:u.usuario||u.nombre,title:u.nombre||u.usuario,sub:'Usuario · '+(u.cargo||'')}));
+ node.innerHTML=results.length?results.slice(0,45).map(r=>`<div class="kgs-row" role="button" tabindex="0" data-kgs-target="${r.type}" data-kgs-id="${esc(r.id)}"><div><b>${esc(r.title)}</b><small>${esc(r.sub)}</small></div><span>›</span></div>`).join(''):'<p style="padding:14px 5px;color:#babacd">No hay coincidencias en tus registros autorizados.</p>';
+};
+K.searchNavigate=(type,id)=>{K.closeSearch();if(type==='orden'){K.leave();try{if(typeof window.verOrden==='function')window.verOrden(id);else if(typeof window.editOrder==='function')window.editOrder(id)}catch(e){modalError(e,'abrir la orden')}}else if(type==='inventario'){K.leave();if(typeof window.setTab==='function')window.setTab('adminOrdersInventory');notice('Producto encontrado en inventario; podés localizarlo por su nombre.') }else if(type==='usuario'){K.leave();if(typeof window.openUsersPanel==='function')window.openUsersPanel()}};
+function cashForm(){if(K.pick==='cashMove')return card(`<h2>Registrar movimiento de caja</h2><div class="kf-fields">${field('Tipo',select('kfMoveType',[['fondo','Fondo inicial'],['ingreso','Entrada adicional'],['gasto','Gasto autorizado'],['retiro','Retiro / traslado a banco']]))}${field('Monto',inp('kfMoveAmount',0,'number','min="0" step="0.01"'))}</div>${field('Motivo (obligatorio)',`<textarea id="kfMoveNote" placeholder="Ej. Caja chica, depósito de banco..."> </textarea>`)}${button('Guardar movimiento','cashMovementSave','primary')}${button('Cancelar','cashCancel')}`);
+ if(K.pick==='settlement')return card(`<h2>Nueva solicitud de liquidación</h2>${field('Monto a entregar',inp('kfSetAmount',0,'number','min="0" step="0.01"'))}${field('Descripción / órdenes relacionadas',`<textarea id="kfSetNote" placeholder="Ej. Efectivo de las entregas de hoy"></textarea>`)}${button('Solicitar recepción','settlementSave','primary')}${button('Cancelar','cashCancel')}`);
+ return '';
+}
+/* === Eventos y navegación === */
+function refreshDocPreview(){const node=$('kfDocPreview');if(node&&K.doc)node.outerHTML=documentPreview()}
+function switchPage(page){if(['packing','cash','documents','automations','settings'].includes(page))K.open(page)}
+async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':');
+ try{switch(action){
+ case 'go':switchPage(id);break;
+ case 'claim':await K.claim(id);break;
+ case 'packOpen':K.order=id;K.pick=null;draw();setTimeout(()=>$('kfDocPreview')?.scrollIntoView({block:'center'}),40);break;
+ case 'packClose':K.order=null;K.pick=null;draw();break;
+ case 'packingDone':await K.done();break;
+ case 'selectToggle':K.pick=K.pick==='selection'?null:'selection';K.selection.clear();draw();break;
+ case 'selectMine':K.selection=new Set(branchOrders().filter(o=>packState(o).status==='preparando'&&(mine(o)||admin())).map(o=>o.id));draw();break;
+ case 'releaseMany':await K.release(Array.from(K.selection));break;
+ case 'release':await K.release([id]);break;
+ case 'incidentForm':K.pick='incident';K.note={index:Number(id)};draw();break;
+ case 'incidentCancel':K.pick=null;draw();break;
+ case 'incidentSave':await K.incidentSave();break;
+ case 'incidentResolve':await K.resolveIncident(id);break;
+ case 'cashUpdate':K.cashDate=$('kfCashDate')?.value||today();K.quickCount='';K.counts={};draw();break;
+ case 'expandDenoms':K.expandDenoms=true;draw();break;
+ case 'cashMovement':K.pick='cashMove';draw();break;
+ case 'cashMovementSave':await K.newMovement();break;
+ case 'settlementNew':K.pick='settlement';draw();break;
+ case 'settlementSave':await K.requestSettlement();break;
+ case 'settlementConfirm':await K.confirmSettlement(id);break;
+ case 'cashClose':await K.closeCash();break;
+ case 'cashPDF':K.cashPdf();break;
+ case 'cashExcel':K.cashExcel();break;
+ case 'cashCancel':K.pick=null;draw();break;
+ case 'docClose':K.doc=null;K.order=null;draw();break;
+ case 'newReceipt':K.newDocument(id,'recibo');break;
+ case 'docAddItem':K.doc?.items.push({name:'Nuevo producto',qty:1,price:0});draw();break;
+ case 'docDelItem':K.doc?.items.splice(Number(id),1);draw();break;
+ case 'docAddPay':K.doc?.payments.push({method:'efectivo',amount:0,paid:false});draw();break;
+ case 'docDelPay':K.doc?.payments.splice(Number(id),1);draw();break;
+ case 'docSave':await K.saveDoc();break;
+ case 'docPDF':K.downloadDoc();break;
+ case 'docShare':await K.shareDoc();break;
+ case 'editDraft':{let d=K.drafts.find(x=>x.id===id&&(x.kind==='recibo'||!x.kind));if(d){K.doc={...JSON.parse(JSON.stringify(d)),kind:'recibo',currency:d.currency||K.config?.currency||'L',businessAddress:d.businessAddress||'',businessPhone:d.businessPhone||''};K.order=d.orderId;draw()}}break;
+ case 'ruleAdd':K.pick='rule';K.note={name:'Nueva regla',type:'delay',threshold:2,branch:'all',enabled:false};draw();break;
+ case 'ruleEdit':K.pick='rule';K.note={...(K.rules.find(x=>x.id===id)||defaults().find(x=>x.id===id)||{})};draw();break;
+ case 'ruleToggle':await K.toggleRule(id);break;
+ case 'ruleSave':await K.saveRule();break;
+ case 'ruleCancel':K.pick=null;draw();break;
+ case 'rolePacker':await K.togglePacker(Number(id));break;
+ case 'saveMode':await saveConfig({mode:$('kfMode')?.value||'solo',cashMode:$('kfCashMode')?.value||'rapido',autoAssign:!!$('kfAutoAssign')?.checked});break;
+ case 'saveReceiptSettings':{await saveConfig({currency:$('kfCfgCurrency')?.value||'L',businessName:str($('kfCfgName')?.value),businessAddress:str($('kfCfgAddress')?.value),businessPhone:str($('kfCfgPhone')?.value),logo:K._newLogo||K.config.logo||''});K._newLogo=null;break}
+ }}catch(e){modalError(e,'realizar esta acción')}
+}
+document.addEventListener('click',e=>{let b=e.target.closest?.('[data-kf]');if(b){e.preventDefault();let cmd=b.dataset.kf;b.disabled=true;Promise.resolve(command(cmd)).finally(()=>{if(b.isConnected)b.disabled=false})}},true);
+document.addEventListener('change',e=>{let t=e.target;if(!t||!K.page)return;
+ if(t.id==='kfBranch'){K.branch=t.value;K.selection.clear();draw();return}
+ if(t.id==='kfCashDate'){K.cashDate=t.value;K.quickCount='';K.counts={};draw();return}
+ if(t.hasAttribute('data-kf-select')){if(t.checked)K.selection.add(t.dataset.kfSelect);else K.selection.delete(t.dataset.kfSelect);let btn=document.querySelector('[data-kf="releaseMany"]');if(btn)btn.textContent='Liberar seleccionadas ('+K.selection.size+')';return}
+ if(t.hasAttribute('data-kf-verified')){K.verify(Number(t.dataset.kfVerified),t.checked);return}
+ if(K.page==='documents'&&K.doc){let d=K.doc;
+ const direct={kfDocCurrency:'currency',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocClient:'client',kfDocClientId:'clientId',kfDocPhone:'phone',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocTax:'taxPct',kfDocNotes:'notes'};
+ if(direct[t.id]){let k=direct[t.id];d[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value;if(k==='currency')draw();else refreshDocPreview();return}
+ if(t.id==='kfDocTaxIncluded'){d.taxIncluded=t.checked;refreshDocPreview();return}
+ if(t.hasAttribute('data-doc-item')){let i=Number(t.dataset.docItem),key=t.dataset.key;if(d.items[i])d.items[i][key]=key==='name'?t.value:amt(t.value);refreshDocPreview();return}
+ if(t.hasAttribute('data-doc-pay')){let i=Number(t.dataset.docPay),key=t.dataset.key;if(d.payments[i])d.payments[i][key]=key==='paid'?t.checked:key==='amount'?amt(t.value):t.value;refreshDocPreview();return}
+ }
+ if(t.id==='kfCfgLogo'&&t.files?.length){K.setLogo(t.files[0]);return}
+});
+document.addEventListener('input',e=>{if(e.target.id==='kfQuickCount'){K.quickCount=e.target.value;let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfDocSearch'){K.note=e.target.value;let dst=$('kfDocRows');if(dst)dst.innerHTML=docOrderRows(branchOrders())}else if(e.target.id==='kfRuleThreshold'){/* valor del formulario se toma al guardar */}else if(e.target.matches('[id^="kfD"]')&&K.page==='cash'){let key=e.target.id.slice(3).replace('_','.');K.counts[Number(key)]=Math.max(0,Math.floor(n(e.target.value)));let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfCashReason'){K.note=e.target.value}});
+/* Formularios de documentos: impedir que cambios no disparados por blur se pierdan al guardar. */
+function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySelectorAll('#kpFlowRoot [data-doc-item]').forEach(t=>{let i=Number(t.dataset.docItem),k=t.dataset.key;if(K.doc.items[i])K.doc.items[i][k]=k==='name'?t.value:amt(t.value)});document.querySelectorAll('#kpFlowRoot [data-doc-pay]').forEach(t=>{let i=Number(t.dataset.docPay),k=t.dataset.key;if(K.doc.payments[i])K.doc.payments[i][k]=k==='paid'?t.checked:k==='amount'?amt(t.value):t.value});const map={kfDocCurrency:'currency',kfDocClient:'client',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocPhone:'phone',kfDocClientId:'clientId',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocTax:'taxPct',kfDocNotes:'notes'};Object.entries(map).forEach(([id,k])=>{let t=$(id);if(t)K.doc[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value});if($('kfDocTaxIncluded'))K.doc.taxIncluded=$('kfDocTaxIncluded').checked}
+const rawCommand=command;command=async function(cmd){if(/^doc(Save|PDF|Share)$/.test(cmd))flushDocForm();return rawCommand(cmd)};
+/* Cambio de rutas sin afectar menús existentes */
+const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|automations|settings)$/.test(id)){K.open(id.slice(7));return}K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
+const nativeRender=window.render;window.render=function(){if(K.page&&String(window.activeTab)==='kplace_'+K.page){draw();return}return typeof nativeRender==='function'?nativeRender.apply(this,arguments):undefined};
+const nativeToggle=window.toggleMenu;window.toggleMenu=function(){let r=typeof nativeToggle==='function'?nativeToggle.apply(this,arguments):undefined;setTimeout(injectNavigation,30);return r};
+function highlightNav(){document.querySelectorAll('[data-kf-nav]').forEach(b=>{b.classList.toggle('active',K.page===b.dataset.kfNav)})}
+const nativeUpdateKPlaceNav=window.updateKPlaceNav;
+if(typeof nativeUpdateKPlaceNav==='function')window.updateKPlaceNav=function(){const r=nativeUpdateKPlaceNav.apply(this,arguments);highlightNav();return r};
+function registerAlerts(){if(!admin()||K._alertCompany===company()||!window.db)return;try{if(K._alertUnsub)K._alertUnsub();K._alertCompany=company();K._alertUnsub=collection('automation_alerts').limit(60).onSnapshot(s=>{K.alerts=s.docs.map(d=>({id:d.id,...d.data()}));let b=$('kpAlertGlobalButton');if(b)b.textContent='⚡ '+K.alerts.length},e=>console.warn('Avisos KPlace',e))}catch(e){console.warn('Avisos KPlace no disponibles',e)}}
+function injectNavigation(){
+ if(!user())return;
+ registerAlerts();
+ let side=$('kpSideNav'),drawer=document.querySelector('#kpMenuDrawer .kp-drawer-nav'),top=document.querySelector('.kp-top-actions');
+ const entries=[['packing','📦','Empaque',packer()],['cash','💰','Caja',admin()||driver()||seller()],['documents','🧾','Recibos',admin()],['automations','⚡','Automatizaciones',admin()],['settings','⚙','Modos y permisos',admin()]];
+ for(let nav of [side,drawer]){if(!nav)continue;for(let [id,icon,label,show] of entries){let el=nav.querySelector('[data-kf-nav="'+id+'"]');if(el&&!show){el.remove();continue}if(!show||el)continue;let b=document.createElement('button');b.type='button';b.dataset.kfNav=id;b.setAttribute('data-section','kplace_'+id);b.innerHTML='<span class="dico">'+icon+'</span>'+label;b.onclick=()=>{try{window.closeKPlaceMenu?.()}catch(e){}K.open(id)};nav.appendChild(b)}}
+ if(top&&!$('kpSearchGlobalButton')){let b=document.createElement('button');b.type='button';b.id='kpSearchGlobalButton';b.className='kf-global-search';b.setAttribute('aria-label','Buscar en todo KPlace');b.title='Buscador universal';b.textContent='⌕';b.onclick=K.openSearch;top.insertBefore(b,top.firstChild)}
+ if(top&&admin()&&!$('kpAlertGlobalButton')){let ab=document.createElement('button');ab.type='button';ab.id='kpAlertGlobalButton';ab.className='kf-global-search';ab.title='Avisos de automatizaciones';ab.textContent='⚡ '+(K.alerts?.length||0);ab.onclick=()=>K.open('automations');top.insertBefore(ab,top.firstChild)}
+ highlightNav();
+}
+let navScheduled=false;new MutationObserver(()=>{if(navScheduled)return;navScheduled=true;setTimeout(()=>{navScheduled=false;injectNavigation()},180)}).observe(document.body,{childList:true,subtree:true});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')K.closeSearch();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();K.openSearch()}});
+window.kpGenerateDocumentFromOrder=function(orderId){K.open('documents',orderId)};
+window.kpOpenPacking=()=>K.open('packing');window.kpOpenCash=()=>K.open('cash');window.kpOpenAutomations=()=>K.open('automations');
+/* Abrir el editor desde el detalle de una orden sin cambiar sus controles existentes */
+document.addEventListener('click',e=>{if(!admin())return;const b=e.target.closest?.('[data-kf-order-invoice]');if(b){e.preventDefault();K.open('documents',b.dataset.kfOrderInvoice)}},true);
+function augmentOrderSheets(){if(!admin())return;document.querySelectorAll('.sheet.show .card').forEach(card=>{if(card.dataset.kfInvoiceAdded)return;const i=card.innerHTML.match(/(?:openOrderSheet|verOrden|editOrder)\([^)]*\)/);let sheet=card.closest('.sheet');const o=orders().find(o=>{let n=orderNo(o);return (card.textContent||'').includes(n)&&n.length>=3});if(o){let b=document.createElement('button');b.className='btn sm';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=o.id;card.appendChild(b);card.dataset.kfInvoiceAdded='1'}})}
+let sheetTimer=0;new MutationObserver(()=>{if(sheetTimer)return;sheetTimer=setTimeout(()=>{sheetTimer=0;augmentOrderSheets()},350)}).observe(document.body,{childList:true,subtree:true});
+const nativeVerOrden=window.verOrden;
+if(typeof nativeVerOrden==='function')window.verOrden=function(id){const result=nativeVerOrden.apply(this,arguments);if(admin()){setTimeout(()=>{let sheet=[...document.querySelectorAll('.sheet.show')].slice(-1)[0];if(sheet&&!sheet.querySelector('[data-kf-order-invoice]')){let b=document.createElement('button');b.type='button';b.className='btn primary';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=id;sheet.appendChild(b)}},0)}return result};
+setTimeout(()=>{loadConfig();injectNavigation()},800);setInterval(()=>{if(user()){injectNavigation();if(K.rules.some(x=>x.enabled))K.evaluate().catch(e=>console.warn('Reglas KPlace',e))}},300000);
+})();
+
+</script>
 </body>
 </html>
