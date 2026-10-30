@@ -22697,21 +22697,20 @@ async function saveConfig(next){if(!admin()){notice('Solo el Administrador gener
 function ensureRoot(){let v=$('view');if(!v)return null;v.innerHTML='<div id="kpFlowRoot"></div>';return $('kpFlowRoot')}
 function tabBar(){return ''}
 function draw(){if(!K.page||!user())return;let v=$('view');if(!v)return;let node=$('kpFlowRoot')||ensureRoot();if(!node)return;
- const renderers={packing:packingScreen,cash:cashScreen,documents:documentsScreen,automations:automationsScreen,settings:settingsScreen};
- const allowed=K.page==='packing'?packer():['cash','documents','automations','settings'].includes(K.page)?admin()||K.page==='cash'&&(driver()||seller()):false;
+ const renderers={packing:packingScreen,cash:cashScreen,documents:documentsScreen,settings:settingsScreen};
+ const allowed=K.page==='packing'?packer():['cash','documents','settings'].includes(K.page)?admin()||K.page==='cash'&&(driver()||seller()):false;
  node.innerHTML=allowed?tabBar()+renderers[K.page]():card(msg('No tenés permisos para esta sección. Contactá al Administrador general.'));
 }
 K.open=function(page,orderId){
  if(!user()){notice('Iniciá sesión para continuar.');return}
- if(!['packing','cash','documents','automations','settings'].includes(page))return;
+ if(!['packing','cash','documents','settings'].includes(page))return;
  if(K.page!==page){K.note='';K.pick=null;K.doc=null;K.receiptPrefsOpen=false;K.cashPrefsOpen=false}
  if(page==='packing'&&!packer()){notice('Acceso exclusivo de Empacador o Administrador general.');return}
- if(['documents','automations','settings'].includes(page)&&!admin()){notice('Solo el Administrador general puede acceder aquí.');return}
+ if(['documents','settings'].includes(page)&&!admin()){notice('Solo el Administrador general puede acceder aquí.');return}
  if(page==='cash'&&!admin()&&!driver()&&!seller()){notice('No tenés acceso a Caja.');return}
  clearListeners();K.page=page;window.activeTab='kplace_'+page;K.selection.clear();K.order=orderId||null;K.pick=null;K.branch=admin()?(K.branch||ownBranch()):ownBranch();K.cashDate=K.cashDate||today();
  if(page==='packing'){listen('packing_incidents',a=>K.incidents=a)}
  if(page==='cash'){listen('cash_movements',a=>K.cashRows=a);listen('cash_settlements',a=>K.settlements=a);listen('cash_closures',a=>K.closures=a)}
- if(page==='automations'){listen('automation_rules',a=>K.rules=a);listen('automation_alerts',a=>K.alerts=a)}
  if(page==='documents'){listen('document_drafts',a=>K.drafts=a);if(orderId){K.doc=null;K.newDocument(orderId)}}
  draw();setTimeout(highlightNav,60);window.scrollTo({top:0,behavior:'smooth'});
 };
@@ -22759,15 +22758,45 @@ const payParts=o=>{
 const isCash=m=>/efectivo|contraentrega|contra entrega|cash|cod/i.test(str(m));
 const isBank=m=>/transferencia|link|tarjeta|pos/i.test(str(m));
 const orderDay=o=>str(o.fecha||o.fechaOrden||'').slice(0,10);
+// Fecha anterior a la seleccionada, sin depender de la zona horaria del navegador.
+function previousCashDate(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(str(date)))return '';const d=new Date(date+'T12:00:00Z');if(!Number.isFinite(d.getTime()))return '';d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10)}
+function previousFunds(){const day=previousCashDate(K.cashDate),branch=currentBranch();return K.cashRows.filter(m=>m.type==='fondo'&&m.date===day&&m.branch===branch).sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0));}
+function carryId(branch,date,sourceId){return 'arrastre_'+encodeURIComponent(branch)+'_'+date+'_'+encodeURIComponent(sourceId)}
+function carryAlreadyDone(source){return K.cashRows.some(m=>m.branch===currentBranch()&&m.date===K.cashDate&&m.fundOrigin==='arrastre'&&m.sourceFundId===source.id)}
+function fundCustodian(m){return str(m.receivedBy||m.recipient||(m.channel==='transferencia'?'Cuenta bancaria de la empresa':'Custodia no especificada'))}
+
 function cashProjection(){const list=branchOrders().filter(o=>orderDay(o)===K.cashDate&&o.cancelada!==true);let sold=0,confirmed=0,cashLocal=0,heldByDriver=0,pending=0,bank=0;
  list.forEach(o=>{sold+=amt(o.totalPedido||o.total||0);payParts(o).forEach(p=>{if(!p.paid){pending+=p.value;return}confirmed+=p.value;if(isCash(p.method)){if(o.enviadoRepartidor&&o.repartidorId)heldByDriver+=p.value;else cashLocal+=p.value}else if(isBank(p.method))bank+=p.value})});
  const moves=K.cashRows.filter(x=>x.date===K.cashDate&&(K.branch==='all'||x.branch===currentBranch()));
  const settlements=K.settlements.filter(x=>x.status==='confirmada'&&x.confirmedDate===K.cashDate&&(K.branch==='all'||x.branch===currentBranch()));
- const cashIn=moves.filter(m=>m.type==='ingreso'||m.type==='fondo').reduce((a,m)=>a+amt(m.amount),0);
- const cashOut=moves.filter(m=>m.type==='gasto'||m.type==='retiro').reduce((a,m)=>a+amt(m.amount),0);
+ // Movimientos anteriores sin canal conservan el comportamiento original: efectivo.
+ // Los fondos depositados en banco no se cuentan como billetes disponibles para el arqueo.
+ const isPhysical=m=>m.channel!=='transferencia';
+ // El arrastre de ayer es saldo inicial, NO una entrega nueva ni depósito nuevo.
+ const carriedCash=moves.filter(m=>m.type==='fondo'&&m.fundOrigin==='arrastre'&&isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const carriedBank=moves.filter(m=>m.type==='fondo'&&m.fundOrigin==='arrastre'&&!isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const cashIn=moves.filter(m=>['ingreso','fondo','devolucion_cambio'].includes(m.type)&&isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const cashOut=moves.filter(m=>['gasto','retiro','anticipo_repartidor'].includes(m.type)&&isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const companyCash=moves.filter(m=>m.type==='fondo'&&m.fundOrigin!=='arrastre'&&isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const companyBank=moves.filter(m=>m.type==='fondo'&&m.fundOrigin!=='arrastre'&&!isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ // Una entrega adicional no sustituye ni duplica el fondo inicial: es un movimiento nuevo.
+ const additionalCash=moves.filter(m=>m.type==='fondo'&&m.fundOrigin==='adicional'&&isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const additionalBank=moves.filter(m=>m.type==='fondo'&&m.fundOrigin==='adicional'&&!isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const initialCash=companyCash-additionalCash,initialBank=companyBank-additionalBank;
+ const bankIn=moves.filter(m=>['fondo','ingreso'].includes(m.type)&&m.fundOrigin!=='arrastre'&&!isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
+ const bankOut=moves.filter(m=>['gasto','retiro'].includes(m.type)&&!isPhysical(m)).reduce((a,m)=>a+amt(m.amount),0);
  const paidSettlement=settlements.reduce((a,m)=>a+amt(m.confirmedAmount),0);
+ const driverBalances={};
+ // Fondos para cambio: responsabilidad individual, independiente de los cobros de órdenes.
+ K.cashRows.filter(m=>['anticipo_repartidor','devolucion_cambio'].includes(m.type)&&(K.branch==='all'||m.branch===currentBranch())).forEach(m=>{
+   const id=str(m.personId||m.personName),name=str(m.personName||'Repartidor sin nombre');if(!id)return;
+   if(!driverBalances[id])driverBalances[id]={id,name,advance:0,returned:0,balance:0};
+   if(m.type==='anticipo_repartidor')driverBalances[id].advance+=amt(m.amount);
+   else driverBalances[id].returned+=amt(m.amount);
+ });
+ Object.values(driverBalances).forEach(v=>{v.balance=Math.round((v.advance-v.returned)*100)/100});
  const expected=Math.round((cashLocal+cashIn+paidSettlement-cashOut)*100)/100;
- return {list,sold,confirmed,cashLocal,heldByDriver,pending,bank,moves,settlements,expected,cashIn,cashOut,paidSettlement};
+ return {list,sold,confirmed,cashLocal,heldByDriver,pending,bank,moves,settlements,expected,cashIn,cashOut,companyCash,companyBank,initialCash,initialBank,additionalCash,additionalBank,carriedCash,carriedBank,bankIn,bankOut,paidSettlement,driverBalances};
 }
 const denoms=[500,200,100,50,20,10,5,2,1,.5];
 function counted(){return K.config?.cashMode==='rapido'&&!K.expandDenoms?amt(K.quickCount||0):denoms.reduce((a,x)=>a+x*Math.max(0,Math.floor(n(K.counts[x]))),0)}
@@ -22778,23 +22807,87 @@ function cashScreen(){if(!admin())return driverCashScreen();const x=cashProjecti
  const dateField=field('Fecha',inp('kfCashDate',K.cashDate,'date'));
  return header('Cierre de caja inteligente','Ventas, efectivo bajo custodia, liquidaciones y arqueos, separados de los cobros pendientes.',button(K.cashPrefsOpen?'Ocultar configuración':'Configuración de caja','cashSettingsToggle','sm'))+
   (K.cashPrefsOpen?cashPrefs():'')+
- `<div class="kf-tools">${branchChooser(true)}${dateField}${button('Actualizar','cashUpdate')}</div>`+
+ `<div class="kf-tools">${branchChooser(true)}${dateField}${button('Actualizar','cashUpdate')}</div>`+cashForm()+
  `<div class="kf-numbers">${stat('Ventas del día',money(x.sold))}${stat('Pagos marcados pagados',money(x.confirmed))}${stat('Efectivo teórico en caja',money(x.expected))}${stat('Por cobrar en órdenes',money(x.pending))}</div>`+
- `<div class="kf-2">${card(`<h2>Conciliación</h2>${rowInfo('Efectivo local pagado',money(x.cashLocal))}${rowInfo('Liquidaciones confirmadas recibidas',money(x.paidSettlement))}${rowInfo('Fondo / ingresos manuales',money(x.cashIn))}${rowInfo('Gastos y retiros',money(x.cashOut))}<div class="kf-divider"></div>${rowInfo('Efectivo esperado',money(x.expected),true)}${msg('El cálculo toma el estado actual de las órdenes. Los cobros con repartidor se muestran aparte, para no contarlos dos veces. Verificá los movimientos históricos antes de cerrar.')}`)}
+ `<div class="kf-2">${card(`<h2>Conciliación</h2>${rowInfo('Fondo inicial en efectivo',money(x.initialCash))}${rowInfo('Dinero adicional recibido en efectivo',money(x.additionalCash))}${rowInfo('Fondo de ayer conservado en efectivo',money(x.carriedCash))}${rowInfo('Fondo inicial por transferencia',money(x.initialBank))}${rowInfo('Dinero adicional recibido por transferencia',money(x.additionalBank))}${rowInfo('Saldo bancario declarado de ayer',money(x.carriedBank))}${rowInfo('Efectivo local pagado',money(x.cashLocal))}${rowInfo('Liquidaciones confirmadas recibidas',money(x.paidSettlement))}${rowInfo('Otras entradas en efectivo y devolución de cambio',money(x.cashIn-x.companyCash-x.carriedCash))}${rowInfo('Salidas realizadas en efectivo',money(x.cashOut))}${rowInfo('Otras entradas bancarias registradas',money(x.bankIn-x.companyBank))}${rowInfo('Pagos bancarios registrados',money(x.bankOut))}<div class="kf-divider"></div>${rowInfo('Efectivo esperado para arqueo',money(x.expected),true)}${msg('El fondo conservado de ayer es saldo inicial, no un ingreso nuevo. Un saldo bancario declarado no equivale a depósito nuevo ni a conciliación bancaria. Son registros de movimientos, no una conciliación bancaria completa. El efectivo entregado a repartidores reduce la caja sin considerarse un gasto ni una venta.')}`)}
  ${card(`<h2>Cobros por conciliar</h2>${rowInfo('Efectivo asignado a repartidores',money(x.heldByDriver))}${rowInfo('Transferencias, links y tarjeta marcados pagados',money(x.bank))}${rowInfo('Contraentrega / otros pendientes',money(x.pending))}${msg('Un comprobante de transferencia no equivale a acreditación bancaria verificada. Confirmá los ingresos reales antes del cierre.')}`)}</div>`+
  card(`<div class="kf-row"><h2>Liquidaciones de repartidores y vendedores</h2>${button('Registrar solicitud','settlementNew')}</div>${pending.map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(z.byName||'Empleado')} · ${money(z.amount)}</strong><small>${esc(z.date)} · ${esc(z.note||'Sin observaciones')}</small></div>${status('Por recibir','busy')}${button('Confirmar recepción','settlementConfirm:'+z.id,'sm primary')}</div>`).join('')||'<p>No hay liquidaciones esperando recepción.</p>'}${K.settlements.filter(z=>z.status==='confirmada'&&(K.branch==='all'||z.branch===currentBranch())).slice(-8).map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(z.byName)} · ${money(z.confirmedAmount)}</strong><small>Recibió: ${esc(z.confirmedBy)} · ${esc(z.confirmedDate||'')}</small></div>${status('Confirmada','ok')}</div>`).join('')}`)+
- card(`<h2>Movimientos de efectivo</h2><div class="kf-tools">${button('Nuevo movimiento','cashMovement')}</div>${x.moves.slice().sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,20).map(m=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(m.type)} · ${money(m.amount)}</strong><small>${esc(m.note||'')} · ${esc(m.byName||'')}</small></div>${status(m.type==='gasto'||m.type==='retiro'?'Salida':'Entrada')}</div>`).join('')||'<p>No hay movimientos adicionales.</p>'}`)+
+ card(`<div class="kf-row"><h2>Fondos entregados a repartidores</h2>${button('Entregar cambio','cashGiveDriver','sm')}</div><p>Dinero que salió de caja para dar cambio. No es venta, comisión ni gasto. Se registra por repartidor y puede devolverse otro día.</p>${Object.values(x.driverBalances).filter(v=>v.balance>0.009).map(v=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(v.name)} · ${money(v.balance)} pendiente</strong><small>Entregado: ${money(v.advance)} · Devuelto: ${money(v.returned)}</small></div>${button('Registrar devolución','cashReturnDriver:'+encodeURIComponent(v.id),'sm')}</div>`).join('')||'<p>No hay fondos de cambio pendientes en esta sucursal.</p>'}`)+
+ card(`<h2>Movimientos y pagos de caja</h2><p>Separá el fondo inicial del dinero adicional recibido durante el día. Cada entrega registra quién lo recibió, si fue efectivo o transferencia, y su banco. El dinero trasladado de ayer no se cuenta como una entrega nueva.</p><div class="kf-tools">${button('Registrar fondo inicial','cashFund','primary')}${button('Agregar dinero al fondo','cashFundExtra','sm')}${button('Utilizar fondo de ayer','cashFundCarry','sm')}${button('Nuevo movimiento o pago','cashMovement')}</div>${x.moves.slice().sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,40).map(m=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(cashTypeName(m.type,m.fundOrigin))} · ${money(m.amount)}</strong><small>${esc(m.channel==='transferencia'?'Transferencia bancaria'+(m.bank?' · '+m.bank:''):m.channel==='efectivo'?'Efectivo':m.type==='fondo'?'Efectivo (registro anterior)':'Medio no indicado')} · ${esc(m.type==='fondo'?'Recibido / custodia: '+fundCustodian(m):m.personName||m.recipient||'Empresa / sin destinatario')} · ${esc(m.fundOrigin==='arrastre'?'Utilizado de ayer ('+(m.sourceDate||'')+') · NO es ingreso nuevo':m.sourcePerson?'Entregó: '+m.sourcePerson:'')} · ${esc(m.note||'Sin motivo')} · ${esc(m.byName||'')} · ${esc(m.date||'')}</small></div>${status(m.fundOrigin==='arrastre'?'Arrastre':['gasto','retiro','anticipo_repartidor'].includes(m.type)?'Salida':'Entrada')}</div>`).join('')||'<p>No hay movimientos adicionales.</p>'}`)+
  card(`<div class="kf-row"><h2>Arqueo de efectivo</h2>${clos?status('Cierre guardado','ok'):status('Sin cerrar','busy')}</div>${clos?`<div class="kf-help">Caja cerrada por ${esc(clos.closedBy)}. Efectivo contado ${money(clos.counted)}; diferencia ${money(clos.difference)}. Los cambios posteriores se deben reflejar mediante ajustes documentados.</div>`:''}
- <p>Registrá cuánto efectivo contaste físicamente. En modo individual podés usar el cierre rápido; el arqueo detallado queda disponible cuando lo necesités.</p><div class="kf-divider"></div>${K.config?.cashMode==='rapido'&&!K.expandDenoms?field('Efectivo contado (cierre rápido)',inp('kfQuickCount',K.quickCount??'','number','step="0.01" min="0" placeholder="Ingresá el importe contado"'))+button('Contar por denominaciones','expandDenoms','sm'): `<div class="kf-denoms">${denoms.map(d=>field(money(d),inp('kfD'+String(d).replace('.','_'),K.counts[d]||0,'number','min="0" step="1"'))).join('')}</div>`}<div class="kf-divider"></div><div class="kf-row"><b>Contado</b><b id="kfCashArqueoResume">${money(counted())}</b></div><div class="kf-row"><b>Diferencia</b><b id="kfCashDifference">${money(counted()-x.expected)}</b></div>${field('Motivo de la diferencia, si la hay',`<textarea id="kfCashReason" placeholder="Ej. Cambio adicional, retiro pendiente de registrar...">${esc(K.note||'')}</textarea>`)}${clos?'':button('Confirmar cierre de caja','cashClose','primary')}${clos?button('Descargar comprobante PDF','cashPDF','sm'):''}${button('Exportar Excel','cashExcel','sm')}`)+cashForm();
+ <p>Registrá cuánto efectivo contaste físicamente. En modo individual podés usar el cierre rápido; el arqueo detallado queda disponible cuando lo necesités.</p><div class="kf-divider"></div>${K.config?.cashMode==='rapido'&&!K.expandDenoms?field('Efectivo contado (cierre rápido)',inp('kfQuickCount',K.quickCount??'','number','step="0.01" min="0" placeholder="Ingresá el importe contado"'))+button('Contar por denominaciones','expandDenoms','sm'): `<div class="kf-denoms">${denoms.map(d=>field(money(d),inp('kfD'+String(d).replace('.','_'),K.counts[d]||0,'number','min="0" step="1"'))).join('')}</div>`}<div class="kf-divider"></div><div class="kf-row"><b>Contado</b><b id="kfCashArqueoResume">${money(counted())}</b></div><div class="kf-row"><b>Diferencia</b><b id="kfCashDifference">${money(counted()-x.expected)}</b></div>${field('Motivo de la diferencia, si la hay',`<textarea id="kfCashReason" placeholder="Ej. Cambio adicional, retiro pendiente de registrar...">${esc(K.note||'')}</textarea>`)}${clos?'':button('Confirmar cierre de caja','cashClose','primary')}${clos?button('Descargar comprobante PDF','cashPDF','sm'):''}${button('Exportar Excel','cashExcel','sm')}`);
 }
+const cashTypeName=(t,origin)=>t==='fondo'?(origin==='adicional'?'Dinero adicional al fondo':origin==='arrastre'?'Fondo conservado de ayer':'Fondo inicial'):({ingreso:'Entrada adicional',gasto:'Pago o gasto del negocio',retiro:'Retiro / traslado',anticipo_repartidor:'Dinero entregado al repartidor',devolucion_cambio:'Devolución de cambio'}[t]||t||'Movimiento');
 const rowInfo=(a,b,bold=false)=>`<div class="kf-row" style="margin:8px 0"><span class="${bold?'':'kf-muted'}">${esc(a)}</span><strong>${esc(b)}</strong></div>`;
 function driverCashScreen(){let mine=K.settlements.filter(x=>x.byId===uid()).sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0));let own=orders().filter(o=>{let assigned=driver()?str(o.repartidorId||o.repartidorUsuario)===uid()||norm(o.repartidorNombre)===norm(username()):norm(o.vendedor)===norm(username());return assigned&&orderDay(o)===K.cashDate});let due=own.reduce((a,o)=>a+payParts(o).reduce((b,p)=>b+(p.paid&&isCash(p.method)?p.value:0),0),0);
- return header('Mis liquidaciones','Consultá tus órdenes cobradas y solicitá entregar el dinero a caja.')+`<div class="kf-tools">${field('Fecha',inp('kfCashDate',K.cashDate,'date'))}</div><div class="kf-numbers">${stat('Efectivo cobrado (según órdenes)',money(due))}${stat('Órdenes asignadas',own.length)}</div>`+
+ return header('Mis liquidaciones','Consultá tus órdenes cobradas y solicitá entregar el dinero a caja.')+`<div class="kf-tools">${field('Fecha',inp('kfCashDate',K.cashDate,'date'))}</div>${cashForm()}<div class="kf-numbers">${stat('Efectivo cobrado (según órdenes)',money(due))}${stat('Órdenes asignadas',own.length)}</div>`+
  card(`<h2>Entregar liquidación</h2>${msg('Al solicitar no se marca como recibido. El administrador confirmará el efectivo real entregado.')}${button('Solicitar liquidación','settlementNew','primary')}`)+
- card(`<h2>Historial</h2>${mine.map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${money(z.amount)} · ${esc(z.date)}</strong><small>${esc(z.note||'')}</small></div>${status(z.status==='confirmada'?'Recibida':'Pendiente',z.status==='confirmada'?'ok':'busy')}</div>`).join('')||'<p>Sin liquidaciones registradas.</p>'}`)+cashForm();
+ card(`<h2>Historial</h2>${mine.map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${money(z.amount)} · ${esc(z.date)}</strong><small>${esc(z.note||'')}</small></div>${status(z.status==='confirmada'?'Recibida':'Pendiente',z.status==='confirmada'?'ok':'busy')}</div>`).join('')||'<p>Sin liquidaciones registradas.</p>'}`);
 }
-K.newMovement=async()=>{if(!admin())return;let type=$('kfMoveType')?.value,amount=amt($('kfMoveAmount')?.value),note=str($('kfMoveNote')?.value),date=K.cashDate,branch=currentBranch();if(K.branch==='all'){notice('Seleccioná una sucursal específica para registrar movimientos');return}if(!amount||!note){notice('Completá monto y motivo');return}if(K.closures.some(c=>c.branch===branch&&c.date===date)){notice('Esta caja ya cerró. No podés agregar movimientos retroactivos en un cierre confirmado.');return}
- try{await collection('cash_movements').add({type,amount,note,date,branch,createdAt:stamp(),createdMillis:Date.now(),byId:uid(),byName:username()});K.pick=null;notice('Movimiento registrado');draw()}catch(e){modalError(e,'registrar el movimiento')}};
+K.newMovement=async()=>{
+ if(!admin())return;
+ const branch=currentBranch(),date=K.cashDate;
+ if(K.branch==='all'){notice('Seleccioná una sucursal antes de registrar el movimiento');return}
+ if(K.closures.some(c=>c.branch===branch&&c.date===date)){notice('La caja de este día ya está cerrada. No se pueden cambiar sus movimientos.');return}
+ const type=K.pick==='cashDriver'?'anticipo_repartidor':K.pick==='cashDriverReturn'?'devolucion_cambio':['cashFund','cashFundExtra'].includes(K.pick)?'fondo':$('kfMoveType')?.value;
+ const amount=amt($('kfMoveAmount')?.value),note=str($('kfMoveNote')?.value);
+ if(!amount||!note){notice('Completá el monto y el motivo');return}
+ // En movimientos de caja, el canal indica de dónde proviene o por dónde salió el dinero.
+ // Para fondos de cambio entregados a repartidores, se registra únicamente efectivo físico.
+ const channel=['fondo','ingreso','gasto','retiro'].includes(type)?$('kfMoveChannel')?.value||'efectivo':'efectivo';
+ const bank=channel==='transferencia'?($('kfMoveBank')?.value==='otro'?str($('kfMoveBankOther')?.value):str($('kfMoveBank')?.value)):'';
+ const sourcePerson=type==='fondo'?str($('kfMoveSourcePerson')?.value):'';
+ const receiverType=type==='fondo'?(str($('kfMoveReceiverType')?.value)||'persona'):'';
+ const receivedBy=type==='fondo'?(receiverType==='empresa'?(channel==='transferencia'?'Cuenta bancaria de la empresa':'Caja fuerte de la empresa'):str($('kfMoveReceivedBy')?.value)):'';
+ if(type==='fondo'&&receiverType==='persona'&&!receivedBy){notice('Escribí quién recibió el dinero o seleccioná Caja fuerte de la empresa.');return}
+
+ const reference=str($('kfMoveReference')?.value);
+ if(channel==='transferencia'&&!bank){notice('Seleccioná o escribí el banco de la transferencia');return}
+ let personId='',personName='',recipient='';
+ if(type==='anticipo_repartidor'){
+  personId=str($('kfCashPerson')?.value);
+  personName=personId==='__manual__'?str($('kfCashPersonManual')?.value):cashPeople().find(x=>x[0]===personId)?.[1]||'';
+  if(!personName){notice('Seleccioná un repartidor o escribí su nombre');return}
+  if(personId==='__manual__')personId='manual:'+norm(personName);
+  recipient=personName;
+ }else if(type==='devolucion_cambio'){
+  personId=K.cashPerson;const p=Object.values(cashProjection().driverBalances).find(v=>v.id===personId);
+  if(!p||amount>p.balance+.009){notice('La devolución no puede superar el saldo pendiente del repartidor.');return}
+  personName=p.name;recipient=p.name;
+ }else if(['gasto','retiro'].includes(type)){
+  recipient=str($('kfMoveRecipient')?.value);if(!recipient){notice('Escribí a quién se pagó o el destino del dinero');return}
+ }else recipient=type==='fondo'?receivedBy:str($('kfMoveRecipient')?.value||'');
+ if(!confirm('¿Registrar '+cashTypeName(type,K.pick==='cashFundExtra'?'adicional':'inicial')+' por '+money(amount)+' ('+(channel==='transferencia'?'Transferencia · '+bank:'Efectivo')+')'+(recipient?' para '+recipient:'')+'?'))return;
+ try{
+  await collection('cash_movements').add({type,amount,note,recipient,receivedBy,receiverType,personId,personName,channel,bank,sourcePerson,reference,date,branch,fundOrigin:type==='fondo'?(K.pick==='cashFundExtra'?'adicional':'inicial'):'',companyId:company(),createdAt:stamp(),createdMillis:Date.now(),byId:uid(),byName:username()});
+  K.pick=null;K.cashPerson='';notice('Movimiento registrado con responsable y motivo');draw();
+ }catch(e){modalError(e,'registrar el movimiento')}
+};
+K.carryFund=async()=>{
+ if(!admin())return;
+ if(K.branch==='all'){notice('Elegí una sucursal concreta.');return}
+ const date=K.cashDate,branch=currentBranch(),prevDate=previousCashDate(date),sourceId=str($('kfCarrySource')?.value);
+ const src=previousFunds().find(m=>m.id===sourceId);
+ if(!src){notice('El fondo de ayer ya no está disponible. Actualizá Caja.');return}
+ if(carryAlreadyDone(src)){notice('Ese fondo de ayer ya fue utilizado hoy.');return}
+ if(!$('kfCarryVerified')?.checked){notice('Primero confirmá que el dinero sigue disponible y bajo la custodia indicada.');return}
+ const name= fundCustodian(src);
+ if(!confirm('¿Utilizar el fondo de ayer por '+money(src.amount)+' para '+date+'?\nCustodia: '+name+'.\nNo se registrará como dinero nuevo entregado.'))return;
+ try{
+  const prevRef=collection('cash_movements').doc(src.id);
+  const newRef=collection('cash_movements').doc(carryId(branch,date,src.id));
+  const closureRef=collection('cash_closures').doc(branch+'_'+date);
+  await window.db.runTransaction(async tx=>{
+   const [prev,newSnap,closed]=await Promise.all([tx.get(prevRef),tx.get(newRef),tx.get(closureRef)]);
+   if(newSnap.exists)throw Error('El fondo de ayer ya se registró para esta fecha.');
+   if(closed.exists)throw Error('Esta caja ya fue cerrada.');
+   if(!prev.exists||prev.data().type!=='fondo'||prev.data().branch!==branch||prev.data().date!==prevDate)throw Error('El fondo anterior cambió o no pertenece a esta sucursal.');
+   const old=prev.data();
+   tx.set(newRef,{type:'fondo',amount:amt(old.amount),note:'Fondo conservado del día '+prevDate+'; confirmado disponible por '+username(),recipient:fundCustodian(old),receivedBy:fundCustodian(old),receiverType:old.receiverType||'historial',personId:'',personName:'',channel:old.channel||'efectivo',bank:old.bank||'',sourcePerson:'Fondo anterior',reference:old.reference||'',date,branch,fundOrigin:'arrastre',sourceFundId:src.id,sourceDate:prevDate,companyId:company(),confirmedAvailable:true,confirmedBy:username(),createdAt:stamp(),createdMillis:Date.now(),byId:uid(),byName:username()});
+  });
+  K.pick=null;K.carriedSourceId='';notice('Fondo de ayer registrado como saldo inicial, no como entrega nueva.');draw();
+ }catch(e){modalError(e,'utilizar el fondo de ayer')}
+};
 K.requestSettlement=async()=>{const amount=amt($('kfSetAmount')?.value),note=str($('kfSetNote')?.value),b=currentBranch();if(!amount){notice('Ingresá el importe a entregar');return}if(b==='all'){notice('Seleccioná una sucursal');return}
  try{await collection('cash_settlements').add({date:K.cashDate,branch:b,amount,note,byId:uid(),byName:username(),status:'solicitada',createdAt:stamp(),createdMillis:Date.now()});K.pick=null;notice('Liquidación solicitada, pendiente de confirmación');draw()}catch(e){modalError(e,'solicitar la liquidación')}};
 K.confirmSettlement=async id=>{if(!admin())return;let z=K.settlements.find(x=>x.id===id);if(!z||z.status!=='solicitada')return;let a=prompt('¿Cuánto efectivo recibiste físicamente de '+z.byName+'? (L)',z.amount);if(a===null)return;let amount=amt(a);if(amount<=0||amount>z.amount){notice('El monto recibido debe ser mayor a 0 y no superar el solicitado. Si hay saldo, registrá otra liquidación.');return}
@@ -22802,11 +22895,11 @@ K.confirmSettlement=async id=>{if(!admin())return;let z=K.settlements.find(x=>x.
  try{await window.db.runTransaction(async tx=>{let ref=collection('cash_settlements').doc(id),s=await tx.get(ref);if(!s.exists||s.data().status!=='solicitada')throw Error('La liquidación fue atendida por otra persona');tx.update(ref,{status:'confirmada',confirmedAmount:amount,remainingAmount:amt(s.data().amount-amount),confirmedBy:username(),confirmedById:uid(),confirmedDate:today(),confirmedAt:stamp()})});notice('Recepción confirmada');draw()}catch(e){modalError(e,'confirmar la liquidación')}};
 K.closeCash=async()=>{if(!admin())return;if(K.branch==='all'){notice('Seleccioná una sucursal concreta para cerrar caja');return}const x=cashProjection();if(K.config?.cashMode==='rapido'&&!K.expandDenoms&&(K.quickCount===''||K.quickCount==null)){notice('Introducí el efectivo que contaste antes de cerrar.');return}const countedAmount=amt(counted()),diff=Math.round((countedAmount-x.expected)*100)/100,reason=str($('kfCashReason')?.value);
  if(Math.abs(diff)>.005&&!reason){notice('Explicá la diferencia antes de cerrar la caja');return}if(!confirm('¿Cerrar la caja de '+branchName(currentBranch())+' del '+K.cashDate+'? Este cierre no podrá modificarse.'))return;
- try{const id=currentBranch()+'_'+K.cashDate;await window.db.runTransaction(async tx=>{const ref=collection('cash_closures').doc(id),s=await tx.get(ref);if(s.exists)throw Error('Esta caja ya fue cerrada');tx.set(ref,{date:K.cashDate,branch:currentBranch(),expected:x.expected,counted:countedAmount,difference:diff,reason,breakdown:{sold:x.sold,confirmed:x.confirmed,cashLocal:x.cashLocal,heldByDriver:x.heldByDriver,pending:x.pending,bank:x.bank,cashIn:x.cashIn,cashOut:x.cashOut,paidSettlement:x.paidSettlement},denominations:{...K.counts},closedBy:username(),closedById:uid(),closedAt:stamp(),companyId:company()})});notice('Cierre de caja registrado');draw()}catch(e){modalError(e,'cerrar la caja')}};
+ try{const id=currentBranch()+'_'+K.cashDate;await window.db.runTransaction(async tx=>{const ref=collection('cash_closures').doc(id),s=await tx.get(ref);if(s.exists)throw Error('Esta caja ya fue cerrada');tx.set(ref,{date:K.cashDate,branch:currentBranch(),expected:x.expected,counted:countedAmount,difference:diff,reason,breakdown:{sold:x.sold,confirmed:x.confirmed,cashLocal:x.cashLocal,heldByDriver:x.heldByDriver,pending:x.pending,bank:x.bank,cashIn:x.cashIn,cashOut:x.cashOut,companyCash:x.companyCash,companyBank:x.companyBank,bankIn:x.bankIn,bankOut:x.bankOut,driverBalances:x.driverBalances,paidSettlement:x.paidSettlement},denominations:{...K.counts},closedBy:username(),closedById:uid(),closedAt:stamp(),companyId:company()})});notice('Cierre de caja registrado');draw()}catch(e){modalError(e,'cerrar la caja')}};
 /* Exportación de conciliaciones: los resultados son instantáneas, no certificaciones bancarias. */
 K.cashExcel=()=>{if(!admin())return;const x=cashProjection();if(!window.XLSX){notice('La librería Excel no está disponible');return}
- const data=[['CIERRE DE CAJA KPLACE'],['Sucursal',branchName(currentBranch())],['Fecha',K.cashDate],['Concepto','Lempiras / moneda configurada'],['Ventas del día',x.sold],['Pagos marcados pagados',x.confirmed],['Efectivo local marcado pagado',x.cashLocal],['En manos de repartidores',x.heldByDriver],['Liquidaciones confirmadas',x.paidSettlement],['Fondo y entradas',x.cashIn],['Gastos y retiros',x.cashOut],['Efectivo esperado',x.expected],['Efectivo contado',counted()],['Diferencia',counted()-x.expected],[],['MOVIMIENTOS'],['Fecha','Tipo','Monto','Responsable','Motivo'],...x.moves.map(m=>[m.date,m.type,m.amount,m.byName,m.note])];
- const sheet=window.XLSX.utils.aoa_to_sheet(data),book=window.XLSX.utils.book_new();sheet['!cols']=[{wch:32},{wch:32},{wch:18},{wch:25},{wch:35}];window.XLSX.utils.book_append_sheet(book,sheet,'Caja');window.XLSX.writeFile(book,'KPlace_Caja_'+K.cashDate+'.xlsx');};
+ const data=[['CIERRE DE CAJA KPLACE'],['Sucursal',branchName(currentBranch())],['Fecha',K.cashDate],['Concepto','Lempiras / moneda configurada'],['Ventas del día',x.sold],['Pagos marcados pagados',x.confirmed],['Efectivo local marcado pagado',x.cashLocal],['En manos de repartidores',x.heldByDriver],['Liquidaciones confirmadas',x.paidSettlement],['Fondo inicial en efectivo',x.initialCash],['Adicional recibido en efectivo',x.additionalCash],['Fondo conservado de ayer en efectivo',x.carriedCash],['Fondo inicial por banco',x.initialBank],['Adicional recibido por banco',x.additionalBank],['Saldo bancario conservado de ayer',x.carriedBank],['Otras entradas en efectivo',x.cashIn-x.companyCash-x.carriedCash],['Gastos y salidas en efectivo',x.cashOut],['Otras entradas bancarias registradas',x.bankIn-x.companyBank],['Pagos bancarios registrados',x.bankOut],['Efectivo esperado',x.expected],['Efectivo contado',counted()],['Diferencia',counted()-x.expected],[],['MOVIMIENTOS'],['Fecha','Tipo','Monto','Canal de entrega / cobro','Banco','Entregado por / origen','Recibido por / custodio / repartidor','Referencia bancaria','Registrado por','Motivo','Origen del fondo','Fecha de origen'],...x.moves.map(m=>[m.date,cashTypeName(m.type,m.fundOrigin),m.amount,m.channel==='transferencia'?'Transferencia bancaria':m.channel==='efectivo'?'Efectivo':'No indicado (registro anterior)',m.bank||'',m.sourcePerson||(m.type==='fondo'?'Empresa':''),m.type==='fondo'?fundCustodian(m):m.personName||m.recipient||'',m.reference||'',m.byName,m.note,m.type==='fondo'?(m.fundOrigin==='arrastre'?'Utilizado de ayer':m.fundOrigin==='adicional'?'Adicional':'Inicial'):'',m.sourceDate||'']),[],['FONDOS DE CAMBIO POR REPARTIDOR'],['Repartidor','Entregado','Devuelto','Pendiente'],...Object.values(x.driverBalances).map(p=>[p.name,p.advance,p.returned,p.balance])];
+ const sheet=window.XLSX.utils.aoa_to_sheet(data),book=window.XLSX.utils.book_new();sheet['!cols']=[{wch:32},{wch:32},{wch:19},{wch:25},{wch:25},{wch:27},{wch:30},{wch:26},{wch:25},{wch:38},{wch:24},{wch:20}];window.XLSX.utils.book_append_sheet(book,sheet,'Caja');window.XLSX.writeFile(book,'KPlace_Caja_'+K.cashDate+'.xlsx');};
 K.cashPdf=()=>{if(!admin())return;const c=K.closures.find(c=>c.date===K.cashDate&&c.branch===currentBranch());if(!c){notice('Primero tenés que cerrar la caja');return}
  const PDF=window.jspdf?.jsPDF;if(!PDF){notice('No se cargó el generador PDF');return}let pdf=new PDF({unit:'pt',format:'a4'}),y=55;pdf.setFontSize(18);pdf.text('KPlace · Cierre de caja',42,y);y+=34;pdf.setFontSize(11);for(const [k,v] of [['Sucursal',branchName(c.branch)],['Fecha',c.date],['Cerró',c.closedBy],['Efectivo esperado',money(c.expected)],['Efectivo contado',money(c.counted)],['Diferencia',money(c.difference)],['Motivo',c.reason||'Sin diferencias']]){const lines=pdf.splitTextToSize(k+': '+String(v),500);pdf.text(lines,42,y);y+=15*lines.length+7}pdf.text('Registro del sistema. Sujeto a conciliación con cobros reales.',42,770);pdf.save('KPlace_Cierre_'+c.date+'.pdf')};
 /* === Recibos de compra: únicamente documentos comerciales no fiscales === */
@@ -22905,8 +22998,7 @@ K.evaluate=async()=>{if(!user()||!window.db||!K.rules.length)return;const ds=tod
 };
 function settingsScreen(){let c=K.config||{},list=window.VENDEDORES||[],isAdmin=admin();return header('Modos y permisos','KPlace se adapta al tamaño del negocio. El Administrador general conserva todas las herramientas existentes.')+
  card(`<h2>Modo de operación de la empresa</h2><div class="kf-fields">${field('Cómo trabaja tu negocio',select('kfMode',[['solo','Individual · 1 persona'],['equipo','Equipo pequeño · 2 a 5'],['empresa','Empresarial · roles separados']],c.mode||'solo'))}</div><label class="kf-check" style="margin-top:14px"><input id="kfAutoAssign" type="checkbox" ${c.autoAssign?'checked':''}> Autoasignar tareas si hay un solo operador</label>${msg('Cambiar el modo no borra órdenes, inventario, empresas ni funciones, y no quita permisos al Administrador general.')}${button('Guardar modo de operación','saveMode','primary')}`)+
- card(`<h2>Empacador: rol único</h2><p>Cualquier empacador ve todos los pedidos de su sucursal. El primero en tomar una orden la bloquea para los demás. El Administrador general puede liberar una o varias órdenes.</p>${list.map((u,i)=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(u.nombre||u.usuario||'Usuario')}</strong><small>${esc(branchName(u.sucursalId||ownBranch()))} · ${u.esAdmin?'Administrador general':u.esEmpacador?'Empacador':'Otro rol'}</small></div>${u.esAdmin?status('Acceso total','ok'):button(u.esEmpacador?'Quitar Empacador':'Dar rol Empacador','rolePacker:'+i,'sm')}</div>`).join('')||'<p>Creá usuarios desde «Usuarios y equipo» para asignarles el rol de Empacador.</p>'}`)+
- card(`<h2>Propiedad de KPlace</h2>${msg('El Superadministrador de la plataforma debe habilitarse con una declaración de identidad firmada por Firebase Admin SDK (custom claim). No se concede por ser el primer usuario ni cambiando datos en el navegador.')}<p>El Administrador general mantiene control completo sobre su empresa y sucursales. No accede a la información de otros negocios.</p>`);
+ card(`<h2>Empacador: rol único</h2><p>Cualquier empacador ve todos los pedidos de su sucursal. El primero en tomar una orden la bloquea para los demás. El Administrador general puede liberar una o varias órdenes.</p>${list.map((u,i)=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(u.nombre||u.usuario||'Usuario')}</strong><small>${esc(branchName(u.sucursalId||ownBranch()))} · ${u.esAdmin?'Administrador general':u.esEmpacador?'Empacador':'Otro rol'}</small></div>${u.esAdmin?status('Acceso total','ok'):button(u.esEmpacador?'Quitar Empacador':'Dar rol Empacador','rolePacker:'+i,'sm')}</div>`).join('')||'<p>Creá usuarios desde «Usuarios y equipo» para asignarles el rol de Empacador.</p>'}`);
 }
 K.togglePacker=async i=>{if(!admin())return;let x=(window.VENDEDORES||[])[i];if(!x||x.esAdmin)return;if(!confirm((x.esEmpacador?'Quitar':'Asignar')+' el rol de Empacador a '+x.nombre+'?'))return;
  try{await window.db.runTransaction(async tx=>{const ref=window.db.collection('config').doc('vendedores'),sn=await tx.get(ref),list=sn.data()?.lista;if(!Array.isArray(list))throw Error('No hay usuarios');const target=list.find(u=>str(u.email||u.usuario||u.nombre)===str(x.email||x.usuario||x.nombre));if(!target)throw Error('El usuario ya no existe');target.esEmpacador=!target.esEmpacador;if(target.esEmpacador&&!target.esAdmin)target.cargo='Empacador';else if(!target.esAdmin)target.cargo=target.esRepartidor?'Repartidor':target.esEncargadoEnvios?'Administrador de envíos':'Vendedor';tx.set(ref,{lista:list},{merge:true})});notice('Rol actualizado');draw()}catch(e){modalError(e,'actualizar el rol')}};
@@ -22922,13 +23014,50 @@ K.searchResults=query=>{let node=$('kgsResults');if(!node)return;let q=norm(quer
  node.innerHTML=results.length?results.slice(0,45).map(r=>`<div class="kgs-row" role="button" tabindex="0" data-kgs-target="${r.type}" data-kgs-id="${esc(r.id)}"><div><b>${esc(r.title)}</b><small>${esc(r.sub)}</small></div><span>›</span></div>`).join(''):'<p style="padding:14px 5px;color:#babacd">No hay coincidencias en tus registros autorizados.</p>';
 };
 K.searchNavigate=(type,id)=>{K.closeSearch();if(type==='orden'){K.leave();try{if(typeof window.verOrden==='function')window.verOrden(id);else if(typeof window.editOrder==='function')window.editOrder(id)}catch(e){modalError(e,'abrir la orden')}}else if(type==='inventario'){K.leave();if(typeof window.setTab==='function')window.setTab('adminOrdersInventory');notice('Producto encontrado en inventario; podés localizarlo por su nombre.') }else if(type==='usuario'){K.leave();if(typeof window.openUsersPanel==='function')window.openUsersPanel()}};
-function cashForm(){if(K.pick==='cashMove')return card(`<h2>Registrar movimiento de caja</h2><div class="kf-fields">${field('Tipo',select('kfMoveType',[['fondo','Fondo inicial'],['ingreso','Entrada adicional'],['gasto','Gasto autorizado'],['retiro','Retiro / traslado a banco']]))}${field('Monto',inp('kfMoveAmount',0,'number','min="0" step="0.01"'))}</div>${field('Motivo (obligatorio)',`<textarea id="kfMoveNote" placeholder="Ej. Caja chica, depósito de banco..."> </textarea>`)}${button('Guardar movimiento','cashMovementSave','primary')}${button('Cancelar','cashCancel')}`);
+function cashPeople(){
+ const users=(window.VENDEDORES||[]).filter(u=>u&&!u.esAdmin&&(u.esRepartidor||/repartid/i.test(str(u.cargo||u.rol))));
+ const arr=users.map(u=>[str(u.email||u.usuario||u.nombre),str(u.nombre||u.usuario||'Repartidor')]).filter(u=>u[0]);
+ return [['','Seleccioná un repartidor'],...arr,['__manual__','Otro repartidor (escribir nombre)']];
+}
+function cashForm(){
+ if(K.pick==='cashFundCarry'){
+  const yesterday=previousCashDate(K.cashDate),sources=previousFunds();
+  if(!sources.length)return card(`<div class="kf-row"><h2>Utilizar fondo de ayer</h2>${button('Cancelar','cashCancel','sm')}</div><p>No hay un fondo registrado para ${esc(yesterday)} en ${esc(branchName(currentBranch()))}.</p>${button('Registrar fondo inicial','cashFund','primary')}`);
+  const items=sources.filter(m=>!carryAlreadyDone(m));
+  if(!items.length)return card(`<div class="kf-row"><h2>Utilizar fondo de ayer</h2>${button('Cancelar','cashCancel','sm')}</div>${msg('Todos los fondos del día anterior ya se utilizaron hoy. No podés duplicarlos.')}${button('Registrar fondo inicial','cashFund','sm')}`);
+  const source=items.find(m=>m.id===K.carriedSourceId)||items[0];
+  return card(`<div class="kf-row"><h2>Utilizar fondo de ayer</h2>${button('Cancelar','cashCancel','sm')}</div><p>Seleccioná el fondo registrado ayer. Solo hacelo si ese dinero realmente sigue disponible en la caja fuerte, cuenta o persona indicada.</p>
+  ${field('Fondo del '+esc(yesterday),select('kfCarrySource',items.map(m=>[m.id,money(m.amount)+' · '+(m.channel==='transferencia'?'Transferencia / '+(m.bank||'banco'):'Efectivo')+' · '+fundCustodian(m)]),source.id))}
+  <div id="kfCarrySummary" class="kf-help">${esc('Monto: '+money(source.amount)+' · '+(source.channel==='transferencia'?'Banco: '+(source.bank||'No indicado'):'Efectivo')+' · Custodia: '+fundCustodian(source))}</div>
+  <label class="kf-check" style="margin:14px 0"><input type="checkbox" id="kfCarryVerified"> Confirmo que ese dinero sigue disponible para trabajar hoy y continúa bajo la misma custodia.</label>
+  ${msg('No se registra una transferencia ni entrega nueva. El efectivo conservado se tomará como fondo inicial del día. El saldo en banco no se suma al arqueo físico.')}
+  <div class="kf-actions">${button('Utilizar fondo de ayer','cashCarrySave','primary')}${button('Registrar un fondo nuevo','cashFund','sm')}</div>`);
+ }
+ if(['cashMove','cashFund','cashFundExtra','cashDriver','cashDriverReturn'].includes(K.pick)){
+ const advance=K.pick==='cashDriver',refund=K.pick==='cashDriverReturn',initial=K.pick==='cashFund',extra=K.pick==='cashFundExtra',fund=initial||extra,normal=K.pick==='cashMove',person=refund?Object.values(cashProjection().driverBalances).find(v=>v.id===K.cashPerson)||null:null;
+ const typeChoices=[['gasto','Pago o gasto del negocio'],['retiro','Retiro / traslado'],['ingreso','Otro ingreso']]; // El fondo se registra exclusivamente desde su formulario de custodia.
+ const bankOptions=[['','Seleccioná el banco'],['BAC','BAC'],['Ficohsa','Ficohsa'],['Atlántida','Atlántida'],['Davivienda','Davivienda'],['Banpaís','Banpaís'],['Cuscatlán','Cuscatlán'],['Lafise','Lafise'],['Occidente','Banco de Occidente'],['otro','Otro banco']];
+ const channelBlock=`<div id="kfMoveChannelBlock">${field('¿Cómo se recibió / pagó el dinero?',select('kfMoveChannel',[['efectivo','Efectivo'],['transferencia','Transferencia bancaria']],'efectivo'))}<div id="kfMoveBankWrap" hidden>${field('¿En qué banco?',select('kfMoveBank',bankOptions))}<div id="kfMoveOtherWrap" hidden>${field('Nombre del banco',inp('kfMoveBankOther','','text','placeholder="Escribí el banco"'))}</div>${field('Referencia / comprobante (opcional)',inp('kfMoveReference','','text','placeholder="Número de transferencia"'))}</div></div>`;
+ return card(`<div class="kf-row"><h2>${initial?'Registrar fondo inicial':extra?'Agregar dinero al fondo':advance?'Entregar dinero a repartidor':refund?'Devolución de cambio':'Registrar pago o movimiento de caja'}</h2>${button('Cancelar','cashCancel','sm')}</div>
+ <p>${initial?'Indicá el dinero con el que la empresa inició esta jornada. Podés registrar una parte en efectivo y otra por transferencia; cada una queda separada.':extra?'Registrá únicamente el dinero NUEVO que la empresa te dio después de iniciar la jornada. Se suma al fondo actual y conserva su banco, destinatario y motivo, sin reemplazar el monto anterior.':advance?'Registrá a quién le das efectivo para cambio. Ese dinero permanece bajo su responsabilidad hasta devolverlo.':refund?'Registrá el efectivo de cambio que recibiste físicamente. No lo mezclés con liquidaciones de cobros de clientes.':'Registrá pagos, beneficiarios y motivo para saber adónde salió el dinero.'}</p>
+ ${normal?field('Tipo de movimiento',select('kfMoveType',typeChoices,'gasto')):''}
+ ${advance?field('Repartidor',select('kfCashPerson',cashPeople()))+field('Si no aparece en la lista',inp('kfCashPersonManual','','text','placeholder="Nombre del repartidor"')):''}
+ ${refund?card(`<strong>Repartidor: ${esc(person?.name||'')}</strong><p>Saldo de cambio registrado: ${money(person?.balance||0)}</p>`):''}
+ ${normal?field('¿A quién se pagó / destino?',inp('kfMoveRecipient','','text','placeholder="Ej. Juan Pérez, proveedor, depósito BAC"')):''}
+ ${fund?field('¿Quién entregó el fondo? (opcional)',inp('kfMoveSourcePerson','','text','placeholder="Ej. Administración / Encargado"'))+
+ field('¿Quién recibió o conserva el dinero?',select('kfMoveReceiverType',[['persona','Una persona (indicar nombre)'],['empresa','Caja fuerte de la empresa']],'persona'))+
+ `<div id="kfMovePersonWrap">${field('Nombre de la persona que recibió',inp('kfMoveReceivedBy','','text','placeholder="Ej. Encargado de caja"'))}</div>`:''}
+ ${(fund||normal)?channelBlock:''}
+ ${field('Monto',inp('kfMoveAmount',refund?person?.balance||0:0,'number','min="0.01" step="0.01"'))}
+ ${field('Motivo o concepto',`<textarea id="kfMoveNote" placeholder="Ej. Fondo del día, compra de materiales, pago a proveedor..." required>${initial?'Fondo inicial entregado por la empresa':extra?'Dinero adicional entregado por la empresa':''}</textarea>`)}
+ ${button(initial?'Guardar fondo inicial':extra?'Agregar dinero':'Guardar movimiento','cashMovementSave','primary')}${initial?button('Utilizar fondo de ayer','cashFundCarry','sm'):''}`);
+ }
  if(K.pick==='settlement')return card(`<h2>Nueva solicitud de liquidación</h2>${field('Monto a entregar',inp('kfSetAmount',0,'number','min="0" step="0.01"'))}${field('Descripción / órdenes relacionadas',`<textarea id="kfSetNote" placeholder="Ej. Efectivo de las entregas de hoy"></textarea>`)}${button('Solicitar recepción','settlementSave','primary')}${button('Cancelar','cashCancel')}`);
  return '';
 }
 /* === Eventos y navegación === */
 function refreshDocPreview(){const node=$('kfDocPreview');if(node&&K.doc)node.outerHTML=documentPreview()}
-function switchPage(page){if(['packing','cash','documents','automations','settings'].includes(page))K.open(page)}
+function switchPage(page){if(['packing','cash','documents','settings'].includes(page))K.open(page)}
 async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':');
  try{switch(action){
  case 'go':switchPage(id);break;
@@ -22946,7 +23075,13 @@ async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':'
  case 'incidentResolve':await K.resolveIncident(id);break;
  case 'cashUpdate':K.cashDate=$('kfCashDate')?.value||today();K.quickCount='';K.counts={};draw();break;
  case 'expandDenoms':K.expandDenoms=true;draw();break;
- case 'cashMovement':K.pick='cashMove';draw();break;
+ case 'cashMovement':K.pick='cashMove';draw();document.querySelector('#kfMoveAmount')?.scrollIntoView({block:'center',behavior:'smooth'});break;
+ case 'cashFund':K.pick='cashFund';draw();document.querySelector('#kfMoveAmount')?.scrollIntoView({block:'center',behavior:'smooth'});break;
+ case 'cashFundExtra':K.pick='cashFundExtra';draw();document.querySelector('#kfMoveAmount')?.scrollIntoView({block:'center',behavior:'smooth'});break;
+ case 'cashFundCarry':K.pick='cashFundCarry';K.carriedSourceId='';draw();document.querySelector('#kfCarrySource')?.scrollIntoView({block:'center',behavior:'smooth'});break;
+ case 'cashCarrySave':await K.carryFund();break;
+ case 'cashGiveDriver':K.pick='cashDriver';K.cashPerson='';draw();document.querySelector('#kfMoveAmount')?.scrollIntoView({block:'center',behavior:'smooth'});break;
+ case 'cashReturnDriver':K.pick='cashDriverReturn';K.cashPerson=decodeURIComponent(id);draw();document.querySelector('#kfMoveAmount')?.scrollIntoView({block:'center',behavior:'smooth'});break;
  case 'cashMovementSave':await K.newMovement();break;
  case 'settlementNew':K.pick='settlement';draw();break;
  case 'settlementSave':await K.requestSettlement();break;
@@ -22954,7 +23089,7 @@ async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':'
  case 'cashClose':await K.closeCash();break;
  case 'cashPDF':K.cashPdf();break;
  case 'cashExcel':K.cashExcel();break;
- case 'cashCancel':K.pick=null;draw();break;
+ case 'cashCancel':K.pick=null;K.cashPerson='';draw();break;
  case 'docClose':K.doc=null;K.order=null;draw();break;
  case 'newReceipt':K.newDocument(id,'recibo');break;
  case 'docAddItem':K.doc?.items.push({name:'Nuevo producto',qty:1,price:0});draw();break;
@@ -22982,6 +23117,10 @@ document.addEventListener('click',e=>{let b=e.target.closest?.('[data-kf]');if(b
 document.addEventListener('change',e=>{let t=e.target;if(!t||!K.page)return;
  if(t.id==='kfBranch'){K.branch=t.value;K.selection.clear();draw();return}
  if(t.id==='kfCashDate'){K.cashDate=t.value;K.quickCount='';K.counts={};draw();return}
+ if(t.id==='kfMoveChannel'){const wrap=$('kfMoveBankWrap');if(wrap)wrap.hidden=t.value!=='transferencia';const opt=$('kfMoveReceiverType')?.querySelector('option[value="empresa"]');if(opt)opt.textContent=t.value==='transferencia'?'Cuenta bancaria de la empresa':'Caja fuerte de la empresa';return}
+ if(t.id==='kfMoveReceiverType'){const wrap=$('kfMovePersonWrap');if(wrap)wrap.hidden=t.value!=='persona';return}
+ if(t.id==='kfCarrySource'){K.carriedSourceId=t.value;const v=previousFunds().find(m=>m.id===t.value);const block=$('kfCarrySummary');if(block&&v)block.textContent='Monto: '+money(v.amount)+' · '+(v.channel==='transferencia'?'Banco: '+(v.bank||'No indicado'):'Efectivo')+' · Custodia: '+fundCustodian(v);const check=$('kfCarryVerified');if(check)check.checked=false;return}
+ if(t.id==='kfMoveBank'){const wrap=$('kfMoveOtherWrap');if(wrap)wrap.hidden=t.value!=='otro';return}
  if(t.hasAttribute('data-kf-select')){if(t.checked)K.selection.add(t.dataset.kfSelect);else K.selection.delete(t.dataset.kfSelect);let btn=document.querySelector('[data-kf="releaseMany"]');if(btn)btn.textContent='Liberar seleccionadas ('+K.selection.size+')';return}
  if(t.hasAttribute('data-kf-verified')){K.verify(Number(t.dataset.kfVerified),t.checked);return}
  if(K.page==='documents'&&K.doc){let d=K.doc;
@@ -22998,13 +23137,13 @@ document.addEventListener('input',e=>{if(e.target.id==='kfQuickCount'){K.quickCo
 function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySelectorAll('#kpFlowRoot [data-doc-item]').forEach(t=>{let i=Number(t.dataset.docItem),k=t.dataset.key;if(K.doc.items[i])K.doc.items[i][k]=k==='name'?t.value:amt(t.value)});document.querySelectorAll('#kpFlowRoot [data-doc-pay]').forEach(t=>{let i=Number(t.dataset.docPay),k=t.dataset.key;if(K.doc.payments[i])K.doc.payments[i][k]=k==='paid'?t.checked:k==='amount'?amt(t.value):t.value});const map={kfDocCurrency:'currency',kfDocClient:'client',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocPhone:'phone',kfDocClientId:'clientId',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocTax:'taxPct',kfDocNotes:'notes'};Object.entries(map).forEach(([id,k])=>{let t=$(id);if(t)K.doc[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value});if($('kfDocTaxIncluded'))K.doc.taxIncluded=$('kfDocTaxIncluded').checked}
 const rawCommand=command;command=async function(cmd){if(/^doc(Save|PDF|Share)$/.test(cmd))flushDocForm();return rawCommand(cmd)};
 /* Cambio de rutas sin afectar menús existentes */
-const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|automations|settings)$/.test(id)){K.open(id.slice(7));return}K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
+const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|settings)$/.test(id)){K.open(id.slice(7));return}K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
 const nativeRender=window.render;window.render=function(){const r=(K.page&&String(window.activeTab)==='kplace_'+K.page)?(draw(),undefined):(typeof nativeRender==='function'?nativeRender.apply(this,arguments):undefined);setTimeout(syncMikeVisibility,60);return r};
 const nativeToggle=window.toggleMenu;window.toggleMenu=function(){let r=typeof nativeToggle==='function'?nativeToggle.apply(this,arguments):undefined;setTimeout(injectNavigation,30);return r};
 function highlightNav(){document.querySelectorAll('[data-kf-nav]').forEach(b=>{b.classList.toggle('active',K.page===b.dataset.kfNav)})}
 const nativeUpdateKPlaceNav=window.updateKPlaceNav;
 if(typeof nativeUpdateKPlaceNav==='function')window.updateKPlaceNav=function(){const r=nativeUpdateKPlaceNav.apply(this,arguments);highlightNav();return r};
-function registerAlerts(){if(!admin()||K._alertCompany===company()||!window.db)return;try{if(K._alertUnsub)K._alertUnsub();K._alertCompany=company();K._alertUnsub=collection('automation_alerts').limit(60).onSnapshot(s=>{K.alerts=s.docs.map(d=>({id:d.id,...d.data()}));let b=$('kpAlertGlobalButton');if(b)b.textContent='⚡ '+K.alerts.length},e=>console.warn('Avisos KPlace',e))}catch(e){console.warn('Avisos KPlace no disponibles',e)}}
+function registerAlerts(){/* Automatizaciones suspendidas a petición del usuario. */}
 /* Menú KPlace integrado: no usar data-section en accesos operativos nuevos.
    Los capturadores antiguos del menú interceptan ese atributo y evitan abrirlos. */
 function injectNavigation(){
@@ -23050,11 +23189,7 @@ function injectNavigation(){
   b.className='kf-global-search';b.setAttribute('aria-label','Buscar en todo KPlace');
   b.title='Buscador universal';b.textContent='⌕';b.onclick=K.openSearch;top.insertBefore(b,top.firstChild);
  }
- if(top&&admin()&&!$('kpAlertGlobalButton')){
-  const ab=document.createElement('button');ab.type='button';ab.id='kpAlertGlobalButton';
-  ab.className='kf-global-search';ab.title='Avisos de automatizaciones';
-  ab.textContent='⚡ '+(K.alerts?.length||0);ab.onclick=()=>K.open('automations');top.insertBefore(ab,top.firstChild);
- }
+ $('kpAlertGlobalButton')?.remove();
  highlightNav();
  syncMikeVisibility();
 }
@@ -23068,7 +23203,7 @@ document.addEventListener('click',function(ev){
 let navScheduled=false;new MutationObserver(()=>{if(navScheduled)return;navScheduled=true;setTimeout(()=>{navScheduled=false;injectNavigation()},180)}).observe(document.body,{childList:true,subtree:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')K.closeSearch();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();K.openSearch()}});
 window.kpGenerateDocumentFromOrder=function(orderId){K.open('documents',orderId)};
-window.kpOpenPacking=()=>K.open('packing');window.kpOpenCash=()=>K.open('cash');window.kpOpenAutomations=()=>K.open('automations');window.kpFlowOpen=(page)=>K.open(page);
+window.kpOpenPacking=()=>K.open('packing');window.kpOpenCash=()=>K.open('cash');window.kpOpenAutomations=()=>notice('Las automatizaciones están desactivadas por ahora');window.kpFlowOpen=(page)=>K.open(page);
 /* Abrir el editor desde el detalle de una orden sin cambiar sus controles existentes */
 document.addEventListener('click',e=>{if(!admin())return;const b=e.target.closest?.('[data-kf-order-invoice]');if(b){e.preventDefault();K.open('documents',b.dataset.kfOrderInvoice)}},true);
 function augmentOrderSheets(){if(!admin())return;document.querySelectorAll('.sheet.show .card').forEach(card=>{if(card.dataset.kfInvoiceAdded)return;const i=card.innerHTML.match(/(?:openOrderSheet|verOrden|editOrder)\([^)]*\)/);let sheet=card.closest('.sheet');const o=orders().find(o=>{let n=orderNo(o);return (card.textContent||'').includes(n)&&n.length>=3});if(o){let b=document.createElement('button');b.className='btn sm';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=o.id;card.appendChild(b);card.dataset.kfInvoiceAdded='1'}})}
@@ -23084,7 +23219,7 @@ function syncMikeVisibility(){
 }
 const nativeVerOrden=window.verOrden;
 if(typeof nativeVerOrden==='function')window.verOrden=function(id){const result=nativeVerOrden.apply(this,arguments);if(admin()){setTimeout(()=>{let sheet=[...document.querySelectorAll('.sheet.show')].slice(-1)[0];if(sheet&&!sheet.querySelector('[data-kf-order-invoice]')){let b=document.createElement('button');b.type='button';b.className='btn primary';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=id;sheet.appendChild(b)}},0)}return result};
-window.syncMikeVisibility=syncMikeVisibility;setTimeout(()=>{loadConfig();injectNavigation();syncMikeVisibility()},800);setInterval(()=>{if(user()){injectNavigation();syncMikeVisibility();if(K.rules.some(x=>x.enabled))K.evaluate().catch(e=>console.warn('Reglas KPlace',e))}},300000);
+window.syncMikeVisibility=syncMikeVisibility;setTimeout(()=>{loadConfig();injectNavigation();syncMikeVisibility()},800);setInterval(()=>{if(user()){injectNavigation();syncMikeVisibility()}},300000);
 })();
 
 </script>
@@ -23109,6 +23244,7 @@ body:not(.kp-dark) .sheet.kp-settings-org-sheet{--kpso-surface:#f4f5fa;--kpso-bg
 .kp-settings-org-sheet .kpso-close,.kp-settings-org-sheet .kpso-back{border:1px solid var(--kpso-outline);background:var(--kpso-surface);color:var(--kpso-text);border-radius:13px;cursor:pointer;min-height:40px;padding:8px 12px;font-size:14px;font-weight:750}
 .kp-settings-org-sheet .kpso-close{font-size:24px;width:42px;padding:0;flex-shrink:0}
 .kp-settings-org-sheet .kpso-body{padding:18px 18px 24px;display:grid;gap:19px}
+.kp-settings-org-sheet .kpso-body[hidden],.kp-settings-org-sheet [hidden]{display:none!important}
 .kp-settings-org-sheet .kpso-group{display:grid;gap:9px}
 .kp-settings-org-sheet .kpso-group-title{font-size:11px;font-weight:850;letter-spacing:1.4px;text-transform:uppercase;color:var(--kpso-accent);margin:0 0 3px 4px}
 .kp-settings-org-sheet .kpso-group-note{font-size:12px;color:var(--kpso-muted);margin:0 0 5px 4px}
@@ -23150,14 +23286,10 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
    ['appearance','◐','Apariencia','Elegir modo día o noche'],
    ['status','♧','Mis notificaciones','Avisos de pedidos y pendientes']
   ]},
-  {group:'ADMINISTRACIÓN DEL NEGOCIO',admin:true,entries:[
-   ['business','▣','Información del negocio','Nombre comercial y datos generales'],
-   ['inventory','▤','Configuración de inventario','Campos, variantes, moneda e impuestos de órdenes'],
-   ['users','♙','Usuarios y permisos','Administrar el equipo y accesos'],
-   ['integrations','⛓','Integraciones','Boxful y conexiones existentes']
+  {group:'NEGOCIO',admin:true,entries:[
+   ['business','▣','Información del negocio','Nombre comercial y datos generales']
   ]},
   {group:'HERRAMIENTAS AVANZADAS',admin:true,subtitle:'Nuevas herramientas de KPlace',entries:[
-   ['automations','⚡','Automatizaciones','Reglas, alertas y avisos automáticos'],
    ['modes','⚙','Modos y permisos','Individual, equipo y empresarial']
   ]}
  ];
@@ -23165,7 +23297,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
   profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   appearance:'<path d="M20.9 13a9 9 0 0 1-9.9-9.9A9 9 0 1 0 20.9 13Z"/>',
   status:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
-  business:'<rect x=3 y=3 width=18 height=18 rx=2/><path d="M7 21v-7h10v7M7 7h.01M12 7h.01M17 7h.01"/>',
+  business:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 21v-7h10v7M7 7h.01M12 7h.01M17 7h.01"/>',
   inventory:'<path d="M3 7 12 3l9 4-9 4-9-4Zm0 0v10l9 4 9-4V7M12 11v10"/>',
   users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   integrations:'<path d="M12 22v-5M7 2v4M17 2v4M5 6h14v6a7 7 0 0 1-14 0V6Z"/>',
@@ -23210,7 +23342,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
   Object.keys(legacy).forEach(id=>{
    let wrapper=node('div');wrapper.append(legacy[id]);
    if(id==='profile'){
-    let edit=node('button','kpso-action','Editar nombre y datos personales');edit.type='button';edit.addEventListener('click',()=>{if(typeof window.openMyProfile==='function')window.openMyProfile()});wrapper.append(edit);
+    let edit=node('button','kpso-action','Editar nombre y datos personales');edit.type='button';edit.addEventListener('click',()=>{close(sheet,bg);if(typeof window.openMyProfile==='function')window.openMyProfile()});wrapper.append(edit);
    }
    if(id==='status'){
     let link=node('button','kpso-action','Abrir centro de notificaciones');link.type='button';link.addEventListener('click',()=>go('tab','notificaciones'));wrapper.append(link);
@@ -23252,9 +23384,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
    let el=e.target.closest('[data-kpso-entry]');if(!el)return;const id=el.dataset.kpsoEntry;
    if(subpages[id]){show(id);return}
    if(['inventory','users','integrations'].includes(id))return go('tab',id==='inventory'?'configNegocio':id==='users'?'admin':'integraciones');
-   if(['automations','modes'].includes(id)){
-    return go('flow',id==='automations'?'automations':'settings');
-   }
+   if(id==='modes')return go('flow','settings');
   });
   root.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();e.preventDefault();if(detail.getAttribute('aria-hidden')==='false')showHome();else close(sheet,bg)}});
  }
