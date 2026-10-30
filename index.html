@@ -4242,8 +4242,10 @@ function orderCard(o){
   const _bx=!_bxOn?'':((o.boxfulAlert==='entregado'||_bxE==='Entregado')?'ok':((o.boxfulAlert==='problema'||/Problema|Devuelto|Cancelado/.test(_bxE))?'bad':''));
   const _bxk=_bx==='ok'?'ok':_bx==='bad'?'bad':(/ruta/i.test(_bxE)?'route':'info');
   let statusClass='pendiente-entrega';
-  if(kpNoRecibido(o))statusClass='devolucion-kp';
-  else if(o.entregado===true||_bx==='ok') statusClass='entregado';
+  const _dev=kpNoRecibido(o);
+  if(o.entregado===true||_bx==='ok') statusClass='entregado'+(_dev?' devolucion-kp':'');
+  else if(_dev) statusClass='no-entregado devolucion-kp';
+  else if(o.tipoOrden==='cambio') statusClass='pendiente-entrega kp-tone-blue';
   else if(o.entregado===false||_bx==='bad') statusClass='no-entregado';
   const pagoLabel = o.metodoPago==='mitad'
     ? `${kpMoneda()} ${(o.montoMitad1||0).toFixed(0)} ${o.metodoPagoMitad1||''}${o.bancoMitad1?' ('+o.bancoMitad1+')':''} + ${kpMoneda()} ${(o.montoMitad2||0).toFixed(0)} ${o.metodoPagoMitad2||''}${o.bancoMitad2?' ('+o.bancoMitad2+')':''}${o.estadoPago==='pagado'?' · pagado':' · pendiente'}`
@@ -20157,7 +20159,7 @@ window.exportExcel=KP.exportOrdersDetail=async function(){
   const cap=x=>x?String(x).charAt(0).toUpperCase()+String(x).slice(1):'';
   const tot=o=>kpVentaContable(o);
   const prodTxt=p=>((p.categoria==='__custom__'?(p.categoriaManual||''):(p.categoria||''))+' '+(p.modelo||'')+' '+(p.tamano||'')+' '+(p.colorEn||p.colorEs||'')).replace(/\s+/g,' ').trim()+' x'+(p.cantidad||1);
-  const calc=o=>{const t=tot(o),ent=o.entregado===true,split=o.metodoPago==='mitad';
+  const calc=o=>{const noRec=!!(window.kpNoRecibido&&kpNoRecibido(o)),dev=noRec||o.tipoOrden==='devolucion'||o.esDevolucion===true,t=noRec?(window.kpDevCobradoConfirmado?kpDevCobradoConfirmado(o):0):tot(o),ent=o.entregado===true,split=o.metodoPago==='mitad';
     if(kpReembolsoTotal(o)>0)return {t,ps:[],pag:0,pen:0,est:kpEstadoReembolso(o),pago:split?'Dividido':cap(o.metodoPago)};
     if(kpNoRecibido(o))return {t:kpVentaContable(o),ps:[],pag:kpVentaContable(o),pen:0,est:kpVentaContable(o)>0?'Devolución con cobro':'Devolución sin cobro',pago:'Cobro retenido'};
     const st=(m,e)=>ent||e==='pagado'?'Pagado':e==='pendiente'?'Pendiente':(split?(m==='efectivo'?'Pendiente':'Pagado'):(o.estadoPago==='pagado'?'Pagado':'Pendiente'));
@@ -20165,7 +20167,7 @@ window.exportExcel=KP.exportOrdersDetail=async function(){
     if(split){[[o.metodoPagoMitad1,o.bancoMitad1,o.montoMitad1,o.estadoMitad1],[o.metodoPagoMitad2,o.bancoMitad2,o.montoMitad2,o.estadoMitad2]].forEach(x=>{const a=Number(x[2])||0;if(a>0)ps.push({m:cap(x[0]),b:x[1]||'',a:a,s:st(x[0],x[3])});});}
     else if(t>0)ps.push({m:cap(o.metodoPago),b:o.banco||'',a:t,s:st(o.metodoPago,null)});
     const pag=ps.filter(p=>p.s==='Pagado').reduce((q,p)=>q+p.a,0),pen=ps.filter(p=>p.s==='Pendiente').reduce((q,p)=>q+p.a,0);
-    return {t,ps,pag,pen,est:pen>0?(pag>0?'Parcial':'Pendiente'):'Pagado',pago:split?'Dividido':cap(o.metodoPago)};};
+    return {t,ps,pag,pen,dev,est:pen>0?(pag>0?'Parcial':'Pendiente'):'Pagado',pago:split?'Dividido':((dev&&t===0)?'':cap(o.metodoPago))};};
   const INK='FF0F172A',SL='FF334155',FM='#,##0.00;-#,##0.00;"–"';
   const NC={16:['FF4F7CFF','FFEEF3FF','FF2B4FCC'],20:['FF9B6BFF','FFF3EEFF','FF6B3FD6'],22:['FF1FB57A','FFE6F7EF','FF11805A'],23:['FFFF8A4C','FFFFF0E6','FFC2571A']};
   const CH={Pagado:['FFE6F7EF','FF11805A'],Pendiente:['FFFFF0E6','FFC2571A']},GR=['FFEEF1F5','FF475569'];
@@ -20181,14 +20183,14 @@ window.exportExcel=KP.exportOrdersDetail=async function(){
   const money=new Set([11,16,20,22,23]),ctr=new Set([1,2,9,10,12,13,14,17,18,21,24,25]);
   os.forEach((o,i)=>{const r=6+i,c=calc(o),p1=c.ps[0]||{},p2=c.ps[1]||{};
     const vals=[num(o),o.fecha||'',o.plataforma||'',o.vendedor||'',o.cliente||'',o.numero||'',o.direccion||'',(o.productos||[]).map(prodTxt).join(' | '),
-      o.tipoOrden==='cambio'?'Cambio':o.tipoOrden==='remplazo'?'Remplazo':'Normal',o.ordenOriginalNumero?'#'+o.ordenOriginalNumero:'',c.t,c.pago,c.est,
+      c.dev?'Devolución':(o.tipoOrden==='cambio'?'Cambio':o.tipoOrden==='remplazo'?'Remplazo':'Normal'),o.ordenOriginalNumero?'#'+o.ordenOriginalNumero:'',c.t,c.pago,c.est,
       p1.m||'',p1.b||'',p1.a||null,p1.s||'',p2.m||'',p2.b||'',p2.a||null,p2.s||'',c.pag,c.pen,
       (window.TIPO_ENTREGA_LABELS&&TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'',kpNoRecibido(o)?'Devolución':(o.entregado===true?'Sí':'No'),kpNoRecibido(o)?['Devolución: '+kpMotivoDevolucion(o),kpNotaDevolucion(o),'Original: '+Number(totalOrden(o)||0),'Cobrado: '+kpDevCobradoConfirmado(o),'Reembolsado: '+kpDevReembolsado(o),'Retenido: '+kpDevRetenido(o),o.notas||''].filter(Boolean).join(' | '):(o.notas||'')];
     vals.forEach((v,j)=>{const k=j+1,x=ws.getCell(r,k);x.value=v===''?null:v;x.font={name:'Arial',size:10,bold:k===1};
       x.alignment={vertical:'middle',wrapText:k===26,horizontal:ctr.has(k)?'center':(money.has(k)?'right':'left')};
       x.border={bottom:{style:'thin',color:{argb:'FFE8ECF1'}}};if(money.has(k))x.numFmt=FM;
       if(NC[k]){x.fill={type:'pattern',pattern:'solid',fgColor:{argb:NC[k][1]}};x.font={name:'Arial',size:10,bold:true,color:{argb:NC[k][2]}};}
-      const ch=[9,12,13,17,21].includes(k)?(CH[v]||(['Cambio','Remplazo','Dividido','Parcial'].includes(v)?GR:null)):null;
+      const ch=[9,12,13,17,21].includes(k)?(CH[v]||(['Cambio','Remplazo','Devolución','Dividido','Parcial'].includes(v)?GR:null)):null;
       if(ch){x.fill={type:'pattern',pattern:'solid',fgColor:{argb:ch[0]}};x.font={name:'Arial',size:10,bold:true,color:{argb:ch[1]}};}});
     ws.getRow(r).height=28;});
   const a=6,b=5+os.length,t=b+1;
@@ -23307,15 +23309,9 @@ function documentEditor(){let d=K.doc,t=documentTotals(d);return card(`<div clas
  <div class="kf-fields">${field('Nombre del negocio',inp('kfDocBiz',d.businessName))}${field('Teléfono del negocio',inp('kfDocBizPhone',d.businessPhone))}${field('Cliente',inp('kfDocClient',d.client))}${field('Referencia del cliente (opcional)',inp('kfDocClientId',d.clientId))}${field('Teléfono del cliente',inp('kfDocPhone',d.phone))}${field('Moneda',select('kfDocCurrency',receiptCurrencies,d.currency||'L'))}</div>
  ${field('Dirección del negocio',inp('kfDocAddress',d.businessAddress))}${field('Origen de la venta (Instagram, WhatsApp, tienda...)',inp('kfDocPlatform',d.platform))}
  <div class="kf-divider"></div><div class="kf-row"><h3>Productos</h3>${button('+ Producto','docAddItem','sm')}</div>${d.items.map((i,idx)=>`<div class="kf-item"><div class="kf-fields">${field('Descripción',`<input data-doc-item="${idx}" data-key="name" value="${esc(i.name)}">`)}${field('Cantidad',`<input type="number" min="0" step="1" data-doc-item="${idx}" data-key="qty" value="${esc(i.qty)}">`)}${field('Precio unitario',`<input type="number" min="0" step="0.01" data-doc-item="${idx}" data-key="price" value="${esc(i.price)}">`)}</div>${button('Quitar producto','docDelItem:'+idx,'sm warn')}</div>`).join('')}
- <div class="kf-divider"></div><div class="kf-row"><h3>Cargos y descuentos</h3>${button('+ Agregar otro cargo','docAddCharge','sm')}</div>
- <p>Podés poner el nombre de cada concepto y elegir si suma o resta, en monto o porcentaje, igual que en Cotizaciones.</p>
- ${normalizeReceiptCharges(d).map((c,i)=>`<div class="kf-item" data-doc-charge-row="${i}">
- ${field('Concepto',`<input data-doc-charge="${i}" data-key="label" value="${esc(c.label||'')}" placeholder="Ej. Envío, descuento, empaque...">`)}
- <div class="kf-fields">
- ${field('Valor',`<input type="number" min="0" step="0.01" data-doc-charge="${i}" data-key="value" value="${esc(c.value||0)}">`)}
- ${field('Tipo',`<select data-doc-charge="${i}" data-key="unit"><option value="monto" ${c.unit!=='porcentaje'?'selected':''}>Monto (${esc(d.currency||'L')})</option><option value="porcentaje" ${c.unit==='porcentaje'?'selected':''}>Porcentaje (%)</option></select>`)}
- ${field('Operación',`<select data-doc-charge="${i}" data-key="effect"><option value="sumar" ${c.effect!=='restar'?'selected':''}>+ Suma</option><option value="restar" ${c.effect==='restar'?'selected':''}>− Resta</option></select>`)}
- </div>${button('Quitar cargo','docDelCharge:'+i,'sm warn')}</div>`).join('')}
+ <div class="kf-divider"></div><div class="kf-row"><h3 style="display:flex;align-items:center;gap:10px"><span style="width:5px;height:24px;border-radius:4px;background:#a855f7;display:inline-block"></span>Cargos y descuentos</h3></div>
+${normalizeReceiptCharges(d).map((c,i)=>`<div class="kf-item" data-doc-charge-row="${i}"><div style="display:flex;gap:8px;align-items:center"><input data-doc-charge="${i}" data-key="label" value="${esc(c.label||'')}" placeholder="Concepto" aria-label="Concepto" style="font-weight:700;flex:1;min-width:0">${button('✕','docDelCharge:'+i,'sm warn')}</div><div style="display:flex;gap:8px;margin-top:8px"><input type="number" min="0" step="0.01" inputmode="decimal" data-doc-charge="${i}" data-key="value" value="${c.value?esc(c.value):''}" placeholder="0" aria-label="Valor" style="flex:1;min-width:0"><select data-doc-charge="${i}" data-key="unit" style="width:96px;flex:none"><option value="monto" ${c.unit!=='porcentaje'?'selected':''}>${esc(d.currency&&d.currency!=='L'?d.currency:'L.')}</option><option value="porcentaje" ${c.unit==='porcentaje'?'selected':''}>%</option></select><select data-doc-charge="${i}" data-key="effect" style="width:112px;flex:none"><option value="sumar" ${c.effect!=='restar'?'selected':''}>+ Suma</option><option value="restar" ${c.effect==='restar'?'selected':''}>− Resta</option></select></div></div>`).join('')}
+<p style="font-size:12px;opacity:.7;margin:4px 0 10px">El % se calcula sobre el subtotal de los productos. Elige si suma o resta.</p>${button('+ Agregar otro cargo','docAddCharge','').replace('<button ','<button style="width:100%" ')}
  <div class="kf-divider"></div><div class="kf-row"><h3>Por dónde se cobró</h3>${button('+ Forma de pago','docAddPay','sm')}</div>${d.payments.map((p,idx)=>`<div class="kf-item"><div class="kf-fields">${field('Método',`<select data-doc-pay="${idx}" data-key="method">${methods.map(([v,l])=>`<option value="${esc(v)}" ${norm(v)===norm(p.method)?'selected':''}>${esc(l)}</option>`).join('')}</select>`)}${field('Monto',`<input type="number" min="0" step="0.01" data-doc-pay="${idx}" data-key="amount" value="${esc(p.amount)}">`)}</div><div class="kf-row"><label class="kf-check"><input type="checkbox" data-doc-pay="${idx}" data-key="paid" ${p.paid?'checked':''}> Cobro confirmado</label>${button('Eliminar','docDelPay:'+idx,'sm warn')}</div></div>`).join('')}
  ${field('Observaciones',`<textarea id="kfDocNotes">${esc(d.notes)}</textarea>`)}
  ${Math.abs(d.sourceTotal-t.total)>0.01?`<div class="kf-danger">El total editado (${money(t.total)}) difiere de la orden original (${money(d.sourceTotal)}). Revisá productos, cargos e importes antes de compartir. Este editor no modifica la orden original.</div>`:''}
@@ -23741,6 +23737,7 @@ window.syncMikeVisibility=syncMikeVisibility;setInterval(function(){try{syncMike
 
 <!-- KPlace · Ajustes organizados: experiencia visual, se conserva la lógica y datos existentes -->
 <style id="kp-cards-no-flash">#view .card.pendiente-entrega:not([data-kpx]),#view .card.entregado:not([data-kpx]),#view .card.no-entregado:not([data-kpx]){visibility:hidden}</style>
+<style id="kp-card-tones">#view .card.kp-tone-blue{border:1px solid rgba(59,130,246,.55)!important;border-left:4px solid #3b82f6!important;background-color:#eff6ff!important;background-image:linear-gradient(160deg,rgba(59,130,246,.18),rgba(59,130,246,0) 55%)!important}body.kp-dark #view .card.kp-tone-blue{border-left-color:#60a5fa!important;background-color:#0f1f3a!important}</style>
 <style id="kp-nav-touch-fix">@media (hover:none){.kp-drawer-nav button:hover:not(.active),.kp-nav button:hover:not(.active){background:transparent!important;color:inherit!important}body.kp-dark .kp-drawer-nav button:hover:not(.active){background:transparent!important;color:#d6def0!important}body.kp-dark .kp-nav button:hover:not(.active){background:transparent!important}}</style>
 <style id="kp-settings-organized-css">
 body.kp-hide-mike #kpMikeFab,body.kp-hide-mike #kpMikeDock,body.kp-hide-mike #kpMikeFill,body.kp-hide-mike #kpMikeTarget{display:none!important;}
