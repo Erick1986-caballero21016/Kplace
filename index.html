@@ -22695,7 +22695,7 @@ async function loadConfig(){
 }
 async function saveConfig(next){if(!admin()){notice('Solo el Administrador general puede cambiar la configuración');return}try{await root().set({settings:{...K.config,...next,updatedAt:stamp(),updatedBy:uid()}},{merge:true});Object.assign(K.config,next);notice('Configuración guardada');draw()}catch(e){modalError(e,'guardar la configuración')}}
 function ensureRoot(){let v=$('view');if(!v)return null;v.innerHTML='<div id="kpFlowRoot"></div>';return $('kpFlowRoot')}
-function tabBar(){const list=[['packing','Empaque'],['cash','Caja'],['documents','Recibos'],['automations','Automatizaciones'],['settings','Modos y permisos']];return `<div class="kf-subnav">${list.filter(x=>x[0]!=='settings'&&x[0]!=='automations'||admin()).map(([id,label])=>`<button class="kf-btn sm ${K.page===id?'active':''}" data-kf="go:${id}">${label}</button>`).join('')}</div>`}
+function tabBar(){return ''}
 function draw(){if(!K.page||!user())return;let v=$('view');if(!v)return;let node=$('kpFlowRoot')||ensureRoot();if(!node)return;
  const renderers={packing:packingScreen,cash:cashScreen,documents:documentsScreen,automations:automationsScreen,settings:settingsScreen};
  const allowed=K.page==='packing'?packer():['cash','documents','automations','settings'].includes(K.page)?admin()||K.page==='cash'&&(driver()||seller()):false;
@@ -22704,7 +22704,7 @@ function draw(){if(!K.page||!user())return;let v=$('view');if(!v)return;let node
 K.open=function(page,orderId){
  if(!user()){notice('Iniciá sesión para continuar.');return}
  if(!['packing','cash','documents','automations','settings'].includes(page))return;
- if(K.page!==page){K.note='';K.pick=null;K.doc=null}
+ if(K.page!==page){K.note='';K.pick=null;K.doc=null;K.receiptPrefsOpen=false;K.cashPrefsOpen=false}
  if(page==='packing'&&!packer()){notice('Acceso exclusivo de Empacador o Administrador general.');return}
  if(['documents','automations','settings'].includes(page)&&!admin()){notice('Solo el Administrador general puede acceder aquí.');return}
  if(page==='cash'&&!admin()&&!driver()&&!seller()){notice('No tenés acceso a Caja.');return}
@@ -22771,9 +22771,13 @@ function cashProjection(){const list=branchOrders().filter(o=>orderDay(o)===K.ca
 }
 const denoms=[500,200,100,50,20,10,5,2,1,.5];
 function counted(){return K.config?.cashMode==='rapido'&&!K.expandDenoms?amt(K.quickCount||0):denoms.reduce((a,x)=>a+x*Math.max(0,Math.floor(n(K.counts[x]))),0)}
+function cashPrefs(){let c=K.config||{};return card(`<div class="kf-row"><h2>Configuración de caja</h2>${button('Cerrar','cashSettingsToggle','sm')}</div><p>Elegí el método predeterminado para contar el efectivo. Podés abrir un arqueo detallado cuando lo necesités.</p>
+ ${field('Método de cierre',select('kfCashPrefMode',[['rapido','Cierre rápido'],['completo','Arqueo completo por denominaciones']],c.cashMode||'rapido'))}
+ <div class="kf-actions">${button('Guardar configuración de caja','saveCashSettings','primary')}</div>`)}
 function cashScreen(){if(!admin())return driverCashScreen();const x=cashProjection();const clos=K.closures.find(z=>z.date===K.cashDate&&z.branch===currentBranch());let pending=K.settlements.filter(z=>z.status==='solicitada'&&(K.branch==='all'||z.branch===currentBranch()));
  const dateField=field('Fecha',inp('kfCashDate',K.cashDate,'date'));
- return header('Cierre de caja inteligente','Ventas, efectivo bajo custodia, liquidaciones y arqueos, separados de los cobros pendientes.')+
+ return header('Cierre de caja inteligente','Ventas, efectivo bajo custodia, liquidaciones y arqueos, separados de los cobros pendientes.',button(K.cashPrefsOpen?'Ocultar configuración':'Configuración de caja','cashSettingsToggle','sm'))+
+  (K.cashPrefsOpen?cashPrefs():'')+
  `<div class="kf-tools">${branchChooser(true)}${dateField}${button('Actualizar','cashUpdate')}</div>`+
  `<div class="kf-numbers">${stat('Ventas del día',money(x.sold))}${stat('Pagos marcados pagados',money(x.confirmed))}${stat('Efectivo teórico en caja',money(x.expected))}${stat('Por cobrar en órdenes',money(x.pending))}</div>`+
  `<div class="kf-2">${card(`<h2>Conciliación</h2>${rowInfo('Efectivo local pagado',money(x.cashLocal))}${rowInfo('Liquidaciones confirmadas recibidas',money(x.paidSettlement))}${rowInfo('Fondo / ingresos manuales',money(x.cashIn))}${rowInfo('Gastos y retiros',money(x.cashOut))}<div class="kf-divider"></div>${rowInfo('Efectivo esperado',money(x.expected),true)}${msg('El cálculo toma el estado actual de las órdenes. Los cobros con repartidor se muestran aparte, para no contarlos dos veces. Verificá los movimientos históricos antes de cerrar.')}`)}
@@ -22816,9 +22820,17 @@ function orderDoc(o){
 K.newDocument=function(id){let o=findOrder(id);if(!o||!isAccessible(o)){notice('No se encontró la orden o no tenés acceso.');return}K.order=id;K.doc=orderDoc(o);draw()};
 function documentTotals(d){let subtotal=(d.items||[]).reduce((a,i)=>a+amt(i.price)*Math.max(0,n(i.qty)),0),base=Math.max(0,subtotal-amt(d.discount)+amt(d.shipping)+amt(d.other)),pct=Math.min(100,amt(d.taxPct)),tax=d.taxIncluded?base*(pct/(100+pct)):base*pct/100,total=d.taxIncluded?base:base+tax,paid=(d.payments||[]).filter(p=>p.paid).reduce((a,p)=>a+amt(p.amount),0);return {subtotal,base,tax:amt(tax),total:amt(total),paid:amt(paid),pending:amt(Math.max(0,total-paid))}}
 const methods=[['efectivo','Efectivo'],['transferencia','Transferencia'],['link de pago','Link de pago'],['pos','Tarjeta / POS'],['contraentrega','Contraentrega'],['otro','Otro']];
+function receiptPrefs(){let c=K.config||{};return card(`<div class="kf-row"><h2>Preferencias de recibos</h2>${button('Cerrar','receiptSettingsToggle','sm')}</div>
+ <p>Estos datos se completan automáticamente en cada nuevo recibo. El recibo comercial no sustituye una factura fiscal.</p>
+ <div class="kf-fields">${field('Nombre comercial',inp('kfCfgName',c.businessName||''))}${field('Moneda predeterminada',select('kfCfgCurrency',receiptCurrencies,c.currency||'L'))}${field('Dirección del negocio',inp('kfCfgAddress',c.businessAddress||''))}${field('Teléfono del negocio',inp('kfCfgPhone',c.businessPhone||''))}</div>
+ ${field('Logo (PNG o JPG)',`<input type="file" id="kfCfgLogo" accept="image/png,image/jpeg,image/webp">`)}
+ ${c.logo?`<div style="margin-top:10px"><img class="kf-inline-logo" src="${esc(c.logo)}" alt="Logo del negocio"></div>`:''}
+ <div class="kf-actions">${button('Guardar preferencias de recibos','saveReceiptSettings','primary')}</div>`)}
 function documentsScreen(){const all=branchOrders();let left=card(`<h2>Órdenes guardadas</h2>${field('Buscar cliente, número de orden o teléfono',inp('kfDocSearch',K.note||'','search','placeholder="Buscar..."'))}<div id="kfDocRows">${docOrderRows(all)}</div>`);
- if(K.doc){return header('Recibos de compra','Editá un recibo comercial, comprobá los montos y descargalo en PDF para compartirlo por WhatsApp.')+branchChooser(true)+`<div class="kf-2">${documentEditor()}${documentPreview()}</div>`+card(`<h2>Recibos guardados</h2>${draftList()}`)}
- return header('Recibos de compra','Elegí una orden para generar un recibo comercial no fiscal.')+branchChooser(true)+left+card(`<h2>Recibos guardados</h2>${draftList()}`);
+ const prefs=K.receiptPrefsOpen?receiptPrefs():'';
+ const heading=header('Recibos de compra',K.doc?'Editá un recibo comercial y compartilo por WhatsApp.':'Elegí una orden para generar un recibo comercial no fiscal.',button(K.receiptPrefsOpen?'Ocultar preferencias':'Preferencias de recibos','receiptSettingsToggle','sm'));
+ if(K.doc){return heading+prefs+branchChooser(true)+`<div class="kf-2">${documentEditor()}${documentPreview()}</div>`+card(`<h2>Recibos guardados</h2>${draftList()}`)}
+ return heading+prefs+branchChooser(true)+left+card(`<h2>Recibos guardados</h2>${draftList()}`);
 }
 function docOrderRows(all){const q=norm(K.note||'');return all.filter(o=>!q||norm([o.cliente,o.numero,o.numero2,orderNo(o)].join(' ')).includes(q)).slice(-50).map(o=>`<div class="kf-entry"><div class="kf-entry-text"><strong>#${esc(orderNo(o))} · ${esc(o.cliente||'Sin nombre')}</strong><small>${esc(o.fecha||'')} · ${money(o.totalPedido)}</small></div><div class="kf-actions">${button('Generar recibo','newReceipt:'+o.id,'sm')}</div></div>`).join('')||'<p>No hay órdenes para mostrar.</p>'}
 function draftList(){return K.drafts.filter(d=>d.kind==='recibo'||!d.kind).slice().sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,35).map(d=>`<div class="kf-entry"><div class="kf-entry-text"><strong>Recibo · #${esc(d.orderNo||'')}</strong><small>${esc(d.client||'')} · ${esc(d.status||'borrador')} · ${money(d.finalTotal||0)}</small></div>${button('Editar','editDraft:'+d.id,'sm')}</div>`).join('')||'<p>No se guardaron recibos todavía.</p>'}
@@ -22892,14 +22904,13 @@ K.evaluate=async()=>{if(!user()||!window.db||!K.rules.length)return;const ds=tod
  }
 };
 function settingsScreen(){let c=K.config||{},list=window.VENDEDORES||[],isAdmin=admin();return header('Modos y permisos','KPlace se adapta al tamaño del negocio. El Administrador general conserva todas las herramientas existentes.')+
- card(`<h2>Modo de operación de la empresa</h2><div class="kf-fields">${field('Cómo trabaja tu negocio',select('kfMode',[['solo','Individual · 1 persona'],['equipo','Equipo pequeño · 2 a 5'],['empresa','Empresarial · roles separados']],c.mode||'solo'))}${field('Cierre de caja',select('kfCashMode',[['rapido','Rápido'],['completo','Con arqueo completo']],c.cashMode||'rapido'))}</div><label class="kf-check" style="margin-top:14px"><input id="kfAutoAssign" type="checkbox" ${c.autoAssign?'checked':''}> Autoasignar tareas si hay un solo operador</label>${msg('Cambiar el modo no borra órdenes, inventario, empresas ni funciones, y no quita permisos al Administrador general.')}${button('Guardar modo de operación','saveMode','primary')}`)+
+ card(`<h2>Modo de operación de la empresa</h2><div class="kf-fields">${field('Cómo trabaja tu negocio',select('kfMode',[['solo','Individual · 1 persona'],['equipo','Equipo pequeño · 2 a 5'],['empresa','Empresarial · roles separados']],c.mode||'solo'))}</div><label class="kf-check" style="margin-top:14px"><input id="kfAutoAssign" type="checkbox" ${c.autoAssign?'checked':''}> Autoasignar tareas si hay un solo operador</label>${msg('Cambiar el modo no borra órdenes, inventario, empresas ni funciones, y no quita permisos al Administrador general.')}${button('Guardar modo de operación','saveMode','primary')}`)+
  card(`<h2>Empacador: rol único</h2><p>Cualquier empacador ve todos los pedidos de su sucursal. El primero en tomar una orden la bloquea para los demás. El Administrador general puede liberar una o varias órdenes.</p>${list.map((u,i)=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(u.nombre||u.usuario||'Usuario')}</strong><small>${esc(branchName(u.sucursalId||ownBranch()))} · ${u.esAdmin?'Administrador general':u.esEmpacador?'Empacador':'Otro rol'}</small></div>${u.esAdmin?status('Acceso total','ok'):button(u.esEmpacador?'Quitar Empacador':'Dar rol Empacador','rolePacker:'+i,'sm')}</div>`).join('')||'<p>Creá usuarios desde «Usuarios y equipo» para asignarles el rol de Empacador.</p>'}`)+
- card(`<h2>Datos del negocio y recibos</h2><div class="kf-fields">${field('Nombre comercial',inp('kfCfgName',c.businessName||''))}${field('Moneda',select('kfCfgCurrency',receiptCurrencies,c.currency||'L'))}${field('Dirección del negocio',inp('kfCfgAddress',c.businessAddress||''))}${field('Teléfono del negocio',inp('kfCfgPhone',c.businessPhone||''))}</div>${field('Logo (PNG o JPG, se redimensiona)',`<input type="file" id="kfCfgLogo" accept="image/png,image/jpeg,image/webp">`)}${c.logo?`<div style="margin:10px 0"><img class="kf-inline-logo" src="${esc(c.logo)}" alt="Logo configurado"></div>`:''}${button('Guardar datos para recibos','saveReceiptSettings','primary')}${msg('Estos datos se usan en recibos comerciales no fiscales. Los recibos no sustituyen los documentos fiscales exigibles.')}`)+
  card(`<h2>Propiedad de KPlace</h2>${msg('El Superadministrador de la plataforma debe habilitarse con una declaración de identidad firmada por Firebase Admin SDK (custom claim). No se concede por ser el primer usuario ni cambiando datos en el navegador.')}<p>El Administrador general mantiene control completo sobre su empresa y sucursales. No accede a la información de otros negocios.</p>`);
 }
 K.togglePacker=async i=>{if(!admin())return;let x=(window.VENDEDORES||[])[i];if(!x||x.esAdmin)return;if(!confirm((x.esEmpacador?'Quitar':'Asignar')+' el rol de Empacador a '+x.nombre+'?'))return;
  try{await window.db.runTransaction(async tx=>{const ref=window.db.collection('config').doc('vendedores'),sn=await tx.get(ref),list=sn.data()?.lista;if(!Array.isArray(list))throw Error('No hay usuarios');const target=list.find(u=>str(u.email||u.usuario||u.nombre)===str(x.email||x.usuario||x.nombre));if(!target)throw Error('El usuario ya no existe');target.esEmpacador=!target.esEmpacador;if(target.esEmpacador&&!target.esAdmin)target.cargo='Empacador';else if(!target.esAdmin)target.cargo=target.esRepartidor?'Repartidor':target.esEncargadoEnvios?'Administrador de envíos':'Vendedor';tx.set(ref,{lista:list},{merge:true})});notice('Rol actualizado');draw()}catch(e){modalError(e,'actualizar el rol')}};
-K.setLogo=async file=>{if(!file)return;if(file.size>5e6){notice('La imagen debe ser menor a 5 MB');return}try{let data=await new Promise((resolve,reject)=>{const im=new Image(),reader=new FileReader();reader.onload=()=>{im.onload=()=>{let canvas=document.createElement('canvas'),scale=Math.min(1,400/Math.max(im.width,im.height));canvas.width=Math.max(1,Math.round(im.width*scale));canvas.height=Math.max(1,Math.round(im.height*scale));canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/png'))};im.onerror=reject;im.src=reader.result};reader.onerror=reject;reader.readAsDataURL(file)});K._newLogo=data;notice('Logo preparado; guardalo en Configuración')}catch(e){modalError(e,'cargar el logo')}};
+K.setLogo=async file=>{if(!file)return;if(file.size>5e6){notice('La imagen debe ser menor a 5 MB');return}try{let data=await new Promise((resolve,reject)=>{const im=new Image(),reader=new FileReader();reader.onload=()=>{im.onload=()=>{let canvas=document.createElement('canvas'),scale=Math.min(1,400/Math.max(im.width,im.height));canvas.width=Math.max(1,Math.round(im.width*scale));canvas.height=Math.max(1,Math.round(im.height*scale));canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/png'))};im.onerror=reject;im.src=reader.result};reader.onerror=reject;reader.readAsDataURL(file)});K._newLogo=data;notice('Logo preparado; guardá las preferencias de recibos')}catch(e){modalError(e,'cargar el logo')}};
 /* === Búsqueda universal, sin accesos a sucursales ajenas al usuario === */
 K.openSearch=()=>{if(!user()){notice('Iniciá sesión primero');return}if($('kpGlobalSearchOverlay'))return;let ov=document.createElement('div');ov.id='kpGlobalSearchOverlay';ov.innerHTML='<div class="kgs-box"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:13px"><strong>Buscar en KPlace</strong><button class="kgs-close" data-kgs-close>✕ Cerrar</button></div><input id="kgsInput" type="search" autocomplete="off" placeholder="Cliente, teléfono, orden, producto, guía..."><div id="kgsResults"></div></div>';document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-kgs-close]'))K.closeSearch();else{let el=e.target.closest('[data-kgs-target]');if(el)K.searchNavigate(el.dataset.kgsTarget,el.dataset.kgsId)}});ov.querySelector('input').addEventListener('input',e=>K.searchResults(e.target.value));ov.querySelector('input').focus();K.searchResults('')};
 K.closeSearch=()=>$('kpGlobalSearchOverlay')?.remove();
@@ -22960,7 +22971,10 @@ async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':'
  case 'ruleSave':await K.saveRule();break;
  case 'ruleCancel':K.pick=null;draw();break;
  case 'rolePacker':await K.togglePacker(Number(id));break;
- case 'saveMode':await saveConfig({mode:$('kfMode')?.value||'solo',cashMode:$('kfCashMode')?.value||'rapido',autoAssign:!!$('kfAutoAssign')?.checked});break;
+ case 'saveMode':await saveConfig({mode:$('kfMode')?.value||'solo',autoAssign:!!$('kfAutoAssign')?.checked});break;
+ case 'receiptSettingsToggle':K.receiptPrefsOpen=!K.receiptPrefsOpen;draw();break;
+ case 'cashSettingsToggle':K.cashPrefsOpen=!K.cashPrefsOpen;draw();break;
+ case 'saveCashSettings':await saveConfig({cashMode:$('kfCashPrefMode')?.value==='completo'?'completo':'rapido'});K.expandDenoms=false;K.quickCount='';K.counts={};break;
  case 'saveReceiptSettings':{await saveConfig({currency:$('kfCfgCurrency')?.value||'L',businessName:str($('kfCfgName')?.value),businessAddress:str($('kfCfgAddress')?.value),businessPhone:str($('kfCfgPhone')?.value),logo:K._newLogo||K.config.logo||''});K._newLogo=null;break}
  }}catch(e){modalError(e,'realizar esta acción')}
 }
@@ -22985,7 +22999,7 @@ function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySel
 const rawCommand=command;command=async function(cmd){if(/^doc(Save|PDF|Share)$/.test(cmd))flushDocForm();return rawCommand(cmd)};
 /* Cambio de rutas sin afectar menús existentes */
 const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|automations|settings)$/.test(id)){K.open(id.slice(7));return}K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
-const nativeRender=window.render;window.render=function(){if(K.page&&String(window.activeTab)==='kplace_'+K.page){draw();return}return typeof nativeRender==='function'?nativeRender.apply(this,arguments):undefined};
+const nativeRender=window.render;window.render=function(){const r=(K.page&&String(window.activeTab)==='kplace_'+K.page)?(draw(),undefined):(typeof nativeRender==='function'?nativeRender.apply(this,arguments):undefined);setTimeout(syncMikeVisibility,60);return r};
 const nativeToggle=window.toggleMenu;window.toggleMenu=function(){let r=typeof nativeToggle==='function'?nativeToggle.apply(this,arguments):undefined;setTimeout(injectNavigation,30);return r};
 function highlightNav(){document.querySelectorAll('[data-kf-nav]').forEach(b=>{b.classList.toggle('active',K.page===b.dataset.kfNav)})}
 const nativeUpdateKPlaceNav=window.updateKPlaceNav;
@@ -23009,6 +23023,7 @@ function injectNavigation(){
  const anchor=(nav,ids)=>ids.map(id=>nav.querySelector('[data-kf-nav="'+id+'"], [data-section="'+id+'"]')).find(Boolean)||null;
  for(const nav of [side,drawer]){
   if(!nav)continue;
+  nav.querySelectorAll('[data-kf-nav="automations"], [data-kf-nav="settings"]').forEach(el=>el.remove());
   for(const [id,ico,label,allowed] of entries){
    let el=nav.querySelector('[data-kf-nav="'+id+'"]');
    if(!allowed){el?.remove();continue;}
@@ -23024,19 +23039,12 @@ function injectNavigation(){
    let after=null;
    if(id==='packing')after=anchor(nav,['hoy','ordenes']);
    else if(id==='documents')after=anchor(nav,['packing','hoy','ordenes']);
-   else after=anchor(nav,['reportes','admin','usuarios','adminOrdersInventory','inventario','documents']);
+   else if(id==='cash')after=anchor(nav,['reportes','documents','packing','adminOrdersInventory']);
    if(after&&after!==el)after.insertAdjacentElement('afterend',el);
    else if(!el.isConnected)nav.appendChild(el);
   }
  }
- // Automatizaciones y modos son configuraciones, no botones de operación principal.
- const settingsSheet=[...document.querySelectorAll('.sheet.show')].find(x=>x.querySelector('#kpAppCompanyName'));
- if(settingsSheet&&!settingsSheet.querySelector('#kpFlowSettingsAccess')&&admin()){
-  const tools=document.createElement('div');tools.id='kpFlowSettingsAccess';
-  tools.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 16px;';
-  tools.innerHTML='<button type="button" class="btn sm" data-kf-settings-link="automations">⚡ Automatizaciones</button><button type="button" class="btn sm" data-kf-settings-link="settings">⚙️ Modos y permisos</button>';
-  const h=settingsSheet.querySelector('h2');if(h)h.insertAdjacentElement('afterend',tools);else settingsSheet.prepend(tools);
- }
+// Automatizaciones y Modos y permisos están únicamente en Configuración → Herramientas avanzadas.
  if(top&&!$('kpSearchGlobalButton')){
   const b=document.createElement('button');b.type='button';b.id='kpSearchGlobalButton';
   b.className='kf-global-search';b.setAttribute('aria-label','Buscar en todo KPlace');
@@ -23048,6 +23056,7 @@ function injectNavigation(){
   ab.textContent='⚡ '+(K.alerts?.length||0);ab.onclick=()=>K.open('automations');top.insertBefore(ab,top.firstChild);
  }
  highlightNav();
+ syncMikeVisibility();
 }
 document.addEventListener('click',function(ev){
  const b=ev.target.closest?.('[data-kf-settings-link]');if(!b)return;
@@ -23064,22 +23073,32 @@ window.kpOpenPacking=()=>K.open('packing');window.kpOpenCash=()=>K.open('cash');
 document.addEventListener('click',e=>{if(!admin())return;const b=e.target.closest?.('[data-kf-order-invoice]');if(b){e.preventDefault();K.open('documents',b.dataset.kfOrderInvoice)}},true);
 function augmentOrderSheets(){if(!admin())return;document.querySelectorAll('.sheet.show .card').forEach(card=>{if(card.dataset.kfInvoiceAdded)return;const i=card.innerHTML.match(/(?:openOrderSheet|verOrden|editOrder)\([^)]*\)/);let sheet=card.closest('.sheet');const o=orders().find(o=>{let n=orderNo(o);return (card.textContent||'').includes(n)&&n.length>=3});if(o){let b=document.createElement('button');b.className='btn sm';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=o.id;card.appendChild(b);card.dataset.kfInvoiceAdded='1'}})}
 let sheetTimer=0;new MutationObserver(()=>{if(sheetTimer)return;sheetTimer=setTimeout(()=>{sheetTimer=0;augmentOrderSheets()},350)}).observe(document.body,{childList:true,subtree:true});
+function syncMikeVisibility(){
+ try{
+  const settingsOpen=!!document.querySelector('.sheet.kp-settings-org-sheet');
+  const menuOpen=!!document.querySelector('#kpMenuDrawer, .kp-drawer');
+  const flowOpen=!!K.page;
+  const notHome=(String(window.activeTab||'')!=='inicio');
+  document.body.classList.toggle('kp-hide-mike', settingsOpen||flowOpen||menuOpen||notHome);
+ }catch(e){}
+}
 const nativeVerOrden=window.verOrden;
 if(typeof nativeVerOrden==='function')window.verOrden=function(id){const result=nativeVerOrden.apply(this,arguments);if(admin()){setTimeout(()=>{let sheet=[...document.querySelectorAll('.sheet.show')].slice(-1)[0];if(sheet&&!sheet.querySelector('[data-kf-order-invoice]')){let b=document.createElement('button');b.type='button';b.className='btn primary';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=id;sheet.appendChild(b)}},0)}return result};
-setTimeout(()=>{loadConfig();injectNavigation()},800);setInterval(()=>{if(user()){injectNavigation();if(K.rules.some(x=>x.enabled))K.evaluate().catch(e=>console.warn('Reglas KPlace',e))}},300000);
+window.syncMikeVisibility=syncMikeVisibility;setTimeout(()=>{loadConfig();injectNavigation();syncMikeVisibility()},800);setInterval(()=>{if(user()){injectNavigation();syncMikeVisibility();if(K.rules.some(x=>x.enabled))K.evaluate().catch(e=>console.warn('Reglas KPlace',e))}},300000);
 })();
 
 </script>
 
 <!-- KPlace · Ajustes organizados: experiencia visual, se conserva la lógica y datos existentes -->
 <style id="kp-settings-organized-css">
+body.kp-hide-mike #kpMikeFab,body.kp-hide-mike #kpMikeDock,body.kp-hide-mike #kpMikeFill,body.kp-hide-mike #kpMikeTarget{display:none!important;}
 .sheet.kp-settings-org-sheet{
  --kpso-surface:#111a2b;--kpso-bg:#0c1321;--kpso-outline:#2b3851;--kpso-text:#eef0fc;--kpso-muted:#9aa7bf;--kpso-accent:#b984fa;
- box-sizing:border-box!important;max-width:740px!important;width:100%!important;left:50%!important;right:auto!important;bottom:0!important;
- transform:translateX(-50%);border:1px solid var(--kpso-outline)!important;border-radius:24px 24px 0 0!important;
- background:var(--kpso-bg)!important;color:var(--kpso-text)!important;padding:0 0 max(22px,env(safe-area-inset-bottom))!important;
- max-height:min(94dvh,920px)!important;overflow:auto!important;z-index:131!important;
- box-shadow:0 18px 70px #0009!important;overscroll-behavior:contain;color-scheme:dark;
+ position:fixed!important;inset:0!important;width:100%!important;max-width:none!important;height:100dvh!important;max-height:100dvh!important;
+ left:0!important;right:0!important;top:0!important;bottom:0!important;transform:none!important;
+ box-sizing:border-box!important;border:0!important;border-radius:0!important;margin:0!important;
+ background:var(--kpso-bg)!important;color:var(--kpso-text)!important;padding:0 0 env(safe-area-inset-bottom)!important;
+ overflow:auto!important;z-index:100060!important;box-shadow:none!important;overscroll-behavior:contain;color-scheme:dark;
 }
 body:not(.kp-dark) .sheet.kp-settings-org-sheet{--kpso-surface:#f4f5fa;--kpso-bg:#ffffff;--kpso-outline:#dce2ef;--kpso-text:#1b2440;--kpso-muted:#626f83;--kpso-accent:#7e3ed0;color-scheme:light;}
 .kp-settings-org-sheet #kpSettingsOrganized{font-family:inherit;line-height:1.45;font-size:14px}
@@ -23116,7 +23135,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
 .kp-settings-org-sheet .kpso-action{font-family:inherit;width:100%;margin-top:12px;background:#7d3dc4;border:1px solid #a45be3;border-radius:13px;padding:12px 15px;color:white;font-weight:780;text-align:center;cursor:pointer;min-height:43px}
 .kp-settings-org-sheet .kpso-logout{width:100%;text-align:left;padding:12px 14px;border:1px solid #6d3843;border-radius:13px;background:transparent;color:#ef9da8;cursor:pointer;font-weight:730}
 .kp-settings-org-sheet .kpso-entry:focus-visible,.kp-settings-org-sheet .kpso-close:focus-visible,.kp-settings-org-sheet .kpso-back:focus-visible,.kp-settings-org-sheet .kpso-action:focus-visible{outline:2px solid #c48bfd;outline-offset:2px}
-@media(min-width:768px){.sheet.kp-settings-org-sheet{bottom:18px!important;border-radius:23px!important;max-height:calc(100dvh - 36px)!important}.kp-settings-org-sheet .kpso-body{padding:20px 25px 27px;gap:24px}.kp-settings-org-sheet .kpso-top{padding:24px 26px 16px}}
+@media(min-width:768px){.sheet.kp-settings-org-sheet{inset:0!important;border-radius:0!important;max-height:100dvh!important;height:100dvh!important}.kp-settings-org-sheet .kpso-body{padding:20px 25px 27px;gap:24px}.kp-settings-org-sheet .kpso-top{padding:24px 26px 16px}}
 @media(max-width:430px){.kp-settings-org-sheet .kpso-top{padding:16px 15px}.kp-settings-org-sheet .kpso-body{padding:15px 13px}.kp-settings-org-sheet .kpso-detail{padding:17px 13px}.kp-settings-org-sheet .kpso-entry{padding:11px 10px;gap:10px}.kp-settings-org-sheet .kpso-native{padding:12px}}
 </style>
 <script id="kp-settings-organized-js">
@@ -23139,9 +23158,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
   ]},
   {group:'HERRAMIENTAS AVANZADAS',admin:true,subtitle:'Nuevas herramientas de KPlace',entries:[
    ['automations','⚡','Automatizaciones','Reglas, alertas y avisos automáticos'],
-   ['modes','⚙','Modos de operación','Individual, equipo y empresarial'],
-   ['receipts','▧','Preferencias de recibos','Logo, moneda y datos del recibo comercial'],
-   ['cash','◈','Configuración de caja','Cierre rápido o arqueo completo']
+   ['modes','⚙','Modos y permisos','Individual, equipo y empresarial']
   ]}
  ];
  const iconPaths={
@@ -23161,7 +23178,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
  function admin(){try{return !!(window.CURRENT_USER?.esAdmin||window.kpIsAdmin?.())}catch(e){return !!window.CURRENT_USER?.esAdmin}}
  function node(tag,cls,html){let n=document.createElement(tag);if(cls)n.className=cls;if(html!==undefined)n.innerHTML=html;return n}
- function close(sheet,bg){if(sheet?.isConnected)sheet.remove();if(bg?.isConnected)bg.remove()}
+ function close(sheet,bg){if(sheet?.isConnected)sheet.remove();if(bg?.isConnected)bg.remove();setTimeout(()=>{try{window.syncMikeVisibility&&window.syncMikeVisibility()}catch(e){}},30)}
  function organize(sheet){
   if(sheet.querySelector('#kpSettingsOrganized'))return;
   const bg=sheet.previousElementSibling?.classList.contains('sheet-bg')?sheet.previousElementSibling:null;
@@ -23235,15 +23252,13 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
    let el=e.target.closest('[data-kpso-entry]');if(!el)return;const id=el.dataset.kpsoEntry;
    if(subpages[id]){show(id);return}
    if(['inventory','users','integrations'].includes(id))return go('tab',id==='inventory'?'configNegocio':id==='users'?'admin':'integraciones');
-   if(['automations','modes','receipts','cash'].includes(id)){
-    const page=id==='automations'?'automations':'settings';
-    const focus=id==='receipts'?'#kfCfgName':id==='cash'?'#kfCashMode':null;
-    return go('flow',page,focus);
+   if(['automations','modes'].includes(id)){
+    return go('flow',id==='automations'?'automations':'settings');
    }
   });
   root.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();e.preventDefault();if(detail.getAttribute('aria-hidden')==='false')showHome();else close(sheet,bg)}});
  }
- window.toggleSettingsMenu=function(){
+ window.toggleSettingsMenu=function(){setTimeout(()=>window.syncMikeVisibility?.(),20);
   try{
    const existing=document.querySelector('.sheet.kp-settings-org-sheet');if(existing){let bg=existing.previousElementSibling?.classList.contains('sheet-bg')?existing.previousElementSibling:null;close(existing,bg);return}
    const before=new Set(document.querySelectorAll('.sheet'));
