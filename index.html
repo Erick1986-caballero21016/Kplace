@@ -17208,8 +17208,8 @@ document.addEventListener('click',function(e){
   o.onclick=ev=>{if(ev.target===o||ev.target.className==='kpl-x')o.remove();};document.body.appendChild(o);
 },true);
 /* ---------- Tarjetas de orden desplegables ---------- */
-/* Los detalles solo se abren por un toque directo del usuario. No se restauran
-   desde sessionStorage: hacerlo reabría órdenes al cambiar fecha o pestaña. */
+/* KPlace · Detalles de órdenes: el botón es la única forma de abrirlos.
+   El estado visual y la visibilidad real se controlan juntos. */
 const OPEN=new Set();
 let openScope='';
 try{sessionStorage.removeItem('kpx_open')}catch(e){}
@@ -17221,55 +17221,87 @@ function cardScope(){
   return [tab,date,company].join('|');
 }
 function checkCardScope(){
-  const now=cardScope();
-  if(now!==openScope){OPEN.clear();openScope=now;}
+  const scope=cardScope();
+  if(openScope!==scope){OPEN.clear();openScope=scope;}
+}
+function kpxSetElementVisible(el,show){
+  if(!show){
+    if(el.dataset.kpxControlled!=='1'){
+      el.dataset.kpxControlled='1';
+      el.dataset.kpxWasHidden=el.hasAttribute('hidden')?'1':'0';
+      el.dataset.kpxPrevDisplay=el.style.getPropertyValue('display');
+      el.dataset.kpxPrevPriority=el.style.getPropertyPriority('display');
+    }
+    el.setAttribute('hidden','');
+    el.style.setProperty('display','none','important');
+  }else if(el.dataset.kpxControlled==='1'){
+    if(el.dataset.kpxWasHidden==='0')el.removeAttribute('hidden');
+    const value=el.dataset.kpxPrevDisplay||'',priority=el.dataset.kpxPrevPriority||'';
+    if(value)el.style.setProperty('display',value,priority);
+    else el.style.removeProperty('display');
+    delete el.dataset.kpxControlled;
+    delete el.dataset.kpxWasHidden;
+    delete el.dataset.kpxPrevDisplay;
+    delete el.dataset.kpxPrevPriority;
+  }
+}
+function kpxSetCardExpanded(card,expanded){
+  const toggle=card.querySelector(':scope > .kpx-toggle');
+  if(!toggle)return;
+  card.classList.toggle('kpx-open',!!expanded);
+  toggle.setAttribute('aria-expanded',expanded?'true':'false');
+  const children=[...card.children],position=children.indexOf(toggle);
+  const details=new Set([
+    ...card.querySelectorAll('.kpx-more'),
+    ...(position<0?[]:children.slice(position+1))
+  ]);
+  details.delete(toggle);
+  details.forEach(el=>kpxSetElementVisible(el,!!expanded));
 }
 window.kpCollapseDateCards=function(){
   OPEN.clear();openScope='';
   try{sessionStorage.removeItem('kpx_open')}catch(e){}
-  document.querySelectorAll('#view .kpx-open').forEach(c=>{
-    c.classList.remove('kpx-open');
-    const b=c.querySelector(':scope > .kpx-toggle');
-    if(b)b.setAttribute('aria-expanded','false');
-  });
+  document.querySelectorAll('#view .card[data-kpx]').forEach(c=>kpxSetCardExpanded(c,false));
   window.__kpCollapseNationalAfterSelection=true;
 };
 function cardify(c){
   checkCardScope();
-  if(c.dataset.kpx)return;c.dataset.kpx='1';
+  if(c.dataset.kpx)return;
   const m=c.textContent.match(/ORDEN\s*#\s*(\d+)/i),key=m?m[1]:null,kids=[...c.children];
   const keep=el=>el.classList.contains('kpo-photos')||el.classList.contains('prodline')||el.classList.contains('row')||el.classList.contains('phoneRow')||!!el.querySelector('.phoneRow')||/^\s*ORDEN\s*#/i.test(el.textContent)||/^\s*Vendedor:/i.test(el.textContent.trim())||[...el.querySelectorAll('a,button')].some(b=>/^\W*WhatsApp\W*$/i.test(b.textContent.trim()));
-  let last=-1;kids.forEach((el,i)=>{if(keep(el))last=i;else el.classList.add('kpx-more');});
+  let last=-1;
+  kids.forEach((el,i)=>{if(keep(el))last=i;else el.classList.add('kpx-more');});
   if(last<0)return;
-  const t=document.createElement('button');t.type='button';t.className='kpx-toggle';t.innerHTML='<span class="a">Ver detalles</span><span class="b">Ocultar detalles</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  c.dataset.kpx='1';
+  const t=document.createElement('button');t.type='button';t.className='kpx-toggle';
+  t.innerHTML='<span class="a">Ver detalles</span><span class="b">Ocultar detalles</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   kids[last].after(t);
-  // Al terminar «Seleccionar guías», no restaurar expansiones antiguas.
-  // Es necesario aquí porque cardify() llega después del render mediante
-  // MutationObserver y el cierre anterior solo afectaba al DOM antiguo.
-  const cerrarTrasSeleccion=activeTab==='boxful'&&window.__kpCollapseNationalAfterSelection;
-  if(key&&OPEN.has(key)&&!cerrarTrasSeleccion)c.classList.add('kpx-open');
-  t.setAttribute('aria-expanded',c.classList.contains('kpx-open')?'true':'false');
+  const restore=key&&OPEN.has(key)&&!(activeTab==='boxful'&&window.__kpCollapseNationalAfterSelection);
+  kpxSetCardExpanded(c,!!restore);
   t.onclick=e=>{
-    // Solo el botón Ver detalles puede abrir o cerrar esta tarjeta.
     e.preventDefault();e.stopPropagation();
     checkCardScope();
     if(activeTab==='boxful')window.__kpCollapseNationalAfterSelection=false;
-    const expanded=c.classList.toggle('kpx-open');
-    t.setAttribute('aria-expanded',expanded?'true':'false');
+    const expanded=!c.classList.contains('kpx-open');
+    kpxSetCardExpanded(c,expanded);
     if(key){if(expanded)OPEN.add(key);else OPEN.delete(key);}
   };
 }
-// Al cerrar selección de guías, preparar las tarjetas en el mismo frame.
-// La inicialización general tiene un retraso (120 ms) que mostraba detalles
-// expandidos antes de que entrara la clase CSS de acordeón.
+// Prepara inmediatamente la tarjeta en cada render (ambas pestañas).
 window.kpCardifyOrdersNow=function(){
   if(activeTab!=='boxful'&&activeTab!=='hoy')return;
-  const root=document.getElementById('view');
-  if(!root)return;
+  const root=document.getElementById('view');if(!root)return;
   root.querySelectorAll('.card.pendiente-entrega:not([data-kpx]),.card.entregado:not([data-kpx]),.card.no-entregado:not([data-kpx])').forEach(cardify);
+  root.querySelectorAll('.card[data-kpx]').forEach(c=>kpxSetCardExpanded(c,c.classList.contains('kpx-open')));
 };
-/* Tarjetas siempre cerradas al pintarse: se preparan al instante (sin esperar el retraso de 120 ms que las mostraba abiertas al cambiar de fecha). */
-new MutationObserver(()=>{const r=document.getElementById('view');if(!r)return;r.querySelectorAll('.card.pendiente-entrega:not([data-kpx]),.card.entregado:not([data-kpx]),.card.no-entregado:not([data-kpx])').forEach(cardify);}).observe(document.body,{childList:true,subtree:true});
+// Otros módulos reordenan botones después del render; reaplicamos el estado
+// también después de esas inserciones (sin abrir tarjetas por accidente).
+new MutationObserver(mutations=>{
+  const root=document.getElementById('view');if(!root)return;
+  if(!mutations.some(m=>root===m.target||root.contains(m.target)||[...m.addedNodes].some(n=>n===root||n.contains?.(root))))return;
+  root.querySelectorAll('.card.pendiente-entrega:not([data-kpx]),.card.entregado:not([data-kpx]),.card.no-entregado:not([data-kpx])').forEach(cardify);
+  root.querySelectorAll('.card[data-kpx]').forEach(c=>kpxSetCardExpanded(c,c.classList.contains('kpx-open')));
+}).observe(document.body,{childList:true,subtree:true});
 /* ---------- Configuración con menús desplegables ---------- */
 function accordions(){
   document.querySelectorAll('#view .kp-enterprise-panel').forEach((p,i)=>{
@@ -23760,6 +23792,14 @@ window.syncMikeVisibility=syncMikeVisibility;setInterval(function(){try{syncMike
 
 </script>
 
+<!-- KPlace · Tarjetas cerradas hasta pulsar Ver detalles (Órdenes/Nacional) -->
+<style id="kp-detalles-cerrados-final">
+#view .card[data-kpx]:not(.kpx-open) .kpx-more,
+#view .card[data-kpx]:not(.kpx-open) > .kpx-toggle ~ *,
+#view .card.kpn[data-kpx]:not(.kpx-open) > .kpn-body,
+#view .card[data-kpx] [data-kpx-controlled="1"][hidden]{display:none!important;visibility:hidden!important}
+#view .card[data-kpx]:not(.kpx-open) > .kpn-body{display:none!important}
+</style>
 <!-- KPlace · Ajustes organizados: experiencia visual, se conserva la lógica y datos existentes -->
 <style id="kp-cards-no-flash">#view .card.pendiente-entrega:not([data-kpx]),#view .card.entregado:not([data-kpx]),#view .card.no-entregado:not([data-kpx]){visibility:hidden}</style>
 <style id="kp-card-tones">#view .card.kp-tone-blue{border:1px solid rgba(59,130,246,.55)!important;border-left:4px solid #3b82f6!important;background-color:#eff6ff!important;background-image:linear-gradient(160deg,rgba(59,130,246,.18),rgba(59,130,246,0) 55%)!important}body.kp-dark #view .card.kp-tone-blue{border-left-color:#60a5fa!important;background-color:#0f1f3a!important}</style>
