@@ -17214,6 +17214,7 @@ window.kpCollapseDateCards=function(){
 };
 function cardify(c){
   if(c.dataset.kpx)return;c.dataset.kpx='1';
+  try{const _d=typeof selectedDate!=='undefined'?String(selectedDate):'';if(window.__kpxLastDate!==_d){OPEN.clear();sessionStorage.removeItem('kpx_open');window.__kpxLastDate=_d;}}catch(e){}
   const m=c.textContent.match(/ORDEN\s*#\s*(\d+)/i),key=m?m[1]:null,kids=[...c.children];
   const keep=el=>el.classList.contains('kpo-photos')||el.classList.contains('prodline')||el.classList.contains('row')||el.classList.contains('phoneRow')||!!el.querySelector('.phoneRow')||/^\s*ORDEN\s*#/i.test(el.textContent)||/^\s*Vendedor:/i.test(el.textContent.trim())||[...el.querySelectorAll('a,button')].some(b=>/^\W*WhatsApp\W*$/i.test(b.textContent.trim()));
   let last=-1;kids.forEach((el,i)=>{if(keep(el))last=i;else el.classList.add('kpx-more');});
@@ -21785,6 +21786,7 @@ document.querySelectorAll('[data-kpm-attach]').forEach(b=>b.addEventListener('cl
 function homeTab(){const u=window.CURRENT_USER||{},t=window.activeTab;return t==='inicio'||(!!u.esRepartidor&&!u.esAdmin&&t==='repartidor')}
 function inUse(){return panel.classList.contains('open')||!!live.ws||!!abortCtl}
 function visibility(){const logged=!!window.CURRENT_USER;if(!logged){if(mikeIdentity)mikeEnsureIdentity();if(panel.classList.contains('open')||live.ws)closeAll();fabSet(false);return}if(!panel.classList.contains('open')){fabSet(true);clearOfPlus()}}
+setInterval(function(){try{visibility()}catch(e){}},2500);
 /* ===== Burbuja flotante: se arrastra, y al soltarla sobre la X se guarda en la esquina izquierda ===== */
 const FABK='kp_mike_fab',dock=document.createElement('button'),tgt=document.createElement('div');
 dock.id='kpMikeDock';dock.type='button';dock.title='Mike';dock.setAttribute('aria-label','Sacar a Mike');tgt.id='kpMikeTarget';tgt.textContent='✕';
@@ -21793,7 +21795,7 @@ let docked=false,dragMoved=false,fpos=null;
 try{const z=JSON.parse(localStorage.getItem(FABK)||'{}');docked=!!z.docked;if(z.x!=null&&z.y!=null)fpos={x:z.x,y:z.y}}catch(e){}
 const saveF=()=>{try{localStorage.setItem(FABK,JSON.stringify({docked,x:fpos&&fpos.x,y:fpos&&fpos.y}))}catch(e){}};
 function placeDock(){const h=document.querySelector('.topbar');dock.style.top=h?Math.max(4,h.getBoundingClientRect().top+(h.offsetHeight-44)/2)+'px':'calc(env(safe-area-inset-top,0px) + 12px)'}
-function fabSet(on){const show=on&&(homeTab()||inUse());fab.style.display=show&&!docked?'block':'none';dock.style.display=show&&docked?'block':'none';if(show&&docked)placeDock()}
+function fabSet(on){const show=!!on;fab.style.display=show&&!docked?'block':'none';dock.style.display=show&&docked?'block':'none';if(show&&docked)placeDock()}
 function placeFab(x,y){const w=fab.offsetWidth||64,h=fab.offsetHeight||64;x=Math.max(4,Math.min(innerWidth-w-4,x));y=Math.max(4,Math.min(innerHeight-h-4,y));fab.style.setProperty('left',x+'px','important');fab.style.setProperty('top',y+'px','important');fab.style.setProperty('right','auto','important');fab.style.setProperty('bottom','auto','important');return{x,y}}
 /* Posición inicial: borde derecho. La ✕ para guardarlo está abajo al centro, así que nunca se deja ahí. */
 function sidePos(y){const w=fab.offsetWidth||64,h=fab.offsetHeight||64,def=innerHeight-h-(innerWidth>700?96:164);return{x:innerWidth-w-12,y:Math.max(80,Math.min(innerHeight-h-90,Number.isFinite(y)?y:def))}}
@@ -23043,7 +23045,7 @@ function incidentForm(o){return `<div class="kf-panel" style="margin-top:12px"><
 K.claim=async id=>{let o=findOrder(id);if(!isAccessible(o)){notice('No tenés permiso para esta orden.');return}try{
   await window.db.runTransaction(async tx=>{let ref=window.db.collection('orders').doc(id),sn=await tx.get(ref);if(!sn.exists)throw Error('La orden fue eliminada');let current=sn.data(),p=current.kpPacking||{};if(p.status==='preparando'&&p.byId!==uid())throw Error('Esta orden ya la está empacando '+(p.byName||'otra persona'));if(p.status==='listo')throw Error('El empaque ya fue completado');tx.update(ref,{kpPacking:{status:'preparando',byId:uid(),byName:username(),startedAt:p.startedAt||Date.now(),verified:p.byId===uid()?p.verified||{}:{}}})});K.order=id;K.pick=null;
  // Nunca navegar a Inicio al reclamar una orden, incluso si el listener re-renderizó.
- window.activeTab='kplace_packing';
+ K.guardUntil=Date.now()+4000;window.activeTab='kplace_packing';
  if(!$('kpFlowRoot'))ensureRoot();
  notice('Orden tomada para empacar');draw();
  setTimeout(()=>{if(K.page==='packing'&&K.order===id&&window.activeTab==='kplace_packing'){
@@ -23504,7 +23506,7 @@ function cashForm(){
 /* === Eventos y navegación === */
 function refreshDocPreview(){const node=$('kfDocPreview');if(node&&K.doc)node.outerHTML=documentPreview()}
 function switchPage(page){if(['packing','cash','documents','settings'].includes(page))K.open(page)}
-async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':');
+async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':');K.guardUntil=Date.now()+4000;
  try{switch(action){
  case 'go':switchPage(id);break;
  case 'claim':await K.claim(id);break;
@@ -23623,8 +23625,10 @@ document.addEventListener('input',e=>{
 function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySelectorAll('#kpFlowRoot [data-doc-item]').forEach(t=>{let i=Number(t.dataset.docItem),k=t.dataset.key;if(K.doc.items[i])K.doc.items[i][k]=k==='name'?t.value:amt(t.value)});document.querySelectorAll('#kpFlowRoot [data-doc-pay]').forEach(t=>{let i=Number(t.dataset.docPay),k=t.dataset.key;if(K.doc.payments[i])K.doc.payments[i][k]=k==='paid'?t.checked:k==='amount'?amt(t.value):t.value});document.querySelectorAll('#kpFlowRoot [data-doc-charge]').forEach(t=>{const i=Number(t.dataset.docCharge),k=t.dataset.key,c=normalizeReceiptCharges(K.doc)[i];if(c)c[k]=k==='value'?amt(t.value):t.value});const map={kfDocCurrency:'currency',kfDocClient:'client',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocPhone:'phone',kfDocClientId:'clientId',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocOtherLabel:'otherLabel',kfDocTax:'taxPct',kfDocNotes:'notes'};Object.entries(map).forEach(([id,k])=>{let t=$(id);if(t)K.doc[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value});if($('kfDocTaxIncluded'))K.doc.taxIncluded=$('kfDocTaxIncluded').checked}
 const rawCommand=command;command=async function(cmd){if(/^doc(Save|PDF|Share)$/.test(cmd))flushDocForm();return rawCommand(cmd)};
 /* Cambio de rutas sin afectar menús existentes */
-const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|settings)$/.test(id)){K.open(id.slice(7));return}K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
+const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|settings)$/.test(id)){K.open(id.slice(7));return}if(K.page&&!window.__kpUserNav&&Date.now()<(K.guardUntil||0))return;K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
+document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#kpSideNav,#kpMenuDrawer,#tabs,.kp-bottom-nav,.kp-top-actions')){window.__kpUserNav=true;setTimeout(function(){window.__kpUserNav=false},500)}},true);
 const nativeRender=window.render;window.render=function(){
+ if(K.page&&String(window.activeTab)!=='kplace_'+K.page&&!window.__kpUserNav&&Date.now()<(K.guardUntil||0))window.activeTab='kplace_'+K.page;
  const inFlow=K.page&&String(window.activeTab)==='kplace_'+K.page;
  const r=inFlow?(draw(),undefined):(typeof nativeRender==='function'?nativeRender.apply(this,arguments):undefined);
  setTimeout(()=>{highlightNav();syncMikeVisibility()},60);return r;
@@ -23632,7 +23636,7 @@ const nativeRender=window.render;window.render=function(){
 const nativeToggle=window.toggleMenu;window.toggleMenu=function(){let r=typeof nativeToggle==='function'?nativeToggle.apply(this,arguments):undefined;setTimeout(injectNavigation,30);return r};
 function highlightNav(){
  // Evitar que Inicio permanezca resaltado al abrir módulos nuevos.
- for(const nav of [document.getElementById('kpSideNav'),document.querySelector('#kpMenuDrawer .kp-drawer-nav')]){
+ for(const nav of [document.getElementById('kpSideNav'),...document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav')]){
   if(!nav)continue;
   const selected=K.page?('kplace_'+K.page):String(window.activeTab||'');
   nav.querySelectorAll('button').forEach(b=>{
@@ -23711,7 +23715,7 @@ function syncMikeVisibility(){
   const menuOpen=!!document.querySelector('#kpMenuDrawer.open, #kpMenuDrawer.show, .kp-drawer.open, .kp-drawer.show');
   const flowOpen=!!K.page;
   const notHome=(String(window.activeTab||'')!=='inicio');
-  document.body.classList.toggle('kp-hide-mike', settingsOpen||flowOpen||menuOpen||notHome);
+  document.body.classList.toggle('kp-hide-mike', settingsOpen||menuOpen);
  }catch(e){}
 }
 function positionSyncNextToMike(){
