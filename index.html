@@ -8202,6 +8202,8 @@ function kpRenderOrdersTab(tab){
   }
   const notifBar=document.getElementById('notifBar'); if(notifBar) notifBar.innerHTML='';
   view.innerHTML=renderSearchBar()+(list.length?list.map(o=>orderCard(o)).join(''):'<div class="empty">Sin órdenes aquí todavía.</div>');
+  // Preparar "Ver detalles" antes de mostrar el contenido en Órdenes.
+  if(tab==='hoy'&&typeof window.kpCardifyOrdersNow==='function')window.kpCardifyOrdersNow();
   updateKPlaceNav();
 }
 function render(){
@@ -17206,17 +17208,35 @@ document.addEventListener('click',function(e){
   o.onclick=ev=>{if(ev.target===o||ev.target.className==='kpl-x')o.remove();};document.body.appendChild(o);
 },true);
 /* ---------- Tarjetas de orden desplegables ---------- */
-const OPEN=new Set(JSON.parse(sessionStorage.getItem('kpx_open')||'[]'));
+/* Los detalles solo se abren por un toque directo del usuario. No se restauran
+   desde sessionStorage: hacerlo reabría órdenes al cambiar fecha o pestaña. */
+const OPEN=new Set();
+let openScope='';
+try{sessionStorage.removeItem('kpx_open')}catch(e){}
 window.__kpxOpenCards=OPEN;
+function cardScope(){
+  const tab=typeof activeTab==='undefined'?'':String(activeTab);
+  const date=typeof selectedDate==='undefined'?'':String(selectedDate);
+  const company=String(window.KPLACE_ACTIVE_CONTEXT?.companyId||window.CURRENT_USER?.companyId||'');
+  return [tab,date,company].join('|');
+}
+function checkCardScope(){
+  const now=cardScope();
+  if(now!==openScope){OPEN.clear();openScope=now;}
+}
 window.kpCollapseDateCards=function(){
-  OPEN.clear();
+  OPEN.clear();openScope='';
   try{sessionStorage.removeItem('kpx_open')}catch(e){}
-  document.querySelectorAll('#view .kpx-open').forEach(c=>c.classList.remove('kpx-open'));
+  document.querySelectorAll('#view .kpx-open').forEach(c=>{
+    c.classList.remove('kpx-open');
+    const b=c.querySelector(':scope > .kpx-toggle');
+    if(b)b.setAttribute('aria-expanded','false');
+  });
   window.__kpCollapseNationalAfterSelection=true;
 };
 function cardify(c){
+  checkCardScope();
   if(c.dataset.kpx)return;c.dataset.kpx='1';
-  try{const _d=typeof selectedDate!=='undefined'?String(selectedDate):'';if(window.__kpxLastDate!==_d){OPEN.clear();sessionStorage.removeItem('kpx_open');window.__kpxLastDate=_d;}}catch(e){}
   const m=c.textContent.match(/ORDEN\s*#\s*(\d+)/i),key=m?m[1]:null,kids=[...c.children];
   const keep=el=>el.classList.contains('kpo-photos')||el.classList.contains('prodline')||el.classList.contains('row')||el.classList.contains('phoneRow')||!!el.querySelector('.phoneRow')||/^\s*ORDEN\s*#/i.test(el.textContent)||/^\s*Vendedor:/i.test(el.textContent.trim())||[...el.querySelectorAll('a,button')].some(b=>/^\W*WhatsApp\W*$/i.test(b.textContent.trim()));
   let last=-1;kids.forEach((el,i)=>{if(keep(el))last=i;else el.classList.add('kpx-more');});
@@ -17228,17 +17248,22 @@ function cardify(c){
   // MutationObserver y el cierre anterior solo afectaba al DOM antiguo.
   const cerrarTrasSeleccion=activeTab==='boxful'&&window.__kpCollapseNationalAfterSelection;
   if(key&&OPEN.has(key)&&!cerrarTrasSeleccion)c.classList.add('kpx-open');
-  t.onclick=()=>{
+  t.setAttribute('aria-expanded',c.classList.contains('kpx-open')?'true':'false');
+  t.onclick=e=>{
+    // Solo el botón Ver detalles puede abrir o cerrar esta tarjeta.
+    e.preventDefault();e.stopPropagation();
+    checkCardScope();
     if(activeTab==='boxful')window.__kpCollapseNationalAfterSelection=false;
-    c.classList.toggle('kpx-open');
-    if(key){c.classList.contains('kpx-open')?OPEN.add(key):OPEN.delete(key);sessionStorage.setItem('kpx_open',JSON.stringify([...OPEN]));}
+    const expanded=c.classList.toggle('kpx-open');
+    t.setAttribute('aria-expanded',expanded?'true':'false');
+    if(key){if(expanded)OPEN.add(key);else OPEN.delete(key);}
   };
 }
 // Al cerrar selección de guías, preparar las tarjetas en el mismo frame.
 // La inicialización general tiene un retraso (120 ms) que mostraba detalles
 // expandidos antes de que entrara la clase CSS de acordeón.
 window.kpCardifyOrdersNow=function(){
-  if(activeTab!=='boxful')return;
+  if(activeTab!=='boxful'&&activeTab!=='hoy')return;
   const root=document.getElementById('view');
   if(!root)return;
   root.querySelectorAll('.card.pendiente-entrega:not([data-kpx]),.card.entregado:not([data-kpx]),.card.no-entregado:not([data-kpx])').forEach(cardify);
