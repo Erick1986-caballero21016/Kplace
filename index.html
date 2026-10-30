@@ -17241,6 +17241,8 @@ window.kpCardifyOrdersNow=function(){
   if(!root)return;
   root.querySelectorAll('.card.pendiente-entrega:not([data-kpx]),.card.entregado:not([data-kpx]),.card.no-entregado:not([data-kpx])').forEach(cardify);
 };
+/* Tarjetas siempre cerradas al pintarse: se preparan al instante (sin esperar el retraso de 120 ms que las mostraba abiertas al cambiar de fecha). */
+new MutationObserver(()=>{const r=document.getElementById('view');if(!r)return;r.querySelectorAll('.card.pendiente-entrega:not([data-kpx]),.card.entregado:not([data-kpx]),.card.no-entregado:not([data-kpx])').forEach(cardify);}).observe(document.body,{childList:true,subtree:true});
 /* ---------- Configuración con menús desplegables ---------- */
 function accordions(){
   document.querySelectorAll('#view .kp-enterprise-panel').forEach((p,i)=>{
