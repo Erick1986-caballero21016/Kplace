@@ -11215,7 +11215,7 @@ window.buildTabs=function(){
    tabs=[{id:'inicio',label:'Inicio'},{id:'principal',label:'Canales',badge:KP.Channels?._mentionBadge||null},{id:'hoy',label:'Órdenes',badge:nHoy||null},{id:'boxful',label:'Nivel Nacional',badge:nNacional||null},{id:'rastreosNacionales',label:'Rastreo'},{id:'programadas',label:'Programadas'},{id:'retrasos',label:'Retrasos',badge:nr||null},{id:'repartidor',label:'Repartidores'},{id:'adminOrdersInventory',label:'Inventario y ubicaciones'},{id:'admin',label:'Usuarios y equipo'},{id:'reportes',label:'Reportes'},{id:'gps',label:'GPS'},{id:'configNegocio',label:'Configuración del negocio'}];
    if(CURRENT_USER.esAdmin)tabs.push({id:'integraciones',label:'Integraciones'});
  }
- if(activeTab!=='integraciones' && activeTab!=='ayuda' && !tabs.some(t=>t.id===activeTab))activeTab=tabs[0].id;
+ if(activeTab!=='integraciones' && activeTab!=='ayuda' && !/^kplace_/.test(String(activeTab)) && !tabs.some(t=>t.id===activeTab))activeTab=tabs[0].id;
  document.getElementById('tabs').innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
  document.querySelectorAll('#tabs .tab').forEach(x=>x.onclick=()=>window.setTab(x.dataset.tab));
 };
