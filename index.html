@@ -3397,13 +3397,13 @@ function toggleMenu(){
     ['usuarios','👥','Usuarios y equipo'],
     ['devoluciones','↩️','Devoluciones'],
     ['ayuda','📖','Ayuda'],
-    ...(CURRENT_USER?.esAdmin ? [['admin','⚙','Admin']] : [])
+    ...(CURRENT_USER?.esAdmin ? [['admin','⚙','Admin'],['finanzas','💼','Finanzas y compras']] : [])
   ];
   drawer.innerHTML=`
     <div class="kp-drawer-head"><div class="kp-drawer-brand"><span class="kp-top-mark">K</span><div><strong>KPlace</strong><small>GESTIÓN INTEGRAL DE NEGOCIOS</small></div></div><button class="kp-drawer-close" onclick="closeKPlaceMenu()">×</button></div>
     <div class="kp-drawer-user"><span class="kp-avatar">${initials}</span><div style="min-width:0"><div style="font-size:12px;font-weight:800;color:#172033;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${CURRENT_USER?.nombre||'Usuario'}</div><div style="font-size:9px;color:#7b8493;margin-top:2px;">${CURRENT_USER?.cargo||cargoLabel(CURRENT_USER)}</div></div></div>
     <div class="kp-drawer-section">${esRepartidor?'Acceso del repartidor':'Navegación'}</div>
-    <nav class="kp-drawer-nav">${items.map(([id,ico,label])=>`<button data-section="${id}" onclick="closeKPlaceMenu();setTab('${id}')"><span class="dico">${ico}</span>${label}</button>`).join('')}</nav>
+    <nav class="kp-drawer-nav">${items.map(([id,ico,label])=>`<button data-section="${id}" onclick="${id==='finanzas'?'closeKPlaceMenu();window.KPBusinessModulesV2?.open(\'finanzas\')':`closeKPlaceMenu();setTab(\'${id}\')`} "><span class="dico">${ico}</span>${label}</button>`).join('')}</nav>
     <div class="kp-drawer-footer">${!esRepartidor?`<button onclick="closeKPlaceMenu();toggleSettingsMenu()">⚙️ Configuración</button>`:''}<button class="logout" onclick="closeKPlaceMenu();cerrarSesion()">↪ Cerrar sesión</button></div>`;
   updateKPlaceNav();
   overlay.classList.add('show'); drawer.classList.add('show'); drawer.setAttribute('aria-hidden','false');
