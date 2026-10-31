@@ -23362,13 +23362,13 @@ function receiptPrefs(){let c=K.config||{};return card(`<div class="kf-row"><h2>
  ${field('Logo (PNG o JPG)',`<input type="file" id="kfCfgLogo" accept="image/png,image/jpeg,image/webp">`)}
  ${c.logo?`<div style="margin-top:10px"><img class="kf-inline-logo" src="${esc(c.logo)}" alt="Logo del negocio"></div>`:''}
  <div class="kf-actions">${button('Guardar preferencias de recibos','saveReceiptSettings','primary')}</div>`)}
-function documentsScreen(){const all=branchOrders();let left=card(`<h2>Órdenes guardadas</h2>${field('Buscar cliente, número de orden o teléfono',inp('kfDocSearch',K.note||'','search','placeholder="Buscar..."'))}<div id="kfDocRows">${docOrderRows(all)}</div>`);
+function documentsScreen(){const all=branchOrders();const activeDay=str(window.selectedDate||today());const q=str(K.note||'');let left=card(`<h2>Órdenes guardadas</h2><p class="kf-muted">${q?'Buscando en todas las fechas. Borrá la búsqueda para volver al día seleccionado.':'Mostrando únicamente las órdenes del '+esc(activeDay)+'. Usá las flechas de la parte superior para cambiar de día.'}</p>${field('Buscar cliente, número de orden o teléfono',inp('kfDocSearch',K.note||'','search','placeholder="Buscar en cualquier fecha..."'))}<div id="kfDocRows">${docOrderRows(all)}</div>`);
  const prefs=K.receiptPrefsOpen?receiptPrefs():'';
  const heading=header('Recibos de compra',K.doc?'Editá un recibo comercial y compartilo por WhatsApp.':'Elegí una orden para generar un recibo comercial no fiscal.',button(K.receiptPrefsOpen?'Ocultar preferencias':'Preferencias de recibos','receiptSettingsToggle','sm'));
  if(K.doc){return heading+prefs+branchChooser(true)+`<div class="kf-2">${documentEditor()}${documentPreview()}</div>`+card(`<h2>Recibos guardados</h2>${draftList()}`)}
  return heading+prefs+branchChooser(true)+left+card(`<h2>Recibos guardados</h2>${draftList()}`);
 }
-function docOrderRows(all){const q=norm(K.note||'');return all.filter(o=>!q||norm([o.cliente,o.numero,o.numero2,orderNo(o)].join(' ')).includes(q)).slice(-50).map(o=>`<div class="kf-entry"><div class="kf-entry-text"><strong>#${esc(orderNo(o))} · ${esc(o.cliente||'Sin nombre')}</strong><small>${esc(o.fecha||'')} · ${money(o.totalPedido)}</small></div><div class="kf-actions">${button('Generar recibo','newReceipt:'+o.id,'sm')}</div></div>`).join('')||'<p>No hay órdenes para mostrar.</p>'}
+function docOrderRows(all){const q=norm(K.note||'');const day=str(window.selectedDate||today());const hits=all.filter(o=>q?norm([o.cliente,o.numero,o.numero2,o.telefono,o.phone,o.telefonoCliente,orderNo(o)].join(' ')).includes(q):str(o.fecha||'')===day).sort((a,b)=>str(b.fecha||'').localeCompare(str(a.fecha||''))||n(b.numeroOrden)-n(a.numeroOrden));return hits.slice(0,80).map(o=>`<div class="kf-entry"><div class="kf-entry-text"><strong>#${esc(orderNo(o))} · ${esc(o.cliente||'Sin nombre')}</strong><small>${esc(o.fecha||'')} · ${money(o.totalPedido)}</small></div><div class="kf-actions">${button('Generar recibo','newReceipt:'+o.id,'sm')}</div></div>`).join('')||'<p>'+(q?'No se encontraron órdenes con esa búsqueda.':'No hay órdenes registradas para el día seleccionado.')+'</p>'}
 function draftList(){return K.drafts.filter(d=>d.kind==='recibo'||!d.kind).slice().sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,35).map(d=>`<div class="kf-entry"><div class="kf-entry-text"><strong>Recibo · #${esc(d.orderNo||'')}</strong><small>${esc(d.client||'')} · ${esc(d.status||'borrador')} · ${money(d.finalTotal||0)}</small></div>${button('Editar','editDraft:'+d.id,'sm')}</div>`).join('')||'<p>No se guardaron recibos todavía.</p>'}
 function documentEditor(){let d=K.doc,t=documentTotals(d);return card(`<div class="kf-row"><div><h2>Editor de recibo comercial</h2><p>Orden #${esc(d.orderNo)} · ${esc(branchName(d.branch))}</p></div>${status('Borrador','busy')}</div>
  <div class="kf-tools" style="margin-top:14px">${button('Cambiar de orden','docClose','sm')}</div>
@@ -23700,7 +23700,7 @@ document.addEventListener('input',e=>{
     const tmap={kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocNotes:'notes',kfDocClient:'client',kfDocBiz:'businessName',kfDocClientId:'clientId',kfDocBizPhone:'businessPhone',kfDocWhatsapp:'businessWhatsapp',kfDocInstagram:'businessInstagram',kfDocHours:'businessHours',kfDocPhone:'phone',kfDocAddress:'businessAddress',kfDocPlatform:'platform'};
     const k=tmap[t.id];if(k){K.doc[k]=['discount','shipping','other'].includes(k)?amt(t.value):t.value;refreshDocPreview();return}
   }
-  if(e.target.id==='kfQuickCount'){K.quickCount=e.target.value;let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfDocSearch'){K.note=e.target.value;let dst=$('kfDocRows');if(dst)dst.innerHTML=docOrderRows(branchOrders())}else if(e.target.id==='kfRuleThreshold'){/* valor del formulario se toma al guardar */}else if(e.target.matches('[id^="kfD"]')&&K.page==='cash'){let key=e.target.id.slice(3).replace('_','.');K.counts[Number(key)]=Math.max(0,Math.floor(n(e.target.value)));let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfCashReason'){K.note=e.target.value}});
+  if(e.target.id==='kfQuickCount'){K.quickCount=e.target.value;let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfDocSearch'){K.note=e.target.value;let dst=$('kfDocRows');if(dst)dst.innerHTML=docOrderRows(branchOrders());let hint=$('kfDocSearch')?.closest('.kf-panel')?.querySelector('.kf-muted');if(hint)hint.textContent=str(K.note)?'Buscando en todas las fechas. Borrá la búsqueda para volver al día seleccionado.':'Mostrando únicamente las órdenes del '+str(window.selectedDate||today())+'. Usá las flechas de la parte superior para cambiar de día.'}else if(e.target.id==='kfRuleThreshold'){/* valor del formulario se toma al guardar */}else if(e.target.matches('[id^="kfD"]')&&K.page==='cash'){let key=e.target.id.slice(3).replace('_','.');K.counts[Number(key)]=Math.max(0,Math.floor(n(e.target.value)));let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfCashReason'){K.note=e.target.value}});
 /* Formularios de documentos: impedir que cambios no disparados por blur se pierdan al guardar. */
 function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySelectorAll('#kpFlowRoot [data-doc-item]').forEach(t=>{let i=Number(t.dataset.docItem),k=t.dataset.key;if(K.doc.items[i])K.doc.items[i][k]=k==='name'?t.value:amt(t.value)});document.querySelectorAll('#kpFlowRoot [data-doc-pay]').forEach(t=>{let i=Number(t.dataset.docPay),k=t.dataset.key;if(K.doc.payments[i])K.doc.payments[i][k]=k==='paid'?t.checked:k==='amount'?amt(t.value):t.value});document.querySelectorAll('#kpFlowRoot [data-doc-charge]').forEach(t=>{const i=Number(t.dataset.docCharge),k=t.dataset.key,c=normalizeReceiptCharges(K.doc)[i];if(c)c[k]=k==='value'?amt(t.value):t.value});const map={kfDocCurrency:'currency',kfDocClient:'client',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocWhatsapp:'businessWhatsapp',kfDocInstagram:'businessInstagram',kfDocHours:'businessHours',kfDocPhone:'phone',kfDocClientId:'clientId',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocOtherLabel:'otherLabel',kfDocTax:'taxPct',kfDocNotes:'notes'};Object.entries(map).forEach(([id,k])=>{let t=$(id);if(t)K.doc[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value});if($('kfDocTaxIncluded'))K.doc.taxIncluded=$('kfDocTaxIncluded').checked}
 const rawCommand=command;command=async function(cmd){if(/^doc(Save|PDF|Share)$/.test(cmd))flushDocForm();return rawCommand(cmd)};
@@ -23894,7 +23894,8 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
    ['business','▣','Información del negocio','Nombre comercial y datos generales']
   ]},
   {group:'HERRAMIENTAS AVANZADAS',admin:true,subtitle:'Nuevas herramientas de KPlace',entries:[
-   ['modes','⚙','Modos y permisos','Individual, equipo y empresarial']
+   ['modes','⚙','Modos y permisos','Individual, equipo y empresarial'],
+   ['rolePreview','◉','Vista previa de roles','Ver pantallas y probar navegación sin cambiar datos']
   ]}
  ];
  const iconPaths={
@@ -23907,6 +23908,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
   integrations:'<path d="M12 22v-5M7 2v4M17 2v4M5 6h14v6a7 7 0 0 1-14 0V6Z"/>',
   automations:'<path d="m13 2-3 8h7l-6 12 1-9H5l8-11Z"/>',
   modes:'<path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M1 14h6m2-6h6m2 8h6"/>',
+  rolePreview:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>',
   receipts:'<path d="M4 3h16v18l-3-2-3 2-3-2-3 2-4-2V3ZM8 8h8M8 12h8M8 16h4"/>',
   cash:'<rect x=2 y=5 width=20 height=15 rx=2/><path d="M2 10h20M16 15h2M5 5V3h13"/>'
  };
@@ -23989,6 +23991,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
    if(subpages[id]){show(id);return}
    if(['inventory','users','integrations'].includes(id))return go('tab',id==='inventory'?'configNegocio':id==='users'?'admin':'integraciones');
    if(id==='modes')return go('flow','settings');
+   if(id==='rolePreview'&&isAdmin){close(sheet,bg);window.kpOpenRolePreview?.();return;}
   });
   root.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();e.preventDefault();if(detail.getAttribute('aria-hidden')==='false')showHome();else close(sheet,bg)}});
  }
@@ -24129,5 +24132,155 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
  };
 })();
 </script>
+<!-- KPlace · Vista previa de roles para el administrador: entorno SOLO de lectura -->
+<style id="kp-role-preview-css">
+body.kprp-active{overflow:hidden!important}
+#kpRolePreview{--p-bg:#090e1a;--p-panel:#121b2d;--p-panel2:#182239;--p-border:#36425f;--p-text:#f1effc;--p-muted:#a8b3cd;--p-violet:#b88af8;position:fixed;inset:0;z-index:100999;background:var(--p-bg);color:var(--p-text);font-family:inherit;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;color-scheme:dark}
+#kpRolePreview *{box-sizing:border-box}
+#kpRolePreview button,#kpRolePreview select{font:inherit;cursor:pointer}
+#kpRolePreview .kprp-shell{min-height:100dvh;display:flex;flex-direction:column}
+#kpRolePreview .kprp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--p-border);background:#101729;position:sticky;top:0;z-index:2}
+#kpRolePreview .kprp-top strong{font-size:18px;display:block;color:#fff}
+#kpRolePreview .kprp-small{display:block;color:var(--p-muted);font-size:12px;margin-top:4px}
+#kpRolePreview .kprp-top button,#kpRolePreview .kprp-actions button{background:var(--p-panel2);border:1px solid var(--p-border);color:var(--p-text);border-radius:12px;padding:10px 12px;min-height:39px}
+#kpRolePreview .kprp-top button:hover,#kpRolePreview .kprp-actions button:hover{border-color:var(--p-violet)}
+#kpRolePreview .kprp-notice{padding:10px 16px;background:#29223b;border-bottom:1px solid #574477;color:#ecdbff;font-size:12px;line-height:1.45}
+#kpRolePreview .kprp-controls{display:flex;gap:13px;flex-wrap:wrap;align-items:flex-end;padding:17px max(16px,env(safe-area-inset-left));background:#0f1728;border-bottom:1px solid var(--p-border)}
+#kpRolePreview .kprp-controls label{font-size:11px;color:var(--p-muted);font-weight:800;display:grid;gap:7px;flex:1;min-width:185px}
+#kpRolePreview .kprp-controls select{width:100%;background:#19233a;border:1px solid #48536e;color:#fff;border-radius:11px;padding:12px;font-size:14px;min-height:43px}
+#kpRolePreview .kprp-main{display:grid;grid-template-columns:230px minmax(0,1fr);flex:1;min-height:0}
+#kpRolePreview .kprp-nav{padding:17px 12px;background:#101727;border-right:1px solid var(--p-border);display:flex;flex-direction:column;gap:5px}
+#kpRolePreview .kprp-nav-title{font-size:10px;letter-spacing:1.9px;color:#b594ec;font-weight:850;margin:6px 9px 11px}
+#kpRolePreview .kprp-nav button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:12px 13px;background:transparent;border:1px solid transparent;border-radius:11px;color:#c8cfdf;font-size:13px;font-weight:720}
+#kpRolePreview .kprp-nav button.active{background:#332348;border-color:#7d4cb8;color:#f5eaff}
+#kpRolePreview .kprp-nav button:hover{background:#232b40}
+#kpRolePreview .kprp-content{padding:23px min(4vw,32px) 55px;min-width:0;max-width:1080px;width:100%;margin:0 auto}
+#kpRolePreview .kprp-eyebrow{color:var(--p-violet);font-size:11px;font-weight:850;letter-spacing:2px;text-transform:uppercase}
+#kpRolePreview h1{color:#f7f4ff;font-size:clamp(23px,3.1vw,32px);margin:6px 0 6px;font-weight:820}
+#kpRolePreview h2{color:#f5f1ff;font-size:17px;margin:0 0 12px}
+#kpRolePreview p{color:var(--p-muted);line-height:1.55;font-size:13px;margin:8px 0}
+#kpRolePreview .kprp-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:19px 0}
+#kpRolePreview .kprp-card{background:var(--p-panel);border:1px solid var(--p-border);border-radius:17px;padding:17px;min-width:0}
+#kpRolePreview .kprp-card strong{color:#f5f2ff}
+#kpRolePreview .kprp-num{font-size:27px;font-weight:850;color:#f5f2ff;display:block;margin-top:7px}
+#kpRolePreview .kprp-record{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:1px solid #354057;padding:12px 0}
+#kpRolePreview .kprp-record:last-child{border-bottom:0}
+#kpRolePreview .kprp-record strong{display:block;overflow-wrap:anywhere;font-size:14px}
+#kpRolePreview .kprp-record small{display:block;font-size:12px;margin-top:6px;color:var(--p-muted)}
+#kpRolePreview .kprp-actions{display:flex;gap:7px;flex-wrap:wrap}
+#kpRolePreview .kprp-actions button{font-size:12px;padding:8px 11px;min-height:35px}
+#kpRolePreview .kprp-actions .primary{background:#54328a;border-color:#8554bd;color:#fff}
+#kpRolePreview .kprp-empty{background:var(--p-panel);border:1px dashed #53617d;border-radius:14px;padding:22px;color:var(--p-muted);font-size:13px}
+#kpRolePreview .kprp-help{margin-top:15px;border-left:3px solid #9965da;padding:10px 14px;background:#1d2037;border-radius:0 10px 10px 0;font-size:12px;color:#c1b6d9;line-height:1.55}
+#kpRolePreview .kprp-detail{margin-top:9px;padding:11px 13px;border-radius:10px;background:#202a40;color:#dbe0ec;font-size:12px;line-height:1.6}
+#kpRolePreview .kprp-foot{margin-top:25px;font-size:11px;color:var(--p-muted)}
+@media(max-width:750px){#kpRolePreview .kprp-main{display:block}#kpRolePreview .kprp-nav{position:sticky;top:58px;z-index:1;display:flex;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--p-border);padding:8px 10px;scrollbar-width:thin}#kpRolePreview .kprp-nav-title{display:none}#kpRolePreview .kprp-nav button{width:auto;flex:0 0 auto;white-space:nowrap;padding:10px 12px}#kpRolePreview .kprp-content{padding:21px 15px 50px}}
+</style>
+<script id="kp-role-preview-js">
+(function(){
+ 'use strict';
+ if(window.kpOpenRolePreview)return;
+ // Los permisos, la sesión y las referencias de Firebase permanecen intactos.
+ // Ninguna acción de esta vista escribe datos: las simulaciones usan solo el objeto local S.
+ const defs={
+  admin:{title:'Administrador general',description:'Vista integral. Conserva todas las herramientas y pestañas del negocio.',nav:[['inicio','Inicio','⌂'],['principal','Canales','▤'],['hoy','Órdenes','▣'],['boxful','Envíos nacionales','▤'],['rastreosNacionales','Rastreo de pedidos','◎'],['programadas','Programadas','◷'],['retrasos','Retrasos','⚑'],['repartidor','Repartidores','♧'],['packing','Empaque','▣'],['documents','Recibos','▤'],['cash','Caja','▣'],['adminOrdersInventory','Inventario y ubicaciones','▤'],['admin','Usuarios y equipo','♙'],['reportes','Reportes','▥'],['gps','GPS','◎'],['configNegocio','Configuración del negocio','⚙'],['integraciones','Integraciones','⌁'],['ayuda','Ayuda','?']]},
+  vendedor:{title:'Vendedor',description:'Órdenes y atención al cliente. Vista de trabajo con permisos limitados.',nav:[['inicio','Inicio','⌂'],['principal','Canales','▤'],['hoy','Órdenes','▣'],['programadas','Programadas','◷'],['retrasos','Retrasos','⚑'],['cash','Caja','▣'],['ayuda','Ayuda','?']]},
+  repartidor:{title:'Repartidor',description:'Entregas asignadas, estado de trabajo y comunicación.',nav:[['hoy','Órdenes','▣'],['repartidor','Mis entregas','♧'],['principal','Canales','▤'],['cash','Caja','▣'],['ayuda','Ayuda','?']]},
+  envios:{title:'Administrador de envíos',description:'Gestiona pedidos locales, envíos nacionales y rastreo.',nav:[['adminEnviosTegus','Tegucigalpa','▣'],['adminEnviosNacional','Envíos nacionales','▤'],['rastreosNacionales','Rastreo de pedidos','◎'],['adminEnviosDevoluciones','Devoluciones','↶'],['ayuda','Ayuda','?']]},
+  empacador:{title:'Empacador',description:'Prepara pedidos y registra incidencias. También se denomina Administrador de empaque.',nav:[['packing','Empaque','▣'],['principal','Canales','▤'],['ayuda','Ayuda','?']]}
+ };
+ const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const text=x=>String(x??'').toLowerCase();
+ const date=()=>String(window.selectedDate||new Date().toISOString().slice(0,10));
+ const accessible=()=>Array.isArray(window.ORDERS)?window.ORDERS.filter(o=>!window.kpOrderBelongsToCurrentCompany||window.kpOrderBelongsToCurrentCompany(o)):[];
+ const orderNo=o=>String(o.numeroOrden||o.codigoOrden||((typeof window.kpNumeroOrdenSafe==='function')?window.kpNumeroOrdenSafe(o):o.id||''));
+ const staff=()=>Array.isArray(window.VENDEDORES)?window.VENDEDORES:[];
+ const roleOf=u=>u.esAdmin?'admin':u.esRepartidor?'repartidor':u.esEncargadoEnvios?'envios':u.esEmpacador?'empacador':'vendedor';
+ const ownBranch=()=>String(window.CURRENT_USER?.sucursalId||'');
+ const branchOf=o=>String(o.sucursalId||'');
+ let S={role:'vendedor',section:'',staff:'',details:new Set(),packed:{},delivered:{},message:''};
+ function admin(){return !!window.CURRENT_USER?.esAdmin;}
+ function similarUsers(){return staff().filter(u=>roleOf(u)===S.role);}
+ function selectedUser(){return similarUsers().find(u=>String(u.email||u.usuario||u.nombre)===S.staff)||null;}
+ function safeOrders(){const u=selectedUser(),sucursal=String(u?.sucursalId||ownBranch());return accessible().filter(o=>{
+  if(S.role!=='admin'&&sucursal&&branchOf(o)&&branchOf(o)!==sucursal)return false;
+  if(S.role==='repartidor'){
+    if(!u)return false;
+    const ids=[u.id,u.uid,u.email,u.usuario,u.nombre].filter(Boolean).map(text);
+    const assigned=[o.repartidorId,o.repartidorUsuario,o.repartidor,o.repartidorNombre,o.asignadoA,o.driverId].filter(Boolean).map(text);
+    return ids.some(i=>assigned.includes(i));
+  }
+  return true;
+ });}
+ function num(s){return Number(s)||0;}
+ function visibleOrders(){return safeOrders().filter(o=>o.fecha===date()).sort((a,b)=>String(b.id||'').localeCompare(String(a.id||''))).slice(0,35);}
+ function line(o,detail=false){const id=String(o.id||'');const state=S.packed[id]||o.kpPacking?.status||'';const entregado=S.delivered[id]??(o.entregado===true);const expanded=S.details.has(id);
+  return `<div class="kprp-record"><div><strong>#${E(orderNo(o))} · ${E(o.cliente||'Sin nombre')}</strong><small>${E(o.fecha||'')} · ${E(o.tipoEntrega||'Pedido')} · ${entregado?'Entregada':state==='preparando'?'En preparación':state==='listo'?'Lista':'Pendiente'}</small>${expanded?`<div class="kprp-detail">${E((o.productos||[]).map(p=>[p.categoria,p.modelo,p.tamano,p.colorEn||p.colorEs].filter(Boolean).join(' ')).join(' · ')||'Sin detalle de productos')}<div>Teléfono: ${E(o.numero||o.numero2||'No registrado')} · Total: ${E(o.totalPedido||0)}</div></div>`:''}</div><div class="kprp-actions"><button data-rp-action="details" data-id="${E(id)}">${expanded?'Ocultar':'Ver detalles'}</button>${(S.section==='packing')?`<button class="primary" data-rp-action="pack" data-id="${E(id)}">${state==='preparando'?'Completar (prueba)':state==='listo'?'Liberar (prueba)':'Empacar (prueba)'}</button>`:''}${(S.section==='repartidor')?`<button class="primary" data-rp-action="deliver" data-id="${E(id)}">${entregado?'Revertir (prueba)':'Entregar (prueba)'}</button>`:''}</div></div>`;
+ }
+ function infoCards(a){return `<div class="kprp-cards">${a.map(([key,val])=>`<div class="kprp-card"><span class="kprp-small">${E(key)}</span><strong class="kprp-num">${E(val)}</strong></div>`).join('')}</div>`}
+ function page(){let sec=S.section,rows=safeOrders(),daily=visibleOrders(),user=selectedUser(),title=(defs[S.role].nav.find(x=>x[0]===sec)||[])[1]||'Vista previa';
+  let html=`<span class="kprp-eyebrow">KPLACE · ${E(defs[S.role].title.toUpperCase())}</span><h1>${E(title)}</h1><p>${E(defs[S.role].description)}</p>`;
+  if(['hoy','adminEnviosTegus','adminEnviosNacional','boxful','rastreosNacionales','repartidor','packing','programadas','retrasos','adminEnviosDevoluciones'].includes(sec)){
+    let list=daily;
+    if(['adminEnviosNacional','boxful','rastreosNacionales'].includes(sec))list=list.filter(o=>['nacional','roatan'].includes(text(o.tipoEntrega)));
+    if(sec==='adminEnviosTegus'||sec==='repartidor')list=list.filter(o=>text(o.tipoEntrega)==='tegucigalpa'||sec==='repartidor');
+    if(sec==='programadas')list=list.filter(o=>o.tipoEntrega==='programada');
+    if(sec==='retrasos')list=list.filter(o=>o.retraso||o.atrasado||o.fecha<date()&&o.entregado!==true);
+    if(sec==='adminEnviosDevoluciones')list=rows.filter(o=>o.kpDevolucionNoRecibida||o.devolucionPendiente).slice(0,35);
+    if(sec==='packing')list=rows.filter(o=>o.entregado!==true&&o.cancelada!==true).slice(0,35);
+    html+=infoCards([['Órdenes en la vista',list.length],['Fecha del selector',date()],['Usuario de referencia',user?.nombre||'Demostración']]);
+    html+=`<section class="kprp-card"><h2>${sec==='packing'?'Órdenes por preparar':'Órdenes visibles'}</h2>${list.length?list.map(o=>line(o)).join(''):'<div class="kprp-empty">No hay órdenes para este rol y fecha con la referencia seleccionada. Elegí otro usuario o fecha en la aplicación para comprobar otros casos.</div>'}</section>`;
+    if(sec==='packing'||sec==='repartidor')html+=`<div class="kprp-help">Los botones de ${sec==='packing'?'empaque':'entrega'} son una prueba local: cambian esta pantalla, pero NO modifican órdenes, pagos ni inventario. Al cerrar la vista se descartan.</div>`;
+  }else if(sec==='principal'){
+    html+=`<div class="kprp-cards"><div class="kprp-card"><h2>Canales internos</h2><p>Vista de navegación para consultar conversaciones autorizadas por sucursal.</p><div class="kprp-actions"><button data-rp-action="demo">Abrir un chat (prueba)</button></div></div><div class="kprp-card"><h2>Mensajes directos</h2><p>Las conversaciones reales no se abren ni se envían mensajes desde esta vista.</p></div></div>`;
+  }else if(sec==='adminOrdersInventory'){
+    const inv=Array.isArray(window.INVENTARIO)?window.INVENTARIO:[];
+    html+=infoCards([['Productos registrados',inv.length],['Sucursales activas',window.KP?.branches?.length||0]]);
+    html+=`<section class="kprp-card"><h2>Inventario y ubicaciones</h2>${inv.slice(0,15).map(i=>`<div class="kprp-record"><div><strong>${E([i.categoria,i.modelo,i.tamano,i.colorEn||i.colorEs].filter(Boolean).join(' '))}</strong><small>Existencia: ${E(i.cantidad||0)}</small></div><div class="kprp-actions"><button data-rp-action="demo">Editar (prueba)</button></div></div>`).join('')||'<div class="kprp-empty">No hay inventario disponible.</div>'}</section>`;
+  }else if(sec==='admin'){
+    html+=infoCards([['Usuarios registrados',staff().length]]);
+    html+=`<section class="kprp-card"><h2>Usuarios y equipo</h2>${staff().slice(0,25).map(u=>`<div class="kprp-record"><div><strong>${E(u.nombre||u.usuario||'Usuario')}</strong><small>${E(defs[roleOf(u)].title)} · ${E(u.sucursalId||'')}</small></div><div class="kprp-actions"><button data-rp-action="demo">Ver perfil (prueba)</button></div></div>`).join('')}</section>`;
+  }else if(sec==='cash'){
+    html+=infoCards([['Órdenes del día',daily.length],['Fecha',date()]]);
+    html+=`<section class="kprp-card"><h2>Cierre de caja inteligente</h2><p>Fondo inicial, movimientos, liquidaciones y arqueo, separados de las operaciones reales.</p><div class="kprp-actions"><button data-rp-action="demo">Registrar fondo (prueba)</button><button data-rp-action="demo">Hacer arqueo (prueba)</button></div></section>`;
+  }else if(sec==='documents'){
+    html+=`<section class="kprp-card"><h2>Recibos comerciales</h2><p>La generación y exportación de PDF quedan desactivadas durante esta vista previa.</p>${daily.slice(0,12).map(o=>`<div class="kprp-record"><div><strong>#${E(orderNo(o))} · ${E(o.cliente||'')}</strong><small>${E(o.fecha||'')}</small></div><div class="kprp-actions"><button data-rp-action="demo">Generar recibo (prueba)</button></div></div>`).join('')||'<div class="kprp-empty">No hay órdenes para esta fecha.</div>'}</section>`;
+  }else if(sec==='inicio'||sec==='reportes'){
+    html+=infoCards([['Órdenes del día',daily.length],['Órdenes visibles',rows.length],['Registradas',Array.isArray(window.ORDERS)?window.ORDERS.length:0]]);
+    html+=`<section class="kprp-card"><h2>${sec==='reportes'?'Resumen de ventas':'Panel de control'}</h2><p>Vista de indicadores basada en los datos ya cargados, sin modificar reportes ni movimientos.</p></section>`;
+  }else{
+    html+=`<section class="kprp-card"><h2>${E(title)}</h2><p>Acceso disponible en la vista de ${E(defs[S.role].title)}. En esta prueba se puede revisar la navegación, sin ejecutar acciones en vivo.</p><div class="kprp-actions"><button data-rp-action="demo">Probar acceso</button></div></section>`;
+  }
+  if(S.message)html+=`<div class="kprp-help" role="status">${E(S.message)}</div>`;
+  html+=`<div class="kprp-foot">Modo de prueba aislado: no modifica CURRENT_USER, permisos, registros de Firestore ni datos de otros usuarios. Esta vista sirve para revisar navegación y simulaciones visuales, no reemplaza una prueba con una cuenta real ni valida las reglas de seguridad del servidor.</div>`;
+  return html;
+ }
+ function render(){let host=document.getElementById('kpRolePreview');if(!host)return;if(!admin()){close();return;}
+  const role=defs[S.role],users=similarUsers();if(!role.nav.some(x=>x[0]===S.section))S.section=role.nav[0][0];
+  host.innerHTML=`<div class="kprp-shell"><header class="kprp-top"><div><strong>KPlace <span style="color:#b88af8">· Vista previa</span></strong><span class="kprp-small">Sesión original: Administrador general</span></div><button type="button" data-rp-action="exit">✕ Salir de prueba</button></header><div class="kprp-notice"><strong>SOLO PRUEBA</strong> · Podés cambiar de rol, recorrer pantallas y simular acciones. Nunca se guardan cambios.</div><div class="kprp-controls"><label>Vista del rol<select id="kprpRole">${Object.entries(defs).map(([k,v])=>`<option value="${k}" ${S.role===k?'selected':''}>${E(v.title)}</option>`).join('')}</select></label><label>Usuario de referencia<select id="kprpStaff"><option value="">Demostración del rol (sin usuario)</option>${users.map(u=>{const k=String(u.email||u.usuario||u.nombre);return `<option value="${E(k)}" ${S.staff===k?'selected':''}>${E(u.nombre||u.usuario||'Usuario')}</option>`}).join('')}</select></label></div><div class="kprp-main"><nav class="kprp-nav" aria-label="Menú del rol de prueba"><span class="kprp-nav-title">NAVEGACIÓN DEL ROL</span>${role.nav.map(([id,label,ico])=>`<button type="button" data-rp-page="${E(id)}" class="${S.section===id?'active':''}" aria-current="${S.section===id?'page':'false'}"><span>${E(ico)}</span>${E(label)}</button>`).join('')}</nav><main class="kprp-content">${page()}</main></div></div>`;
+ }
+ function close(){document.getElementById('kpRolePreview')?.remove();document.body.classList.remove('kprp-active');S={role:'vendedor',section:'',staff:'',details:new Set(),packed:{},delivered:{},message:''};}
+ function open(){if(!admin()){if(typeof window.toast==='function')window.toast('Solo el Administrador general puede abrir esta vista.');return;}if(document.getElementById('kpRolePreview'))return;const host=document.createElement('div');host.id='kpRolePreview';host.setAttribute('role','dialog');host.setAttribute('aria-modal','true');host.setAttribute('aria-label','Vista previa de roles de KPlace');document.body.appendChild(host);document.body.classList.add('kprp-active');S.section=defs[S.role].nav[0][0];render();}
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('kpRolePreview')){e.preventDefault();e.stopImmediatePropagation();close()}},true);
+ document.addEventListener('change',e=>{if(!e.target.closest?.('#kpRolePreview'))return;const t=e.target;
+  if(t.id==='kprpRole'&&defs[t.value]){S.role=t.value;S.section=defs[S.role].nav[0][0];S.staff='';S.details.clear();S.packed={};S.delivered={};S.message='';render();}
+  else if(t.id==='kprpStaff'){S.staff=t.value;S.details.clear();S.packed={};S.delivered={};S.message='';render();}
+ },true);
+ document.addEventListener('click',e=>{const host=e.target.closest?.('#kpRolePreview');if(!host)return;const nav=e.target.closest('[data-rp-page]'),action=e.target.closest('[data-rp-action]');if(!nav&&!action)return;e.preventDefault();e.stopImmediatePropagation();
+  if(!admin()){close();return;}
+  if(nav){S.section=nav.dataset.rpPage;S.details.clear();S.message='';render();return;}
+  const a=action.dataset.rpAction,id=action.dataset.id||'';
+  if(a==='exit'){close();return;}
+  if(a==='details'){if(S.details.has(id))S.details.delete(id);else S.details.add(id);S.message='';}
+  else if(a==='pack'){const o=safeOrders().find(o=>String(o.id)===id);const v=S.packed[id]||o?.kpPacking?.status||'';S.packed[id]=v==='preparando'?'listo':v==='listo'?'disponible':'preparando';S.message='Estado de empaque simulado; la orden real no ha cambiado.';}
+  else if(a==='deliver'){const o=safeOrders().find(o=>String(o.id)===id);S.delivered[id]=!(S.delivered[id]??(o?.entregado===true));S.message='Entrega simulada; no se modificó ningún pago ni estado real.';}
+  else S.message='Acceso visual comprobado. Las acciones que crean, envían o eliminan información están bloqueadas en este modo.';
+  render();
+ },true);
+ window.kpOpenRolePreview=open;
+ window.kpCloseRolePreview=close;
+})();
+</script>
+
 </body>
 </html>
