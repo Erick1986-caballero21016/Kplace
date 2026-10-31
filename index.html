@@ -18471,12 +18471,13 @@ async function dmCard(c){
   try{
     var seen=Number(localStorage.getItem(C.seenKey(c.id))||0);
     var snap=await kpTO(db.collection('canalMensajes_'+c.id).orderBy('ts','desc').limit(20).get(),4000);
-    var first=true;
+    var first=true,hiddenCall=false;
     snap.docs.forEach(function(d){var m=d.data(),t=m.ts&&m.ts.toMillis?m.ts.toMillis():0;
       if(t<=c.clearedAt)return;
+      if(m.tipo==='llamada'&&(m.ocultoPara||[]).some(function(id){return String(id).toLowerCase()===String(me()).toLowerCase();})){hiddenCall=true;return;}
       if(first&&!m.eliminado){last=m.tipo==='imagen'?'📷 Foto':m.tipo==='audio'?'🎤 Mensaje de voz':m.tipo==='documento'?'📄 Documento':String(m.texto||'');lastTs=t||lastTs;first=false;}
       if(m.autorUsuario!==me()&&t>seen)unread++;});
-    if(first&&c.clearedAt)last='';
+    if(first&&(c.clearedAt||hiddenCall))last='';
   }catch(e){}
   c._lastTs=lastTs;
   var u=window.kpFindUserByChat(c.dmOtro,c.nombre),av=window.kpAvatarHtml(u,c.nombre,52);
@@ -24584,6 +24585,55 @@ setTimeout(()=>{wrapReportExports();syncNavigation()},100);
  .kpc-contact-screen{padding:0!important;align-items:stretch!important}.kpc-contact-screen>.kpc-modal{width:100%;height:100dvh;max-height:100dvh;border-radius:0;border:0;overflow:auto;padding:calc(20px + env(safe-area-inset-top,0px)) 18px calc(20px + env(safe-area-inset-bottom,0px))}.kpc-person{gap:10px}.kpc-contact-screen .kpc-person-actions{width:100%!important;display:flex!important}.kpc-contact-screen .kpc-person-actions>button{flex:1 1 0;min-width:0!important}.kpc-contact-screen .kpc-person-more{margin-left:auto}
 }
 @media(prefers-reduced-motion:reduce){.kpc-call-screen.is-ringing .kpc-call-ring{animation:none}}
+
+/* KPlace · llamadas grupales, modo miniatura y controles estilo móvil */
+.kpc-call-top{position:relative!important}.kpc-call-top .kpc-call-brand{flex:1;justify-content:center;text-align:center}
+.kpc-minimize-btn{width:43px;height:43px;border:1px solid rgba(217,199,255,.23);border-radius:50%;display:grid;place-items:center;background:#211c38;color:#e7d9ff;flex:0 0 auto;cursor:pointer}
+.kpc-minimize-btn svg{width:22px!important;height:22px!important}
+.kpc-call-screen.is-minimized{display:none!important}
+.kpc-call-screen .kpc-call-controls{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));justify-items:center;gap:20px 8px!important;margin:0 auto!important;width:100%;max-width:400px}
+.kpc-call-screen .kpc-call-controls button{min-width:0!important;width:100%;font-size:12px!important;line-height:1.4!important}
+.kpc-call-screen .kpc-call-controls .kpc-control-icon{width:63px;height:63px}
+.kpc-call-screen .kpc-call-footer{width:100%;max-width:650px;border-radius:25px 25px 0 0;background:linear-gradient(160deg,#131624,#17182a);border-top:1px solid rgba(194,177,240,.13);padding-top:22px;padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+.kpc-call-screen .kpc-call-main{padding-top:12px!important;min-height:0!important}
+.kpc-call-screen .kpc-call-visual{width:min(43vw,180px);height:min(43vw,180px);min-width:115px;min-height:115px;aspect-ratio:1/1!important;margin-bottom:25px!important}
+.kpc-call-screen .kpc-call-avatar{aspect-ratio:1/1!important}
+.kpc-call-screen .kpc-call-status{margin-top:12px!important}
+.kpc-member-count{margin-top:14px;border:1px solid #584a75;border-radius:25px;background:#211d36;color:#cbb9f4;font-size:12px;padding:7px 14px}
+.kpc-participant-list{margin:13px auto 0;max-width:420px;width:100%;max-height:130px;overflow-y:auto;border-radius:15px;background:#28243b;padding:6px;box-sizing:border-box}
+.kpc-participant-list[hidden]{display:none!important}
+.kpc-call-member{display:flex;gap:9px;padding:7px 11px;text-align:left;align-items:center;color:#fff}
+.kpc-call-member-av{display:grid;place-items:center;width:33px;height:33px;flex:none;border-radius:50%;background:#544080;font-weight:800}
+.kpc-call-member b,.kpc-call-member small{display:block;font-size:12px}.kpc-call-member small{color:#b8accc}
+.kpc-call-screen .kpc-call-note{margin:11px 0 0!important;font-size:11px!important;color:#b2a5ca}
+.kpc-mini-call{position:fixed;z-index:2147483639;top:calc(env(safe-area-inset-top,0px) + 70px);right:14px;display:flex;align-items:center;gap:5px;padding:6px;background:#201935;border:1px solid #7456bb;border-radius:40px;box-shadow:0 10px 30px #0009;color:#fff;max-width:calc(100vw - 25px)}
+.kpc-mini-call button{border:0;color:#fff;cursor:pointer}.kpc-mini-call .kpc-mini-open{display:flex;align-items:center;gap:8px;background:transparent;padding:5px 6px}.kpc-mini-call svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.kpc-mini-call .kpc-mini-open>svg:first-child{color:#a98aff}.kpc-mini-call span{display:flex;flex-direction:column;text-align:left;min-width:55px;max-width:125px}.kpc-mini-call b{font-size:12px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.kpc-mini-call small{font-size:11px;color:#bdb0db}.kpc-mini-call .kpc-mini-hang{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#d9365a}
+.kpc-invite-screen,.kpc-audio-menu{z-index:2147483645!important}
+.kpc-invite-screen .kpc-modal,.kpc-audio-menu .kpc-modal{max-width:520px;max-height:80dvh}.kpc-invite-search{padding:14px 13px;background:#0e1320;color:#fff;border-radius:12px;width:100%;border:1px solid #5c5272;box-sizing:border-box;margin:8px 0}
+.kpc-invite-list{overflow:auto;max-height:50dvh}.kpc-invite-list>button{width:100%;background:#201d31;color:#fff;border:1px solid #49405f;border-radius:13px;padding:12px;display:flex;gap:12px;align-items:center;text-align:left;margin:7px 0}.kpc-invite-list>button>span:nth-child(2){flex:1}.kpc-invite-list b,.kpc-invite-list small{display:block}.kpc-invite-list small{font-size:11px;color:#b8acc9;margin-top:4px}.kpc-invite-avatar{width:36px;height:36px;border-radius:50%;background:#6947a3;display:grid;place-items:center;flex:0 0 auto;font-weight:700}.kpc-invite-plus svg{height:23px;width:23px;fill:none;stroke:currentColor;stroke-width:2}
+.kpc-audio-choices button{display:block;width:100%;padding:14px;border-radius:12px;margin:8px 0;background:#2d2444;border:1px solid #655083;color:#fff}.kpc-audio-help{font-size:12px!important;line-height:1.5}
+.kpc-chat-call button{display:grid;place-items:center;background:transparent!important;border-radius:12px!important;color:#efedff!important}.kpc-chat-call button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:500px){.kpc-call-top{padding:calc(12px + env(safe-area-inset-top,0px)) 17px 9px!important}.kpc-call-screen .kpc-call-main{justify-content:center!important}.kpc-call-screen .kpc-call-controls{gap:12px 3px!important}.kpc-call-screen .kpc-call-controls .kpc-control-icon{width:57px;height:57px}.kpc-call-screen .kpc-call-footer{padding:16px 12px calc(18px + env(safe-area-inset-bottom,0px))!important}.kpc-call-screen .kpc-call-visual{width:min(38vw,165px);height:min(38vw,165px)}.kpc-call-screen .kpc-call-identity h2{font-size:26px!important}}
+@media(max-height:650px){.kpc-call-screen .kpc-call-visual{width:115px;height:115px;min-width:100px;min-height:100px;margin-bottom:9px!important}.kpc-call-screen .kpc-call-status{margin-top:8px!important}.kpc-call-screen .kpc-call-footer{padding-top:10px!important}.kpc-call-screen .kpc-call-controls .kpc-control-icon{width:46px;height:46px}.kpc-call-screen .kpc-call-identity h2{font-size:22px!important}}
+
+/* KPlace: historial de llamadas compacto; borrar un registro solo afecta a un usuario. */
+.kpc-call-row{display:flex!important;width:100%;margin:9px 0}.kpc-call-row.mine{justify-content:flex-end}.kpc-call-row.theirs{justify-content:flex-start}
+.kpc-call-card{display:grid;grid-template-columns:44px minmax(0,1fr) 30px;grid-template-rows:auto auto;align-items:center;column-gap:10px;min-width:170px;max-width:min(76%,300px);padding:11px 12px;border-radius:15px;background:#263c58;color:#eaf0fa;border:1px solid #455675;box-sizing:border-box}
+.kpc-call-card.theirs{background:#232633;border-color:#404051}.kpc-call-card-symbol{grid-row:1 / 3;width:42px;height:42px;display:grid;place-items:center;background:#ffffff1d;border-radius:50%}.kpc-call-card-symbol svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.kpc-call-card-body{display:flex;flex-direction:column;min-width:0}.kpc-call-card-body b{font-size:14px;line-height:1.4}.kpc-call-card-body small{font-size:12px;opacity:.74;margin-top:3px}.kpc-call-card-time{grid-column:2;grid-row:2;font-size:10px;color:#b3bed1;margin-top:5px}
+.kpc-call-card-more{grid-column:3;grid-row:1 / 3;border:0!important;background:transparent!important;color:#d0cbe5!important;padding:4px!important;display:grid;place-items:center;width:30px;height:40px;cursor:pointer}.kpc-call-card-more svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
+.kpc-log-menu{position:fixed;z-index:2147483400;background:#242033;border:1px solid #695c80;box-shadow:0 12px 36px #0009;border-radius:13px;padding:5px;min-width:200px;max-width:calc(100vw - 24px)}.kpc-log-menu button{background:transparent;border:0;color:#ffb8c4;padding:12px;text-align:left;width:100%;font-size:13px}
+.kpc-call-details{padding:9px 5px}.kpc-call-details p{margin:10px 0!important;line-height:1.5;color:#d9d0e8!important}.kpc-call-details b{color:#fff}
+.kpc-history-delete{background:#36233b;border:1px solid #71485a;color:#ffc1cb;padding:8px 10px;border-radius:10px;cursor:pointer}
+.kpc-active-calls{width:100%;box-sizing:border-box;display:grid;gap:9px;margin:12px 0;padding:0 2px}
+.kpc-live-room{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #7256ad;background:linear-gradient(115deg,#302449,#1b2336);border-radius:15px;color:#fff;box-shadow:0 8px 24px #0c081b54}
+.kpc-live-symbol{width:39px;height:39px;border-radius:50%;background:#7152b3;display:grid;place-items:center;flex:none;color:#fff}
+.kpc-live-symbol svg{height:21px;width:21px;stroke:currentColor;fill:none;stroke-width:2}
+.kpc-live-description{min-width:0;display:grid;gap:4px;flex:1}.kpc-live-description b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kpc-live-description small{font-size:11px;color:#d7c7e8}
+.kpc-join-btn{background:#8c4de3!important;border:0!important;border-radius:12px;color:#fff!important;padding:10px 13px!important;font-size:13px;font-weight:800;white-space:nowrap;cursor:pointer;flex-shrink:0}
+.kpc-call-card .kpc-card-join{grid-column:1 / -1;grid-row:3;margin-top:9px;justify-self:stretch}
+@media(max-width:500px){.kpc-call-card{max-width:85%;min-width:185px}.kpw-head .kpc-chat-call{margin-left:auto}.kpw-head .kpc-chat-call button{width:40px;height:40px}.kpc-live-room{gap:8px;padding:10px}.kpc-join-btn{padding:9px 10px!important;font-size:12px}}
 </style>
 <script id="kp-colleagues-calls-js">
 (function(){
@@ -24609,7 +24659,7 @@ const live=u=>u?.activo!==false&&u?.aprobado!==false&&!['suspendido','inactivo']
 const lookup=id=>users().find(u=>norm(uid(u))===norm(id)||norm(u.usuario)===norm(id)||norm(u.nombre)===norm(id)||norm(u.email)===norm(id));
 const pair=(a,b)=>[a,b].sort().join('::');
 const safe=s=>String(s).replace(/[^a-z0-9]/gi,'_');
-let blocked=new Set(),blockUnsub=null,inboxUnsub=null,callUnsub=null,rtc=null,localStream=null,remoteAudio=null,active=null,callUI=null,callStart=0,iceUnsub=null,seenCalls=new Set(),pendingIce=[],ringCtx=null,ringGain=null,ringOsc=[],ringInterval=null,ringMode='',timerInterval=null,speakerOn=false;
+let blocked=new Set(),blockUnsub=null,inboxUnsub=null,callUnsub=null,rtc=null,localStream=null,remoteAudio=null,active=null,callUI=null,callStart=0,iceUnsub=null,seenCalls=new Set(),pendingIce=[],ringCtx=null,ringGain=null,ringOsc=[],ringInterval=null,ringMode='',timerInterval=null,speakerOn=false,roomUnsub=null,callPeers=new Map(),audioRouteDevice='',minimizedBubble=null,availableRooms=new Map(),availableRoomsUnsub=null,pendingRoomInvites=new Map();
 const dbReady=()=>typeof window.db!=='undefined'&&db&&typeof db.collection==='function';
 const notify=s=>{if(typeof window.toast==='function')toast(s);else console.warn(s);};
 const who=()=>uid(me());
@@ -24650,14 +24700,71 @@ function openContacts(){
 }
 function updateContacts(){document.querySelectorAll('.kpc-colleagues').forEach(el=>{const count=el.querySelector('[data-kpc-count]');if(count)count.textContent=contacts().length+' compañeros disponibles';});}
 function injectContacts(){const v=document.getElementById('view');if(!v||!v.querySelector('.kpc-wrap')||v.querySelector('.kpc-colleagues'))return;const panel=document.createElement('section');panel.className='kpc-colleagues';panel.innerHTML='<div class="kpc-colleagues-head"><h3>Compañeros</h3><button class="kpc-colleagues-btn" type="button">Contactos de la empresa</button></div><small data-kpc-count></small><p style="font-size:13px;opacity:.8;margin:8px 0 0">Mensajes privados y llamadas de voz entre empleados.</p>';const wrap=v.querySelector('.kpc-wrap');const sec=wrap.querySelector('.kpc-sec');if(sec)sec.before(panel);else wrap.prepend(panel);panel.querySelector('button').onclick=openContacts;updateContacts();}
+// El registro de llamadas se conserva para cada participante; borrarlo solamente oculta la vista propia.
+function callDocHidden(x){return (x.ocultoPara||[]).some(v=>norm(v)===norm(who()));}
+function prettyCallDuration(x){const sec=Math.max(0,Number(x.duracionSeg)||0);if(!sec)return '0 min';return (sec>=3600?Math.floor(sec/3600)+' h ':'')+Math.floor(sec%3600/60)+' min'+(sec%60?' '+sec%60+' s':'');}
+function callBubble(x,path,canalId){
+ if(callDocHidden(x))return '';
+ const mine=norm(x.autorUsuario)===norm(who()),group=x.origen==='canal'||!!x.canalId;
+ const ongoing=['sonando','llamando','conectada','aceptada'].includes(x.estadoLlamada)&&!x.finLlamada;
+ const answered=Number(x.duracionSeg)>0 || (x.inicioLlamada&&x.finLlamada&&x.estadoLlamada==='finalizada');
+ const label=group?'Llamada del canal':'Llamada de voz';
+ const desc=ongoing?'En curso':answered?prettyCallDuration(x):({'rechazada':'Rechazada','sin_respuesta':'No contestada','cancelada':'Cancelada','ocupada':'Ocupado','fallida':'Fallida'}[x.estadoLlamada]||'No contestada');
+ const when=x.ts?.toDate?.()||new Date(x.finLlamada||x.inicioLlamada||Date.now());
+ const time=when.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'});
+ const icon=callIcons.phone;
+ return '<div class="kp-chat-row '+(mine?'mine':'theirs')+' kpc-call-row" data-mid="'+esc(x.id)+'"><div class="kpc-call-card '+(mine?'mine':'theirs')+'"><span class="kpc-call-card-symbol">'+icon+'</span><span class="kpc-call-card-body"><b>'+label+'</b><small>'+esc(desc)+'</small></span><button type="button" class="kpc-call-card-more" data-kpc-log-options="1" data-path="'+esc(path)+'" data-id="'+esc(x.id)+'" data-call-start="'+esc(x.inicioLlamada||0)+'" data-call-end="'+esc(x.finLlamada||0)+'" data-call-duration="'+esc(x.duracionSeg||0)+'" data-call-status="'+esc(x.estadoLlamada||'')+'" data-call-title="'+esc(label)+'" title="Opciones del registro" aria-label="Opciones del registro de llamada">'+callIcons.more+'</button><span class="kpc-call-card-time">'+esc(time)+'</span></div></div>';
+}
+async function hideCallForMe(path,msgId,silent=false){
+ if(!dbReady()||!who()||!String(path).startsWith('canalMensajes_'))return;
+ const marker=firebase.firestore.FieldValue.arrayUnion(who());
+ try{
+  await db.collection(path).doc(msgId).set({ocultoPara:marker},{merge:true});
+  // Una llamada directa también tiene historial fuera del chat: mantener ambas vistas sincronizadas.
+  if(String(path).startsWith('canalMensajes_dm_'))await db.collection('kpVoiceCalls').doc(msgId).set({ocultoPara:marker},{merge:true});
+  else await db.collection('kpVoiceRooms').doc(msgId).set({ocultoPara:marker},{merge:true});
+  if(!silent)notify('Registro eliminado solo de tu cuenta');return true;
+ }catch(e){console.warn('Ocultar llamada',e);if(!silent)notify('No se pudo ocultar el registro');return false;}
+}
+function showCallRecordMenu(path,msgId,button){
+ document.querySelectorAll('.kpc-log-menu').forEach(e=>e.remove());
+ const menu=document.createElement('div');menu.className='kpc-log-menu';
+ menu.innerHTML='<button type="button" data-details>Ver detalles de la llamada</button><button type="button" data-delete>Eliminar registro solo para mí</button>';
+ const r=button.getBoundingClientRect();menu.style.top=Math.min(window.innerHeight-70,r.bottom+6)+'px';menu.style.right=Math.max(12,window.innerWidth-r.right)+'px';
+ document.body.appendChild(menu);
+ const dismiss=e=>{if(e&&!menu.contains(e.target)&&e.target!==button){menu.remove();document.removeEventListener('pointerdown',dismiss,true);}};
+ setTimeout(()=>document.addEventListener('pointerdown',dismiss,true),0);
+ menu.querySelector('[data-details]').onclick=()=>{
+  menu.remove();document.removeEventListener('pointerdown',dismiss,true);
+  const start=Number(button.dataset.callStart||0),end=Number(button.dataset.callEnd||0),sec=Number(button.dataset.callDuration||0);
+  const details=modal('<div class="kpc-colleagues-head"><h2>'+esc(button.dataset.callTitle||'Llamada de voz')+'</h2><button class="kpc-colleagues-btn" data-close>Cerrar</button></div><div class="kpc-call-details"><p><b>Inicio:</b> '+esc(formatTime(start)||'Sin respuesta')+'</p><p><b>Finalización:</b> '+esc(formatTime(end)||'Sin finalizar')+'</p><p><b>Duración:</b> '+esc(prettyCallDuration({duracionSeg:sec}))+'</p><p><b>Estado:</b> '+esc(button.dataset.callStatus||'Registrada')+'</p></div>');
+  details.querySelector('[data-close]').onclick=()=>details.remove();details.onclick=e=>{if(e.target===details)details.remove();};
+ };
+ menu.querySelector('[data-delete]').onclick=()=>{menu.remove();document.removeEventListener('pointerdown',dismiss,true);
+  const act=()=>hideCallForMe(path,msgId);
+  if(typeof window.askKPlace==='function')window.askKPlace({title:'Eliminar registro de llamada',message:'Se ocultará solamente para vos. Los demás integrantes conservarán su registro.',confirmText:'Eliminar para mí',danger:true,onConfirm:act});
+  else if(confirm('¿Ocultar este registro de llamada solo para vos?'))act();
+ };
+}
+document.addEventListener('click',e=>{const b=e.target.closest?.('[data-kpc-log-options]');if(!b)return;e.preventDefault();e.stopPropagation();showCallRecordMenu(b.dataset.path,b.dataset.id,b);});
+function injectChannelCall(id){
+ if(!id||String(id).startsWith('dm_'))return;
+ const channel=(window.KP?.Channels?.list||[]).find(c=>c.id===id&&c.tipo!=='dm');
+ const head=document.querySelector('.kpw-head');if(!channel||!head)return;
+ if(head.querySelector('.kpc-chat-call'))return;
+ const holder=document.createElement('span');holder.className='kpc-chat-call';
+ holder.innerHTML='<button type="button" title="Llamar a todos los integrantes de este canal" aria-label="Llamar a todo el canal">'+callIcons.phone+'</button>';
+ const more=head.querySelector('.kpw-more');if(more)head.insertBefore(holder,more);else head.appendChild(holder);
+ holder.querySelector('button').onclick=()=>startChannelCall(id);
+}
 function injectChatCall(id){
  if(!String(id||'').startsWith('dm_'))return;
  const c=getDM(id);if(!c)return;
  const head=document.querySelector('.kpw-head');if(!head||head.querySelector('.kpc-chat-call'))return;
  const u=lookup(c.dmOtro),holder=document.createElement('span');holder.className='kpc-chat-call';
- holder.innerHTML='<button title="Llamar al compañero" aria-label="Llamar al compañero">☎</button>';
+ holder.innerHTML='<button title="Llamar al compañero" aria-label="Llamar al compañero">'+callIcons.phone+'</button>';
  const sub=head.querySelector('.kpw-t small');if(sub)sub.textContent=role(u)+' · '+branch(u);
- head.appendChild(holder);holder.querySelector('button').onclick=()=>startCall(uid(u)||c.dmOtro);
+ const beforeMore=head.querySelector('.kpw-more');if(beforeMore)head.insertBefore(holder,beforeMore);else head.appendChild(holder);holder.querySelector('button').onclick=()=>startCall(uid(u)||c.dmOtro);
  const more=head.querySelector('.kpw-more');
  if(more&&!more.dataset.kpcMenu){
   more.dataset.kpcMenu='1';
@@ -24684,10 +24791,13 @@ document.addEventListener('click',e=>{
   button.onclick=async()=>{menu.remove();await toggleBlock(dm.dmOtro);};menu.appendChild(button);
  },30);
 },true);
-function wrapChannels(){const c=window.KP?.Channels;if(!c||c.__kpcIntegrated)return;c.__kpcIntegrated=true;const r=c.render;c.render=function(){const out=r.apply(this,arguments);Promise.resolve(out).finally(()=>setTimeout(injectContacts,80));setTimeout(injectContacts,20);return out;};const op=c.open;c.open=function(id){const out=op.apply(this,arguments);setTimeout(()=>injectChatCall(id),90);return out;};const od=c.openDM;c.openDM=async function(id,name){if(await cannotContact(id)){notify('No se pueden enviar mensajes a este compañero mientras esté bloqueado');return;}return od.apply(this,arguments);};
+function wrapChannels(){const c=window.KP?.Channels;if(!c||c.__kpcIntegrated)return;c.__kpcIntegrated=true;const r=c.render;c.render=function(){const out=r.apply(this,arguments);Promise.resolve(out).finally(()=>setTimeout(injectContacts,80));setTimeout(injectContacts,20);setTimeout(refreshActiveRoomBanners,120);return out;};const op=c.open;c.open=function(id){const out=op.apply(this,arguments);setTimeout(()=>{injectChatCall(id);injectChannelCall(id);refreshActiveRoomBanners();},90);return out;};const od=c.openDM;c.openDM=async function(id,name){if(await cannotContact(id)){notify('No se pueden enviar mensajes a este compañero mientras esté bloqueado');return;}return od.apply(this,arguments);};
  const send=c.send;if(typeof send==='function')c.send=async function(path,id){if(await protectedChat(id))return;return send.apply(this,arguments);};
  // Capturar medios que usan las mismas rutas de conversaciones privadas.
  for(const fn of ['chatSendImage','chatSendDoc']){const old=window.KP?.[fn];if(typeof old==='function'&&!old.__kpcGuard){const wrapped=async function(input,path){if(await protectedPath(path)){if(input)input.value='';return;}return old.apply(this,arguments);};wrapped.__kpcGuard=true;window.KP[fn]=wrapped;}}
+ const oldBubble=c.bubble;if(typeof oldBubble==='function'&&!oldBubble.__kpCallCard){
+  const patched=function(x,path,canalId,channel){if(x?.tipo==='llamada')return callBubble(x,path,canalId);return oldBubble.apply(this,arguments);};patched.__kpCallCard=true;c.bubble=patched;
+ }
  const oldOpen=c.openDMPicker;if(typeof oldOpen==='function')c.openDMPicker=function(){openContacts();};
  }
 async function cannotContact(id){return blocked.has(norm(id))||await blockedRemote(id);}
@@ -24703,12 +24813,17 @@ const callIcons={
  mute:'<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8M3 3l18 18"/></svg>',
  speaker:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16 8a5 5 0 0 1 0 8M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
  building:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M9 21v-5h6v5"/></svg>',
- badge:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6.5 17c0-3.5 5-3.5 5 0M14 10h4M14 14h4"/></svg>'
+ badge:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6.5 17c0-3.5 5-3.5 5 0M14 10h4M14 14h4"/></svg>',
+ add:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2.8 20v-1.4c0-3.5 12.4-3.5 12.4 0V20M19 8v9M14.5 12.5h9"/></svg>',
+ down:'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+ users:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2.5 20v-1c0-4.5 13-4.5 13 0v1M17 5c4 1 4 7 0 8M18 16c2.5.2 4 1.6 4 3.5"/></svg>',
+ more:'<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>',
+ expand:'<svg viewBox="0 0 24 24"><path d="M7 4H4v7M17 20h3v-7M4 4l7 7M20 20l-7-7"/></svg>'
 };
 function controlsMarkup(incoming){
  const control=(action,icon,label,cl='')=>'<button type="button" data-'+action+' class="'+cl+'" aria-label="'+label+'"><span class="kpc-control-icon">'+callIcons[icon]+'</span><span data-label>'+label+'</span></button>';
  if(incoming)return control('answer','phone','Contestar','accept')+control('hang','hang','Rechazar','hang');
- return control('mute','mic','Silenciar')+control('speaker','speaker','Altavoz')+control('hang','hang','Colgar','hang');
+ return control('speaker','speaker','Altavoz')+control('mute','mic','Silenciar')+control('add','add','Agregar')+control('members','users','Participantes')+control('audio','more','Salida de audio')+control('hang','hang','Finalizar','hang');
 }
 function stopRing(){
  if(ringInterval){clearInterval(ringInterval);ringInterval=null;}
@@ -24722,87 +24837,387 @@ function startRing(kind){
  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
  try{
   ringCtx=new AC();ringGain=ringCtx.createGain();ringGain.gain.value=0;ringGain.connect(ringCtx.destination);
-  for(const freq of (kind==='incoming'?[660,880]:[440,480])){const osc=ringCtx.createOscillator();osc.type='sine';osc.frequency.value=freq;osc.connect(ringGain);osc.start();ringOsc.push(osc);}
-  const begin=Date.now(),tick=()=>{
-   if(!ringCtx||!ringGain)return;
-   const elapsed=(Date.now()-begin)%(kind==='incoming'?3400:5500);
-   const sounding=kind==='incoming'?((elapsed<450)||(elapsed>=650&&elapsed<1100)||(elapsed>=1300&&elapsed<1750)):(elapsed<1900);
-   ringGain.gain.setTargetAtTime(sounding?.045:0,ringCtx.currentTime,.035);
-  };
-  ringCtx.resume().catch(()=>{});tick();ringInterval=setInterval(tick,100);
+  for(const f of (kind==='incoming'?[660,880]:[440,480])){const osc=ringCtx.createOscillator();osc.type='sine';osc.frequency.value=f;osc.connect(ringGain);osc.start();ringOsc.push(osc);}
+  const begin=Date.now();ringCtx.resume().catch(()=>{});
+  ringInterval=setInterval(()=>{if(!ringCtx||!ringGain)return;const e=(Date.now()-begin)%(kind==='incoming'?3400:5500);
+   const on=kind==='incoming'?(e<450||e>=650&&e<1100||e>=1300&&e<1750):(e<1900);
+   ringGain.gain.setTargetAtTime(on?.045:0,ringCtx.currentTime,.035);
+  },100);
   if(kind==='incoming')try{navigator.vibrate?.([250,180,250,1500]);}catch(e){}
-  setTimeout(()=>{if(ringMode===kind&&ringCtx?.state==='suspended'&&callUI){const button=callUI.querySelector('[data-enable-ring]');if(button)button.hidden=false;}},500);
- }catch(e){console.warn('Tono no disponible:',e);stopRing();}
+  setTimeout(()=>{if(ringMode===kind&&ringCtx?.state==='suspended')callUI?.querySelector('[data-enable-ring]')?.removeAttribute('hidden');},500);
+ }catch(e){console.warn('Tono no disponible',e);stopRing();}
 }
 function formatDuration(sec){const m=Math.floor(sec/60),s=sec%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
-function updateTimer(){const el=callUI?.querySelector('#kpcCallTimer');if(el)el.textContent=callStart?formatDuration(Math.floor((Date.now()-callStart)/1000)):'';}
-async function toggleSpeaker(){
- if(!remoteAudio){notify('El altavoz estará disponible al conectar la llamada.');return;}
- if(typeof remoteAudio.setSinkId!=='function'){notify('Chrome controla la salida de audio en este teléfono. Usá los controles de sonido del sistema para cambiarla.');return;}
- try{
-  if(speakerOn){await remoteAudio.setSinkId('default');speakerOn=false;}
-  else{
-   let device=null;
-   const outputs=typeof navigator.mediaDevices?.enumerateDevices==='function'?(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audiooutput'):[];
-   device=outputs.find(d=>/altavoz|loudspeaker|speaker/i.test(d.label)&&d.deviceId!=='default');
-   if(!device&&typeof navigator.mediaDevices?.selectAudioOutput==='function')device=await navigator.mediaDevices.selectAudioOutput();
-   if(!device){notify('Este navegador no permite seleccionar el altavoz. Podés cambiar la salida desde los controles del teléfono.');return;}
-   await remoteAudio.setSinkId(device.deviceId);speakerOn=true;
-  }
-  const button=callUI?.querySelector('[data-speaker]');if(button){button.setAttribute('aria-pressed',String(speakerOn));button.querySelector('[data-label]').textContent=speakerOn?'Altavoz activo':'Altavoz';}
- }catch(e){notify('No se pudo cambiar la salida de audio: '+e.message);}
+function updateTimer(){const t=callStart?formatDuration(Math.floor((Date.now()-callStart)/1000)):'00:00';const e=callUI?.querySelector('#kpcCallTimer');if(e)e.textContent=callStart?t:'';const b=minimizedBubble?.querySelector('[data-mini-time]');if(b)b.textContent=t;}
+function minimizeCall(){if(!active||!callUI)return;callUI.classList.add('is-minimized');document.body.classList.remove('kpc-call-focused');if(minimizedBubble)minimizedBubble.remove();
+ minimizedBubble=document.createElement('div');minimizedBubble.className='kpc-mini-call';minimizedBubble.innerHTML='<button type="button" class="kpc-mini-open" aria-label="Volver a la llamada">'+callIcons.phone+'<span><b>'+esc(active.canalNombre||lookup(active.other)?.nombre||active.other||'Llamada')+'</b><small data-mini-time>00:00</small></span>'+callIcons.expand+'</button><button type="button" class="kpc-mini-hang" aria-label="Terminar llamada">'+callIcons.hang+'</button>';
+ document.body.appendChild(minimizedBubble);minimizedBubble.querySelector('.kpc-mini-open').onclick=restoreCall;minimizedBubble.querySelector('.kpc-mini-hang').onclick=()=>endCall('finalizada');
+ updateTimer();
+}
+function restoreCall(){if(!callUI)return;callUI.classList.remove('is-minimized');document.body.classList.add('kpc-call-focused');minimizedBubble?.remove();minimizedBubble=null;}
+function note(t){const e=callUI?.querySelector('#kpcCallNote');if(e)e.textContent=t;}
+function status(t){const e=callUI?.querySelector('#kpcCallStatus');if(e)e.textContent=t;}
+function renderParticipants(){
+ if(!active||!callUI)return;
+ const a=[who(),...(active.participants||[]).filter(x=>norm(x)!==norm(who()))];
+ const pending=[...callPeers.values()].filter(x=>x.roomId===active.roomId&&!a.some(y=>norm(y)===norm(x.other))&&!x.done).map(x=>x.other);
+ const others=[...new Set([...a,...pending])];
+ const info=callUI.querySelector('[data-participants-count]');if(info)info.textContent=others.length+' integrante'+(others.length===1?'':'s');
+ const list=callUI.querySelector('#kpcParticipantList');if(list)list.innerHTML=others.map(id=>'<div class="kpc-call-member"><span class="kpc-call-member-av">'+esc(id===who()?me().nombre?.slice(0,1)||'T':lookup(id)?.nombre?.slice(0,1)||id.slice(0,1))+'</span><span><b>'+esc(id===who()?'Tú':lookup(id)?.nombre||id)+'</b><small>'+esc(id===who()?'En esta llamada':pending.includes(id)?'Invitando…':role(lookup(id)))+'</small></span></div>').join('');
+ if(active.canalId){const title=callUI.querySelector('[data-call-name]');if(title)title.textContent=active.canalNombre||'Llamada del canal';}else if(a.length>2){const title=callUI.querySelector('[data-call-name]');if(title)title.textContent='Llamada grupal';}
 }
 function showCall(u,incoming){
- if(callUI)callUI.remove();stopRing();speakerOn=false;
- const name=u?.nombre||'Compañero',picture=u?.fotoPerfil||u?.fotoURL||u?.foto||u?.avatar||'';
+ if(callUI)callUI.remove();stopRing();speakerOn=false;minimizedBubble?.remove();minimizedBubble=null;
+ const name=u?.nombre||'Compañero',photo=u?.fotoPerfil||u?.fotoURL||u?.foto||u?.avatar||'';
  const initials=String(name).trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();
- const avatar=picture?'<img src="'+esc(picture)+'" alt="Foto del compañero" onerror="this.replaceWith(document.createTextNode(\''+esc(initials)+'\'))">':esc(initials);
- callUI=modal('<div class="kpc-call-top"><span class="kpc-call-brand">'+callIcons.phone+' KPlace · Llamada interna</span><button type="button" class="kpc-call-sound" data-enable-ring hidden>Activar tono</button></div><div class="kpc-call-main"><div class="kpc-call-visual"><div class="kpc-call-ring"></div><div class="kpc-call-ring two"></div><div class="kpc-call-avatar">'+avatar+'</div></div><div class="kpc-call-identity"><h2>'+esc(name)+'</h2><small>'+callIcons.badge+esc(role(u))+'</small><small>'+callIcons.building+esc(branch(u))+'</small></div><div class="kpc-call-status" id="kpcCallStatus" role="status">'+(incoming?'Llamada entrante':'Llamando...')+'</div><div class="kpc-call-timer" id="kpcCallTimer"></div></div><div class="kpc-call-footer"><div class="kpc-call-controls" id="kpcCallControls">'+controlsMarkup(incoming)+'</div><p class="kpc-call-note" id="kpcCallNote">'+(incoming?'Elegí Contestar para hablar con tu compañero.':'Esperando que el compañero conteste...')+'</p><div class="kpc-call-log" id="kpcCallLog"></div></div>');
- callUI.classList.add('kpc-call-screen');
+ const avatar=photo?'<img src="'+esc(photo)+'" alt="Foto del compañero">':esc(initials);
+ callUI=modal('<div class="kpc-call-top"><button class="kpc-minimize-btn" data-minimize title="Minimizar llamada" aria-label="Minimizar llamada">'+callIcons.down+'</button><span class="kpc-call-brand">KPLACE · LLAMADA INTERNA</span><button type="button" class="kpc-call-sound" data-enable-ring hidden>Activar tono</button></div><div class="kpc-call-main"><div class="kpc-call-visual"><div class="kpc-call-ring"></div><div class="kpc-call-ring two"></div><div class="kpc-call-avatar">'+avatar+'</div></div><div class="kpc-call-identity"><h2 data-call-name>'+esc(name)+'</h2><small>'+callIcons.badge+esc(role(u))+'</small><small>'+callIcons.building+esc(branch(u))+'</small></div><div class="kpc-call-status" id="kpcCallStatus" role="status">'+(incoming?'Llamada entrante':'Llamando…')+'</div><div class="kpc-call-timer" id="kpcCallTimer"></div><div class="kpc-member-count" data-participants-count>2 integrantes</div></div><div class="kpc-call-footer"><div class="kpc-call-controls" id="kpcCallControls">'+controlsMarkup(incoming)+'</div><div class="kpc-participant-list" id="kpcParticipantList" hidden></div><p class="kpc-call-note" id="kpcCallNote">'+(incoming?'Contestar para hablar con tu compañero.':'Esperando respuesta…')+'</p></div>');
+ callUI.classList.add('kpc-call-screen');document.body.classList.add('kpc-call-focused');
+ const img=callUI.querySelector('.kpc-call-avatar img');if(img)img.onerror=()=>img.replaceWith(document.createTextNode(initials));
+ callUI.querySelector('[data-minimize]').onclick=minimizeCall;
  callUI.querySelector('[data-enable-ring]').onclick=()=>{if(ringCtx){ringCtx.resume().then(()=>callUI?.querySelector('[data-enable-ring]')?.setAttribute('hidden','')).catch(()=>{});}else startRing(ringMode||'incoming');};
- callUI.querySelector('#kpcCallControls').addEventListener('click',e=>{
-  const button=e.target.closest('button');if(!button)return;
-  if(button.hasAttribute('data-hang'))endCall(incoming&& !callStart?'rechazada':callStart?'finalizada':'cancelada');
-  if(button.hasAttribute('data-answer'))answerCall();
-  if(button.hasAttribute('data-speaker'))toggleSpeaker();
-  if(button.hasAttribute('data-mute')){
-   const track=localStream?.getAudioTracks()[0];if(!track){notify('Esperando permiso del micrófono...');return;}
-   track.enabled=!track.enabled;const muted=!track.enabled;
-   button.setAttribute('aria-pressed',String(muted));button.querySelector('.kpc-control-icon').innerHTML=callIcons[muted?'mute':'mic'];
-   button.querySelector('[data-label]').textContent=muted?'Activar micro':'Silenciar';
-  }
- });
- if(timerInterval)clearInterval(timerInterval);timerInterval=setInterval(updateTimer,1000);
- startRing(incoming?'incoming':'outgoing');
+ callUI.querySelector('#kpcCallControls').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-hang'))endCall(incoming&&!callStart?'rechazada':callStart?'finalizada':'cancelada');
+  else if(b.hasAttribute('data-answer'))answerCall();
+  else if(b.hasAttribute('data-speaker'))toggleSpeaker();
+  else if(b.hasAttribute('data-audio'))showAudioOptions();
+  else if(b.hasAttribute('data-add'))openInviteContacts();
+  else if(b.hasAttribute('data-members')){const l=callUI?.querySelector('#kpcParticipantList');if(l){l.hidden=!l.hidden;renderParticipants();}}
+  else if(b.hasAttribute('data-mute')){const t=localStream?.getAudioTracks()[0];if(!t){notify('Esperando permiso para micrófono…');return;}t.enabled=!t.enabled;const muted=!t.enabled;b.setAttribute('aria-pressed',String(muted));b.querySelector('.kpc-control-icon').innerHTML=callIcons[muted?'mute':'mic'];b.querySelector('[data-label]').textContent=muted?'Activar micro':'Silenciar';}
+ };
+ if(timerInterval)clearInterval(timerInterval);timerInterval=setInterval(updateTimer,1000);startRing(incoming?'incoming':'outgoing');renderParticipants();
 }
-function status(t){const el=callUI?.querySelector('#kpcCallStatus');if(el)el.textContent=t;}
-async function media(){if(!navigator.mediaDevices?.getUserMedia)throw Error('Necesitás HTTPS y permiso de micrófono.');localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});pendingIce=[];rtc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});localStream.getTracks().forEach(t=>rtc.addTrack(t,localStream));remoteAudio=document.createElement('audio');remoteAudio.autoplay=true;remoteAudio.setAttribute('playsinline','');remoteAudio.style.display='none';document.body.appendChild(remoteAudio);rtc.ontrack=e=>{remoteAudio.srcObject=e.streams[0];remoteAudio.play().catch(()=>{});};rtc.onicecandidate=e=>{if(e.candidate&&active)db.collection('kpVoiceCalls').doc(active.id).collection(active.incoming?'calleeIce':'callerIce').add(e.candidate.toJSON()).catch(console.warn);};rtc.onconnectionstatechange=()=>{if(!active)return;if(rtc.connectionState==='connected'){stopRing();if(!callStart){callStart=Date.now();db.collection('kpVoiceCalls').doc(active.id).set({inicio:callStart,estado:'conectada'},{merge:true}).catch(console.warn);}status('Llamada conectada');const note=callUI?.querySelector('#kpcCallNote');if(note)note.textContent='Audio conectado · Podés silenciar el micrófono o cambiar la salida.';updateTimer();}if(['failed','closed'].includes(rtc.connectionState))endCall(rtc.connectionState==='failed'?'fallida':'finalizada');};}
-async function flushIce(){if(!rtc?.remoteDescription)return;while(pendingIce.length){const candidate=pendingIce.shift();try{await rtc.addIceCandidate(new RTCIceCandidate(candidate));}catch(e){console.warn('ICE:',e);}}}
-async function listenIce(){if(iceUnsub)iceUnsub();if(!active)return;const col=db.collection('kpVoiceCalls').doc(active.id).collection(active.incoming?'callerIce':'calleeIce');iceUnsub=col.onSnapshot(s=>s.docChanges().forEach(async x=>{if(x.type!=='added'||!rtc)return;pendingIce.push(x.doc.data());await flushIce();}),e=>console.warn('Recepción ICE:',e));}
-async function startCall(id){if(active){notify('Ya tenés una llamada activa');return;}id=String(id||'').trim();if(!id||norm(id)===norm(who())||blocked.has(norm(id))||await blockedRemote(id)){notify('No se puede llamar a este compañero');return;}if(!dbReady()){notify('Firebase no está conectado');return;}const u=lookup(id);showCall(u,false);try{active={id:db.collection('kpVoiceCalls').doc().id,other:id,incoming:false};await media();const ref=db.collection('kpVoiceCalls').doc(active.id);const offer=await rtc.createOffer();await rtc.setLocalDescription(offer);await ref.set({de:who(),para:id,estado:'sonando',creado:Date.now(),oferta:{type:offer.type,sdp:offer.sdp},nombreDe:me().nombre||who(),nombrePara:u?.nombre||id});listenIce();callUnsub=ref.onSnapshot(async s=>{if(!active||!s.exists)return;const d=s.data();if(['finalizada','rechazada','cancelada','fallida'].includes(d.estado)){endCall(d.estado,true);return;}if(d.respuesta&&!rtc.currentRemoteDescription){stopRing();await rtc.setRemoteDescription(new RTCSessionDescription(d.respuesta));await flushIce();status('Conectando...');}});}catch(e){notify('No se pudo iniciar la llamada: '+e.message);endCall('fallida');}}
-async function answerCall(){if(!active||!active.incoming)return;const a=active;try{stopRing();status('Conectando...');await media();const ref=db.collection('kpVoiceCalls').doc(a.id);const snap=await ref.get(),d=snap.data();if(!d||d.estado!=='sonando')throw Error('La llamada ya terminó');await rtc.setRemoteDescription(new RTCSessionDescription(d.oferta));await flushIce();const answer=await rtc.createAnswer();await rtc.setLocalDescription(answer);await ref.set({respuesta:{type:answer.type,sdp:answer.sdp},estado:'aceptada',aceptada:Date.now()},{merge:true});listenIce();const ctr=callUI?.querySelector('#kpcCallControls');if(ctr)ctr.innerHTML=controlsMarkup(false);const note=callUI?.querySelector('#kpcCallNote');if(note)note.textContent='Conectando el audio de la llamada...';}catch(e){notify('No se pudo contestar: '+e.message);endCall('fallida');}}
+async function ensureMedia(){if(localStream?.active)return localStream;
+ if(!navigator.mediaDevices?.getUserMedia)throw Error('Para llamar necesitás HTTPS y permiso de micrófono.');
+ localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});return localStream;
+}
+function peerId(room,a,b){return room+'__'+[safe(norm(a)),safe(norm(b))].sort().join('__')+'__'+db.collection('kpVoiceCalls').doc().id;}
+function makePeer(id,other,incoming){
+ const p={id,other,incoming,roomId:active.roomId,canalId:active.canalId||null,rtc:null,audio:null,callUnsub:null,iceUnsub:null,pendingIce:[],connectedAt:0,done:false,starting:false};
+ callPeers.set(norm(other),p);return p;
+}
+async function initPeer(p){
+ if(p.rtc)return p;
+ await ensureMedia();if(!active||active.roomId!==p.roomId||p.done)throw Error('La llamada terminó');
+ p.rtc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+ localStream.getTracks().forEach(t=>p.rtc.addTrack(t,localStream));
+ p.audio=document.createElement('audio');p.audio.autoplay=true;p.audio.playsInline=true;p.audio.setAttribute('playsinline','');p.audio.style.display='none';document.body.appendChild(p.audio);
+ p.rtc.ontrack=e=>{p.audio.srcObject=e.streams[0];if(audioRouteDevice&&typeof p.audio.setSinkId==='function')p.audio.setSinkId(audioRouteDevice).catch(console.warn);p.audio.play().catch(()=>note('Tocá la pantalla para activar el sonido si Chrome lo bloqueó.'));};
+ p.rtc.onicecandidate=e=>{if(e.candidate&&active?.roomId===p.roomId)db.collection('kpVoiceCalls').doc(p.id).collection(p.incoming?'calleeIce':'callerIce').add(e.candidate.toJSON()).catch(console.warn);};
+ p.rtc.onconnectionstatechange=()=>{if(p.done||!active||active.roomId!==p.roomId)return;
+  if(p.rtc.connectionState==='connected'){
+   p.connectedAt=p.connectedAt||Date.now();callStart=callStart||p.connectedAt;stopRing();status('Llamada conectada');note('Audio conectado · Podés minimizar y seguir usando KPlace.');
+   if(p.canalId){
+    const r=db.collection('kpVoiceRooms').doc(p.roomId);
+    if(typeof db.runTransaction==='function')db.runTransaction(async tr=>{const snap=await tr.get(r);if(!snap.data()?.inicioConectada)tr.set(r,{inicioConectada:p.connectedAt},{merge:true});}).catch(console.warn);
+    else r.get().then(s=>{if(!s.data()?.inicioConectada)return r.set({inicioConectada:p.connectedAt},{merge:true});}).catch(console.warn);
+   }
+   db.collection('kpVoiceCalls').doc(p.id).set({inicio:p.connectedAt,estado:'conectada'},{merge:true}).catch(console.warn);
+   updateTimer();renderParticipants();
+  }else if(p.rtc.connectionState==='failed'){closePeer(p,'fallida',false);}
+ };
+ const col=db.collection('kpVoiceCalls').doc(p.id).collection(p.incoming?'callerIce':'calleeIce');
+ p.iceUnsub=col.onSnapshot(s=>s.docChanges().forEach(c=>{if(c.type==='added'){p.pendingIce.push(c.doc.data());flushPeerIce(p);}}),e=>console.warn('ICE',e));
+ return p;
+}
+async function flushPeerIce(p){if(!p.rtc?.remoteDescription)return;while(p.pendingIce.length&&!p.done){try{await p.rtc.addIceCandidate(new RTCIceCandidate(p.pendingIce.shift()));}catch(e){console.warn('ICE',e);}}}
+function peerListener(p){
+ if(p.callUnsub)p.callUnsub();p.callUnsub=db.collection('kpVoiceCalls').doc(p.id).onSnapshot(async snap=>{
+  if(!snap.exists||p.done)return;const d=snap.data();if(['finalizada','rechazada','cancelada','fallida','ocupada'].includes(d.estado)){closePeer(p,d.estado,true);return;}
+  if(!p.incoming&&d.respuesta&&p.rtc&&!p.rtc.currentRemoteDescription){try{await p.rtc.setRemoteDescription(new RTCSessionDescription(d.respuesta));await flushPeerIce(p);if(!p.connectedAt)status('Conectando audio…');}catch(e){console.warn('Respuesta WebRTC',e);closePeer(p,'fallida',false);}}
+ },e=>console.warn('Señal de llamada',e));
+}
+async function startPeer(id){
+ if(!active)return;id=String(id||'').trim();if(!id||norm(id)===norm(who())||callPeers.has(norm(id)))return;
+ if(!active.canalId&&(blocked.has(norm(id))||await blockedRemote(id))){notify('No se puede llamar a este compañero');return;}
+ const room=active.roomId,p=makePeer(peerId(room,who(),id),id,false);
+ try{
+  await initPeer(p);if(!active||active.roomId!==room)return;
+  const offer=await p.rtc.createOffer();await p.rtc.setLocalDescription(offer);
+  const ref=db.collection('kpVoiceCalls').doc(p.id);
+  await db.collection('kpVoiceRooms').doc(room).set({invitados:firebase.firestore.FieldValue.arrayUnion(id),actualizada:Date.now()},{merge:true});
+  await ref.set({roomId:room,de:who(),para:id,estado:'sonando',creado:Date.now(),tipo:active.canalId?'canal':'privada',canalId:active.canalId||null,canalNombre:active.canalNombre||null,oferta:{type:offer.type,sdp:offer.sdp},nombreDe:me().nombre||who(),nombrePara:lookup(id)?.nombre||id});
+  peerListener(p);renderParticipants();
+  setTimeout(()=>{if(!p.done&&!p.connectedAt&&active?.roomId===room)closePeer(p,'sin_respuesta',false);},65000);
+ }catch(e){notify('No se pudo invitar a '+(lookup(id)?.nombre||id)+': '+e.message);closePeer(p,'fallida',false);}
+}
+async function answerPeer(p,docData){
+ if(p.starting||p.done)return;p.starting=true;
+ try{
+  await initPeer(p);const ref=db.collection('kpVoiceCalls').doc(p.id);const d=docData||((await ref.get()).data());
+  if(!d||d.estado!=='sonando')throw Error('La llamada ya terminó');
+  await p.rtc.setRemoteDescription(new RTCSessionDescription(d.oferta));await flushPeerIce(p);
+  const ans=await p.rtc.createAnswer();await p.rtc.setLocalDescription(ans);
+  await ref.set({respuesta:{type:ans.type,sdp:ans.sdp},estado:'aceptada',aceptada:Date.now()},{merge:true});peerListener(p);
+  if(active?.roomId===p.roomId)active.joined=true;
+  await db.collection('kpVoiceRooms').doc(p.roomId).set({participantes:firebase.firestore.FieldValue.arrayUnion(who()),actualizada:Date.now()},{merge:true});
+  const controls=callUI?.querySelector('#kpcCallControls');if(controls&&controls.querySelector('[data-answer]'))controls.innerHTML=controlsMarkup(false);
+  if(pendingRoomInvites.size){const waiting=[...pendingRoomInvites.values()].filter(x=>x.roomId===p.roomId);pendingRoomInvites.clear();for(const invite of waiting){if(!callPeers.has(norm(invite.de))){const next=makePeer(invite.id,invite.de,true);answerPeer(next,invite);}}}
+  stopRing();if(!p.connectedAt)status('Conectando audio…');else status('Llamada conectada');note(p.connectedAt?'Audio conectado · Podés minimizar la llamada.':'Estableciendo comunicación…');renderParticipants();
+ }catch(e){notify('No se pudo contestar: '+e.message);closePeer(p,'fallida',false);}
+}
+async function answerCall(){const p=active&&callPeers.get(norm(active.other));if(p&&p.incoming)await answerPeer(p);}
+function listenRoom(room){if(roomUnsub){roomUnsub();roomUnsub=null;}
+ roomUnsub=db.collection('kpVoiceRooms').doc(room).onSnapshot(s=>{
+  if(!active||active.roomId!==room)return;
+  const d=s.data()||{};
+  if(!s.exists||d.estado==='finalizada'){endCall('finalizada',true);return;}
+  active.participants=Array.isArray(d.participantes)?d.participantes:[];
+  const others=active.participants.filter(x=>norm(x)!==norm(who()));
+  for(const p of [...callPeers.values()]){
+   // No retirar a un invitado que aún está esperando respuesta.
+   if(p.connectedAt&&!others.some(x=>norm(x)===norm(p.other)))closePeer(p,'finalizada',true);
+  }
+  if(active.joined)for(const other of others){if(!callPeers.has(norm(other))&&norm(who())<norm(other))startPeer(other);}
+  renderParticipants();
+  if(callStart&&others.length===0&&callPeers.size===0&&d.tipo!=='canal'&&(d.invitados||[]).length<=2)endCall('finalizada',true);
+ },e=>console.warn('Sala de voz',e));
+}
+// Salas persistentes: una invitación perdida no impide incorporarse mientras la conversación siga activa.
+// No se borra el registro de los demás al salir; solo se retira al usuario de participantes.
+function allowedLiveRoom(room){
+ if(!room||room.estado!=='activa'||!(room.participantes||[]).length||!who())return false;
+ const mine=norm(who());
+ if((room.invitados||[]).some(x=>norm(x)===mine)||(room.participantes||[]).some(x=>norm(x)===mine)||norm(room.creador)===mine)return true;
+ if(!room.canalId)return false;
+ const channels=window.KP?.Channels;
+ const c=(channels?.visibleFor?.(me())||channels?.list||[]).find(x=>x.id===room.canalId&&x.tipo!=='dm');
+ return !!c&&(!(c.miembros||[]).length||(c.miembros||[]).some(x=>norm(x)===mine));
+}
+function liveRoomLabel(room){return room.canalId?(room.canalNombre||'Llamada del canal'):(room.invitados||[]).length>2?'Llamada grupal':lookup((room.invitados||[]).find(x=>norm(x)!==norm(who())))?.nombre||lookup(room.creador)?.nombre||'Compañero';}
+function liveRoomsForCurrentView(){
+ const current=window.KP?.Channels?._currentOpenId;
+ return [...availableRooms.values()].filter(r=>allowedLiveRoom(r)&&r.id!==active?.roomId).filter(r=>{
+  if(!current)return true;
+  if(String(current).startsWith('dm_')){
+   const dm=getDM(current),other=norm(dm?.dmOtro);
+   return !r.canalId&&(norm(r.creador)===other||(r.invitados||[]).some(x=>norm(x)===other));
+  }
+  return r.canalId===current;
+ }).sort((a,b)=>(b.creada||0)-(a.creada||0));
+}
+function refreshActiveRoomBanners(){
+ const view=document.getElementById('view');if(!view)return;
+ // Limpiar los avisos anteriores para que el render de Canales no los duplique.
+ view.querySelectorAll('.kpc-active-calls').forEach(x=>x.remove());
+ const list=liveRoomsForCurrentView();if(!list.length)return;
+ const panel=document.createElement('div');panel.className='kpc-active-calls';panel.setAttribute('aria-label','Llamadas en curso');
+ panel.innerHTML=list.map(r=>'<div class="kpc-live-room"><span class="kpc-live-symbol">'+callIcons.phone+'</span><span class="kpc-live-description"><b>'+esc(liveRoomLabel(r))+'</b><small>Llamada en curso · '+(r.participantes||[]).length+' participante(s)</small></span><button class="kpc-join-btn" type="button" data-kpc-join-room="'+esc(r.id)+'">Unirse</button></div>').join('');
+ const header=view.querySelector('.kpw-head');
+ if(header)header.after(panel);
+ else{const wrap=view.querySelector('.kpc-wrap')||view;const contacts=wrap.querySelector('.kpc-colleagues');if(contacts)contacts.after(panel);else wrap.prepend(panel);}
+}
+function watchAvailableRooms(){
+ if(availableRoomsUnsub){availableRoomsUnsub();availableRoomsUnsub=null;}
+ availableRooms.clear();refreshActiveRoomBanners();
+ if(!dbReady()||!who())return;
+ availableRoomsUnsub=db.collection('kpVoiceRooms').where('invitados','array-contains',who()).onSnapshot(snapshot=>{
+  availableRooms.clear();snapshot.docs.forEach(x=>{const d=x.data();if(d.estado==='activa')availableRooms.set(x.id,{...d,id:x.id});});
+  refreshActiveRoomBanners();
+ },e=>console.warn('Llamadas en curso',e));
+}
+async function joinLiveRoom(roomId){
+ if(active){notify('Ya tenés una llamada en curso');restoreCall();return;}
+ if(!dbReady()||!who()){notify('Iniciá sesión para unirte');return;}
+ try{
+  const ref=db.collection('kpVoiceRooms').doc(String(roomId));const snap=await ref.get(),r=snap.data();
+  if(!snap.exists||!allowedLiveRoom({...r,id:roomId})){notify('Esta llamada ya terminó o no tenés acceso');refreshActiveRoomBanners();return;}
+  await ensureMedia();
+  // Revalidar después del permiso de micrófono: la llamada podría terminar durante el aviso de Android.
+  const check=await ref.get(),latest=check.data();if(!check.exists||!allowedLiveRoom({...latest,id:roomId})){notify('La llamada ya terminó');localStream?.getTracks().forEach(t=>t.stop());localStream=null;return;}
+  const others=(latest.participantes||[]).filter(id=>norm(id)!==norm(who()));
+  active={roomId:String(roomId),other:others[0]||latest.creador,canalId:latest.canalId||null,canalNombre:latest.canalNombre||'',participants:[who(),...others],incoming:false,joined:true};
+  callStart=0;callPeers.clear();
+  const title=liveRoomLabel({...latest,id:roomId});showCall({nombre:title,cargo:latest.canalId?'Canal de la empresa':'Compañeros'},false);
+  stopRing();status('Conectando con la llamada…');note('Esperando la conexión de audio con los participantes.');
+  await ref.set({participantes:firebase.firestore.FieldValue.arrayUnion(who()),actualizada:Date.now()},{merge:true});
+  listenRoom(String(roomId));refreshActiveRoomBanners();
+ }catch(e){console.warn('Unirse a la llamada',e);notify('No se pudo unir a la llamada: '+e.message);if(active?.roomId===String(roomId))await endCall('fallida');}
+}
+document.addEventListener('click',e=>{const button=e.target.closest?.('[data-kpc-join-room]');if(!button)return;e.preventDefault();e.stopPropagation();joinLiveRoom(button.dataset.kpcJoinRoom);});
+async function startCall(id){
+ if(active){notify('Ya tenés una llamada en curso');restoreCall();return;}
+ id=String(id||'').trim();if(!id||norm(id)===norm(who())||blocked.has(norm(id))||await blockedRemote(id)){notify('No se puede llamar a este compañero');return;}
+ if(!dbReady()){notify('Firebase no está conectado');return;}
+ const roomId=db.collection('kpVoiceRooms').doc().id;
+ active={roomId,id:null,other:id,incoming:false,joined:true,participants:[who()]};callStart=0;callPeers.clear();showCall(lookup(id),false);
+ try{await ensureMedia();await db.collection('kpVoiceRooms').doc(roomId).set({creada:Date.now(),creador:who(),participantes:[who()],invitados:[who(),id],tipo:'voz',estado:'activa'});
+  listenRoom(roomId);await startPeer(id);
+ }catch(e){notify('No se pudo iniciar la llamada: '+e.message);await endCall('fallida');}
+}
+async function startChannelCall(channelId){
+ if(active){notify('Ya tenés una llamada en curso');restoreCall();return;}
+ if(!dbReady()){notify('Firebase no está conectado');return;}
+ const existing=[...availableRooms.values()].find(x=>x.canalId===channelId&&allowedLiveRoom(x));
+ if(existing){await joinLiveRoom(existing.id);return;}
+ const c=(window.KP?.Channels?.list||[]).find(x=>x.id===channelId&&x.tipo!=='dm');
+ if(!c){notify('No se encontró el canal');return;}
+ // Los canales vacíos de miembros (por ejemplo General) abarcan el equipo activo.
+ const allowed=(c.miembros||[]).length?new Set(c.miembros.map(norm)):null;
+ const invitees=contacts().filter(u=>!allowed||allowed.has(norm(uid(u)))).map(uid);
+ if(!invitees.length){notify('No hay otros integrantes disponibles para llamar en este canal');return;}
+ const roomId=db.collection('kpVoiceRooms').doc().id,created=Date.now();
+ active={roomId,other:invitees[0],incoming:false,joined:true,participants:[who()],canalId:channelId,canalNombre:c.nombre,invitationPending:true};callStart=0;callPeers.clear();showCall({nombre:c.nombre||'Canal',kpRol:'',cargo:'Llamada grupal'},false);
+ const name=callUI?.querySelector('[data-call-name]');if(name)name.textContent=c.nombre||'Canal';
+ const identity=callUI?.querySelector('.kpc-call-identity');if(identity){const sub=identity.querySelector('small');if(sub)sub.textContent='Llamada a todos los integrantes';}
+ status('Llamando a '+invitees.length+' integrante'+(invitees.length===1?'':'s')+'…');
+ try{
+  await ensureMedia();if(active?.roomId!==roomId)return;
+  await db.collection('kpVoiceRooms').doc(roomId).set({creada:created,creador:who(),participantes:[who()],invitados:[who(),...invitees],canalId:channelId,canalNombre:c.nombre||'Canal',tipo:'canal',estado:'activa'});
+  await db.collection('canalMensajes_'+channelId).doc(roomId).set({tipo:'llamada',origen:'canal',roomId,canalId:channelId,autor:me().nombre||who(),autorUsuario:who(),estadoLlamada:'llamando',inicioLlamada:created,duracionSeg:0,ts:firebase.firestore.FieldValue.serverTimestamp(),ocultoPara:[]});
+  listenRoom(roomId);
+  // Crear una invitación real para cada miembro del canal, no para toda la empresa.
+  await Promise.all(invitees.map(id=>startPeer(id)));
+  if(active?.roomId===roomId)active.invitationPending=false;
+ }catch(e){console.warn('Llamada del canal',e);notify('No se pudo llamar al canal: '+e.message);await endCall('fallida');}
+}
+async function openInviteContacts(){
+ if(!active)return;
+ const o=modal('<div class="kpc-colleagues-head"><h2>Agregar compañeros</h2><button class="kpc-colleagues-btn" data-close>Cerrar</button></div><p>Elegí a quién invitar a la llamada grupal. Los participantes podrán escucharse entre sí.</p><input class="kpc-invite-search" placeholder="Buscar por nombre, rol o sucursal" aria-label="Buscar compañeros"><div class="kpc-invite-list"></div>');
+ o.classList.add('kpc-invite-screen');o.querySelector('[data-close]').onclick=()=>o.remove();
+ const paint=()=>{const q=norm(o.querySelector('input').value);o.querySelector('.kpc-invite-list').innerHTML=contacts().filter(u=>(!active?.canalId||!(window.KP?.Channels?.list||[]).find(c=>c.id===active.canalId)?.miembros?.length||(window.KP?.Channels?.list||[]).find(c=>c.id===active.canalId).miembros.some(id=>norm(id)===norm(uid(u))))&&!callPeers.has(norm(uid(u)))&&!active?.participants?.some(x=>norm(x)===norm(uid(u)))&&[u.nombre,u.usuario,role(u),branch(u)].some(x=>!q||norm(x).includes(q)))
+  .map(u=>'<button type="button" data-invite="'+esc(uid(u))+'"><span class="kpc-invite-avatar">'+esc((u.nombre||uid(u)).slice(0,1))+'</span><span><b>'+esc(u.nombre||uid(u))+'</b><small>'+esc(role(u))+' · '+esc(branch(u))+'</small></span><span class="kpc-invite-plus">'+callIcons.add+'</span></button>').join('')||'<p>No hay más compañeros disponibles.</p>';};
+ o.querySelector('input').oninput=paint;paint();o.onclick=e=>{const b=e.target.closest('[data-invite]');if(!b)return;const id=b.dataset.invite;o.remove();startPeer(id);status('Invitando a un compañero…');};
+}
+function showParticipants(){const l=callUI?.querySelector('#kpcParticipantList');if(l){l.hidden=!l.hidden;renderParticipants();}}
+async function applyAudioRoute(device){if(!device)return false;
+ const audios=[...callPeers.values()].map(p=>p.audio).filter(Boolean);
+ if(!audios.length){notify('Esperá a que se conecte el audio.');return false;}
+ let success=false;for(const a of audios){if(typeof a.setSinkId==='function'){try{await a.setSinkId(device.deviceId);success=true;}catch(e){console.warn('Salida de audio',e);}}}
+ if(success){audioRouteDevice=device.deviceId;speakerOn=/speaker|altavoz/i.test(device.label);const b=callUI?.querySelector('[data-speaker]');if(b){b.setAttribute('aria-pressed',String(speakerOn));b.querySelector('[data-label]').textContent=device.label||'Audio elegido';}return true;}
+ return false;
+}
+async function showAudioOptions(){
+ const o=modal('<div class="kpc-colleagues-head"><h2>Salida de audio</h2><button class="kpc-colleagues-btn" data-close>Cerrar</button></div><div class="kpc-audio-choices"></div><p class="kpc-audio-help">La selección de altavoz o auricular depende del navegador y del teléfono. En Chrome Android puede no estar disponible. El apagado de pantalla por proximidad necesita una aplicación Android nativa.</p>');o.classList.add('kpc-audio-menu');o.querySelector('[data-close]').onclick=()=>o.remove();const list=o.querySelector('.kpc-audio-choices');
+ try{
+  const outputs=typeof navigator.mediaDevices?.enumerateDevices==='function'?(await navigator.mediaDevices.enumerateDevices()).filter(x=>x.kind==='audiooutput'):[];
+  if(remoteAudio?.setSinkId||[...callPeers.values()].some(x=>typeof x.audio?.setSinkId==='function')){
+   const buttons=outputs.map((d,i)=>'<button type="button" data-device="'+i+'">'+esc(d.label||'Dispositivo de audio '+(i+1))+'</button>').join('');list.innerHTML=buttons+'<button type="button" data-choose>Elegir otro dispositivo…</button>';
+   list.onclick=async e=>{const b=e.target.closest('button');if(!b)return;let device=null;
+    if(b.hasAttribute('data-device'))device=outputs[Number(b.dataset.device)];
+    else if(b.hasAttribute('data-choose')&&navigator.mediaDevices?.selectAudioOutput)try{device=await navigator.mediaDevices.selectAudioOutput();}catch(e){notify('No se seleccionó un dispositivo');}
+    if(device&&await applyAudioRoute(device))o.remove();else if(device)notify('Chrome no permitió cambiar a ese dispositivo.');};
+  }else{list.textContent='Este Chrome no ofrece selección de auricular y altavoz desde una página web. Podés usar audífonos o Bluetooth desde la configuración de Android.';}
+ }catch(e){list.textContent='No se pudieron consultar las salidas de audio de este teléfono.';}
+}
+async function toggleSpeaker(){
+ const audios=[...callPeers.values()].map(x=>x.audio).filter(Boolean);
+ if(!audios.some(a=>typeof a.setSinkId==='function')){showAudioOptions();return;}
+ try{
+  const outputs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audiooutput');
+  const target=speakerOn?outputs.find(d=>/earpiece|auricular|receiver/i.test(d.label)):outputs.find(d=>/speaker|altavoz|loudspeaker/i.test(d.label));
+  if(target&&await applyAudioRoute(target))return;
+ }catch(e){console.warn(e);}
+ showAudioOptions();
+}
 const dmSafe=s=>String(s||'').replace(/[\/\s.#$\[\]]+/g,'_');
 const dmKey=(a,b)=>[dmSafe(a),dmSafe(b)].sort().join('__');
 function formatTime(ms){return ms?new Date(ms).toLocaleString('es-HN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'No contestada';}
 async function saveCallInChat(a,reason,start,end){
  try{
-  const key=dmKey(a.incoming?a.other:who(),a.incoming?who():a.other),from=a.incoming?a.other:who(),to=a.incoming?who():a.other;
-  const ref=db.collection('dmChats').doc(key);
-  const meUser=lookup(from),otherUser=lookup(to),names={};names[dmSafe(from)]=meUser?.nombre||from;names[dmSafe(to)]=otherUser?.nombre||to;
+  const from=a.incoming?a.other:who(),to=a.incoming?who():a.other,key=dmKey(from,to);
+  const ref=db.collection('dmChats').doc(key),meUser=lookup(from),otherUser=lookup(to),names={};names[dmSafe(from)]=meUser?.nombre||from;names[dmSafe(to)]=otherUser?.nombre||to;
   const dur=start?Math.max(0,Math.round((end-start)/1000)):0;
-  const text='Llamada de voz · '+(start?'Inicio: '+formatTime(start)+' · Fin: '+formatTime(end)+' · Duración: '+Math.floor(dur/60)+' min '+(dur%60)+' s':'No contestada · '+formatTime(end))+' · '+reason;
+  const text='Llamada de voz · '+(start?'Inicio: '+formatTime(start)+' · Fin: '+formatTime(end)+' · Duración: '+Math.floor(dur/60)+' min '+dur%60+' s':'No contestada · '+formatTime(end))+' · '+reason;
   await ref.set({miembros:[from,to],nombres:names,ultimoTs:firebase.firestore.FieldValue.serverTimestamp(),ultimoTexto:'Llamada de voz'},{merge:true});
-  await db.collection('canalMensajes_dm_'+key).doc(a.id).set({tipo:'llamada',texto:text,autor:meUser?.nombre||from,autorUsuario:from,estadoLlamada:reason,inicioLlamada:start||null,finLlamada:end,duracionSeg:dur,ts:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
- }catch(e){console.warn('Historial de llamada en conversación:',e);}
+  await db.collection('canalMensajes_dm_'+key).doc(a.id).set({tipo:'llamada',texto:text,autor:meUser?.nombre||from,autorUsuario:from,estadoLlamada:reason,inicioLlamada:start||null,finLlamada:end,duracionSeg:dur,roomId:a.roomId,ts:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+ }catch(e){console.warn('Historial de llamada en chat',e);}
 }
-async function endCall(reason,remote){if(!active)return;const a=active;active=null;stopRing();if(timerInterval){clearInterval(timerInterval);timerInterval=null;}speakerOn=false;if(callUnsub){callUnsub();callUnsub=null;}if(iceUnsub){iceUnsub();iceUnsub=null;}if(rtc){rtc.onconnectionstatechange=null;rtc.close();rtc=null;}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}if(remoteAudio){remoteAudio.remove();remoteAudio=null;}if(callUI){callUI.remove();callUI=null;}const end=Date.now(),start=callStart;callStart=0;if(!remote&&dbReady()){
- try{await db.collection('kpVoiceCalls').doc(a.id).set({estado:reason,fin:end,duracionSeg:start?Math.max(0,Math.round((end-start)/1000)):0},{merge:true});await saveCallInChat(a,reason,start,end);}catch(e){console.warn(e);}
- }}
-function listenCalls(){if(!dbReady()||!who())return;const id=who();if(inboxUnsub){inboxUnsub();inboxUnsub=null;}inboxUnsub=db.collection('kpVoiceCalls').where('para','==',id).onSnapshot(s=>s.docChanges().forEach(async change=>{if(change.type!=='added'&&change.type!=='modified')return;const d=change.doc.data(),callId=change.doc.id;if(d.estado!=='sonando'||seenCalls.has(callId)||active)return;seenCalls.add(callId);if(blocked.has(norm(d.de))||await blockedRemote(d.de)){db.collection('kpVoiceCalls').doc(callId).set({estado:'rechazada',fin:Date.now(),duracionSeg:0},{merge:true}).catch(console.warn);return;}if(Date.now()-Number(d.creado||0)>90000)return;active={id:callId,other:d.de,incoming:true};showCall(lookup(d.de)||{nombre:d.nombreDe},true);callUnsub=db.collection('kpVoiceCalls').doc(callId).onSnapshot(doc=>{if(!active||active.id!==callId)return;if(['finalizada','rechazada','cancelada','fallida'].includes(doc.data()?.estado))endCall(doc.data().estado,true);});}),e=>console.warn('Llamadas:',e));}
-async function callHistory(){const o=modal('<div class="kpc-colleagues-head"><h2>Historial de llamadas</h2><button class="kpc-colleagues-btn">Cerrar</button></div><div id="kpcHistory">Cargando...</div>');o.querySelector('button').onclick=()=>o.remove();try{const snap=await db.collection('kpVoiceCalls').where('de','==',who()).limit(50).get(),snap2=await db.collection('kpVoiceCalls').where('para','==',who()).limit(50).get();const arr=[...snap.docs,...snap2.docs].map(x=>({...x.data(),id:x.id})).sort((a,b)=>b.creado-a.creado);o.querySelector('#kpcHistory').innerHTML=arr.map(c=>'<div class="kpc-person"><div class="kpc-person-info"><b>'+esc(lookup(c.de===who()?c.para:c.de)?.nombre||(c.de===who()?c.nombrePara:c.nombreDe)||'Compañero')+'</b><small>Inicio: '+esc(clock(c.inicio||c.creado))+'</small><small>Fin: '+(c.fin?esc(clock(c.fin)):'Sin finalizar')+'</small><small>Duración: '+Math.floor((c.duracionSeg||0)/60)+' min '+((c.duracionSeg||0)%60)+' s · '+esc(c.estado)+'</small></div></div>').join('')||'<p>No hay llamadas registradas.</p>';}catch(e){o.querySelector('#kpcHistory').textContent='No se pudo cargar el historial.';}}
+function freePeer(p){if(!p||p.done)return;p.done=true;
+ if(p.callUnsub){p.callUnsub();p.callUnsub=null;}if(p.iceUnsub){p.iceUnsub();p.iceUnsub=null;}
+ if(p.rtc){p.rtc.onconnectionstatechange=null;p.rtc.close();p.rtc=null;}if(p.audio){p.audio.srcObject=null;p.audio.remove();p.audio=null;}
+ if(callPeers.get(norm(p.other))===p)callPeers.delete(norm(p.other));
+}
+async function closePeer(p,reason,remote){if(!p||p.done)return;const connected=p.connectedAt,room=p.roomId,id=p.id;freePeer(p);
+ if(!remote&&dbReady()){
+  const end=Date.now();db.collection('kpVoiceCalls').doc(id).set({estado:reason,fin:end,duracionSeg:connected?Math.max(0,Math.round((end-connected)/1000)):0},{merge:true}).catch(console.warn);
+  if(!active?.canalId && !p.canalId)saveCallInChat({id,other:p.other,incoming:p.incoming,roomId:room},reason,connected,end);
+ }
+ if(active?.roomId===room){
+  if(!callPeers.size){if(active.invitationPending){return;}
+   if(p.incoming&&!active.joined){await endCall('sin_respuesta',true);return;}
+   if(active.participants?.some(x=>norm(x)!==norm(who()))){status('Esperando participantes…');}
+   else if(active.canalId||(availableRooms.get(room)?.invitados||[]).length>=3){status('Esperando a que se unan compañeros…');}
+   else await endCall(reason||'finalizada',true);}
+  renderParticipants();
+ }
+}
+async function endCall(reason='finalizada',remote=false){if(!active)return;
+ const a=active;active=null;pendingRoomInvites.clear();stopRing();speakerOn=false;audioRouteDevice='';
+ if(timerInterval){clearInterval(timerInterval);timerInterval=null;}if(roomUnsub){roomUnsub();roomUnsub=null;}
+ if(callUI){callUI.remove();callUI=null;}minimizedBubble?.remove();minimizedBubble=null;document.body.classList.remove('kpc-call-focused');
+ const peers=[...callPeers.values()];for(const p of peers)await closePeer(p,reason,remote&&peers.length===0);
+ callPeers.clear();if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}callStart=0;
+ if(dbReady()){
+  try{
+   const roomRef=db.collection('kpVoiceRooms').doc(a.roomId);
+   await roomRef.set({participantes:firebase.firestore.FieldValue.arrayRemove(who()),actualizada:Date.now()},{merge:true});
+   {
+    const snap=await roomRef.get(),remaining=snap.data()?.participantes||[];
+    if(!remaining.length){
+     const now=Date.now(),connectedAt=Number(snap.data()?.inicioConectada||0);
+     if(a.canalId)await db.collection('canalMensajes_'+a.canalId).doc(a.roomId).set({estadoLlamada:reason==='fallida'?'fallida':reason==='cancelada'?'cancelada':connectedAt?'finalizada':'sin_respuesta',finLlamada:now,duracionSeg:connectedAt?Math.max(0,Math.floor((now-connectedAt)/1000)):0},{merge:true});
+     await roomRef.set({estado:'finalizada',finalizada:now},{merge:true});
+    }
+   }
+  }catch(e){console.warn('Cierre de sala',e);}
+ }
+}
+function listenCalls(){if(!dbReady()||!who())return;const id=who();if(inboxUnsub){inboxUnsub();inboxUnsub=null;}
+ inboxUnsub=db.collection('kpVoiceCalls').where('para','==',id).onSnapshot(s=>s.docChanges().forEach(async c=>{
+  if(c.type!=='added'&&c.type!=='modified')return;const d=c.doc.data(),callId=c.doc.id;
+  if(d.estado!=='sonando'||seenCalls.has(callId))return;seenCalls.add(callId);
+  if(Date.now()-Number(d.creado||0)>90000)return;
+  if(!d.canalId&&(blocked.has(norm(d.de))||await blockedRemote(d.de))){
+   db.collection('kpVoiceCalls').doc(callId).set({estado:'rechazada',fin:Date.now(),duracionSeg:0},{merge:true}).catch(console.warn);return;
+  }
+  const room=d.roomId||callId;
+  if(active&&active.roomId!==room){db.collection('kpVoiceCalls').doc(callId).set({estado:'ocupada',fin:Date.now()},{merge:true}).catch(console.warn);return;}
+  if(active&&active.roomId===room){if(callPeers.has(norm(d.de)))return;
+   if(!active.joined){pendingRoomInvites.set(callId,{...d,id:callId});return;}
+   const p=makePeer(callId,d.de,true);answerPeer(p,d);return;}
+  pendingRoomInvites.clear();active={roomId:room,other:d.de,incoming:true,joined:false,participants:[d.de],canalId:d.canalId||null,canalNombre:d.canalNombre||''};callStart=0;callPeers.clear();
+  const p=makePeer(callId,d.de,true);showCall(lookup(d.de)||{nombre:d.nombreDe},true);listenRoom(room);
+  p.callUnsub=db.collection('kpVoiceCalls').doc(callId).onSnapshot(snap=>{if(!active||active.roomId!==room)return;if(['finalizada','rechazada','cancelada','fallida','ocupada'].includes(snap.data()?.estado))endCall(snap.data().estado,true);});
+ }),e=>console.warn('Llamadas',e));
+}
+async function callHistory(){
+ const o=modal('<div class="kpc-colleagues-head"><h2>Historial de llamadas</h2><button class="kpc-colleagues-btn" data-close> Cerrar</button></div><p>Los registros eliminados desaparecen también de tu chat, pero no de los chats de los demás.</p><button type="button" class="kpc-history-delete" data-clear-history hidden>Borrar historial mostrado</button><div id="kpcHistory">Cargando…</div>');
+ o.querySelector('[data-close]').onclick=()=>o.remove();
+ const list=o.querySelector('#kpcHistory');
+ try{
+  const [from,to]=await Promise.all([db.collection('kpVoiceCalls').where('de','==',who()).limit(80).get(),db.collection('kpVoiceCalls').where('para','==',who()).limit(80).get()]);
+  const raw=[...new Map([...from.docs,...to.docs].map(d=>[d.id,{...d.data(),id:d.id}])).values()].filter(c=>!callDocHidden(c));
+  const groupRooms=[...new Set(raw.filter(c=>c.canalId&&c.roomId).map(c=>c.roomId))];
+  const rooms=Object.fromEntries(await Promise.all(groupRooms.map(async id=>{try{return [id,(await db.collection('kpVoiceRooms').doc(id).get()).data()||{}];}catch(e){return [id,{}];}})));
+  const visited=new Set(),entries=raw.sort((a,b)=>b.creado-a.creado).filter(c=>{
+   if(c.canalId&&c.roomId){if(callDocHidden(rooms[c.roomId]||{})||visited.has(c.roomId))return false;visited.add(c.roomId);}
+   return true;
+  });
+  list.innerHTML=entries.map(c=>'<div class="kpc-person kpc-history-row" data-history-id="'+esc(c.id)+'"><div class="kpc-person-info"><b>'+esc(c.canalNombre||lookup(c.de===who()?c.para:c.de)?.nombre||(c.de===who()?c.nombrePara:c.nombreDe)||'Compañero')+'</b><small>Inicio: '+esc(clock(c.inicio||c.creado))+'</small><small>Fin: '+(c.fin?esc(clock(c.fin)):'Sin finalizar')+'</small><small>Duración: '+prettyCallDuration(c)+' · '+esc(c.estado)+'</small></div><button type="button" class="kpc-history-delete" data-delete-history="'+esc(c.id)+'" title="Eliminar registro solo para mí">Eliminar</button></div>').join('')||'<p>No hay llamadas registradas.</p>';
+  const clear=o.querySelector('[data-clear-history]');clear.hidden=!entries.length;
+  clear.onclick=async()=>{
+   if(!entries.length||!confirm('¿Borrar todos los registros mostrados de tu cuenta? También desaparecerán de tus chats. Los demás conservarán los suyos.'))return;
+   clear.disabled=true;let failed=0;for(const c of entries){
+    const path=c.canalId&&c.roomId?'canalMensajes_'+c.canalId:'canalMensajes_dm_'+dmKey(c.de,c.para);
+    if(!await hideCallForMe(path,c.canalId&&c.roomId?c.roomId:c.id,true))failed++;
+   }
+   if(failed){notify(failed+' registro(s) no se pudieron borrar');clear.disabled=false;return;}
+   clear.hidden=true;list.innerHTML='<p>Tu historial está vacío.</p>';
+  };
+  list.onclick=async e=>{const btn=e.target.closest('[data-delete-history]');if(!btn)return;const c=entries.find(x=>x.id===btn.dataset.deleteHistory);if(!c)return;
+   if(!confirm('¿Ocultar esta llamada solo para vos? El otro compañero conservará su registro.'))return;
+   try{
+    const chatPath=c.canalId&&c.roomId?'canalMensajes_'+c.canalId:'canalMensajes_dm_'+dmKey(c.de,c.para);
+    if(await hideCallForMe(chatPath,c.canalId&&c.roomId?c.roomId:c.id))btn.closest('.kpc-history-row')?.remove();
+   }catch(err){console.warn(err);notify('No se pudo eliminar el registro');}
+  };
+ }catch(e){console.warn(e);list.textContent='No se pudo cargar el historial.';}
+}
+
 const oldInject=injectContacts;injectContacts=function(){oldInject();const x=document.querySelector('.kpc-colleagues');if(x&&!x.querySelector('[data-history]')){const b=document.createElement('button');b.className='kpc-colleagues-btn';b.textContent='Historial de llamadas';b.dataset.history='1';b.style.marginTop='10px';b.onclick=callHistory;x.appendChild(b);}};
-window.KPColleagues={openContacts,startCall,toggleBlock,callHistory,isBlockedPath:protectedPath};
-let previous='';setInterval(()=>{if(!who()||!dbReady()){if(previous){previous='';blocked.clear();if(blockUnsub)blockUnsub();if(inboxUnsub)inboxUnsub();blockUnsub=inboxUnsub=null;}return;}if(previous!==who()){previous=who();blocked.clear();seenCalls.clear();refreshBlocks();listenCalls();}wrapChannels();injectContacts();},1000);
+window.KPColleagues={openContacts,startCall,startChannelCall,hideCallForMe,toggleBlock,callHistory,isBlockedPath:protectedPath,minimizeCall,restoreCall,openInviteContacts,showAudioOptions,getActiveCall:()=>active&&{roomId:active.roomId,participants:active.participants,peers:[...callPeers.keys()]},joinLiveRoom,availableRooms:()=>[...availableRooms.values()],refreshActiveRoomBanners,watchAvailableRooms};
+let previous='';setInterval(()=>{if(!who()||!dbReady()){if(previous){previous='';blocked.clear();if(blockUnsub)blockUnsub();if(inboxUnsub)inboxUnsub();if(availableRoomsUnsub)availableRoomsUnsub();blockUnsub=inboxUnsub=availableRoomsUnsub=null;availableRooms.clear();refreshActiveRoomBanners();}return;}if(previous!==who()){previous=who();blocked.clear();seenCalls.clear();refreshBlocks();listenCalls();watchAvailableRooms();}wrapChannels();injectContacts();},1000);
 })();
 </script>
 </body>
