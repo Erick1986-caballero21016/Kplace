@@ -22934,45 +22934,53 @@ sync();
 @media(max-width:480px){#kpFlowRoot .kf-fields{grid-template-columns:1fr}#kpFlowRoot .kf-row{align-items:flex-start}#kpFlowRoot .kf-stat{padding:12px}#kpFlowRoot .kf-btn{font-size:12px;padding:9px 10px}}
 
 
-/* Recibo personalizado: aspecto final aprobado, exclusivo de cada empresa. */
-#kpFlowRoot .kf-receipt-luxe{--kfl-ink:#17182e;--kfl-purple:#663bb4;--kfl-muted:#69687c;--kfl-lilac:#f1edfc;background:#fff!important;border:0;border-radius:22px!important;padding:28px 25px 18px!important;color:var(--kfl-ink)!important;box-shadow:0 19px 50px rgba(2,4,19,.28);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45;}
+/* KPlace · Recibo blanco premium: mismo estilo en móvil y escritorio, sin fotos. */
+#kpFlowRoot .kf-receipt-luxe{background:#fff!important;color:#151b2e!important;border:1px solid #e4e5ec!important;border-radius:20px!important;box-shadow:0 16px 45px rgba(15,23,42,.09)!important;padding:27px 24px 17px!important;min-width:0;position:relative;overflow:hidden;font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums;line-height:1.5}
 #kpFlowRoot .kf-receipt-luxe *{box-sizing:border-box;min-width:0}
-#kpFlowRoot .kf-receipt-luxe .kfl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:12px}
-#kpFlowRoot .kf-receipt-luxe .kfl-brand{flex:1;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-#kpFlowRoot .kf-receipt-luxe .kfl-brand strong{font-size:clamp(17px,2.4vw,24px);line-height:1.18;overflow-wrap:anywhere;color:var(--kfl-ink);font-weight:850}
-#kpFlowRoot .kf-receipt-luxe .kfl-brand-logo{display:block;max-width:125px;max-height:69px;object-fit:contain}
-#kpFlowRoot .kf-receipt-luxe .kfl-head-right{flex:1.1;text-align:right}
-#kpFlowRoot .kf-receipt-luxe h2{font-size:clamp(16px,2.4vw,23px)!important;font-weight:850!important;line-height:1.1;margin:0 0 7px;color:var(--kfl-ink)!important;letter-spacing:-.55px}
-#kpFlowRoot .kf-receipt-luxe .kfl-head-right>span{font-size:9px;letter-spacing:.5px;color:#635d81;font-weight:650}
-#kpFlowRoot .kf-receipt-luxe .kfl-order-no{display:inline-block;margin-top:12px;padding:5px 11px;border-radius:11px;background:var(--kfl-lilac);color:var(--kfl-ink);font-size:12px;font-weight:800}
-#kpFlowRoot .kf-receipt-luxe .kfl-business-meta{border-top:1px solid #ddd6f1;padding:12px 2px 17px;display:flex;justify-content:space-between;gap:5px 15px;flex-wrap:wrap;font-size:11px;color:var(--kfl-muted)}
-#kpFlowRoot .kf-receipt-luxe .kfl-client-box{background:var(--kfl-lilac);border-radius:15px;padding:16px 18px;display:flex;flex-direction:column;gap:3px;color:var(--kfl-ink);margin-bottom:16px}
-#kpFlowRoot .kf-receipt-luxe .kfl-client-title{font-size:10px;letter-spacing:1.3px;font-weight:800;color:var(--kfl-purple);margin-bottom:3px}
-#kpFlowRoot .kf-receipt-luxe .kfl-client-box strong{font-size:15px;font-weight:800;color:var(--kfl-ink)}
-#kpFlowRoot .kf-receipt-luxe .kfl-client-box span{font-size:12px;color:#5c5a72}
-#kpFlowRoot .kf-receipt-luxe .kfl-product-head,#kpFlowRoot .kf-receipt-luxe .kfl-product-line{display:grid;grid-template-columns:minmax(0,2.1fr) 52px minmax(75px,1fr) minmax(85px,1fr);align-items:center;gap:7px}
-#kpFlowRoot .kf-receipt-luxe .kfl-product-head{padding:12px 11px;background:var(--kfl-lilac);border-radius:12px;color:#605482;font-size:9px;font-weight:850;letter-spacing:.35px}
-#kpFlowRoot .kf-receipt-luxe .kfl-product-head span:not(:first-child){text-align:right}
-#kpFlowRoot .kf-receipt-luxe .kfl-product-line{padding:16px 10px;border-bottom:1px solid #e8e3f2;font-size:12px}
-#kpFlowRoot .kf-receipt-luxe .kfl-item-name{font-size:12px;font-weight:750;color:var(--kfl-ink);overflow-wrap:anywhere}
-#kpFlowRoot .kf-receipt-luxe .kfl-qty,#kpFlowRoot .kf-receipt-luxe .kfl-unit,#kpFlowRoot .kf-receipt-luxe .kfl-line-total{text-align:right;white-space:nowrap;font-size:11px;color:var(--kfl-ink);font-variant-numeric:tabular-nums}
-#kpFlowRoot .kf-receipt-luxe .kfl-line-total{font-weight:850}
-#kpFlowRoot .kf-receipt-luxe .kfl-totals{background:#f6f3fc;border-radius:15px;padding:16px 17px;margin-top:17px}
-#kpFlowRoot .kf-receipt-luxe .kfl-simple-row{display:flex;justify-content:space-between;gap:8px;margin:8px 0;font-size:12px;color:var(--kfl-ink)}
-#kpFlowRoot .kf-receipt-luxe .kfl-simple-row span{color:#5b5770}
-#kpFlowRoot .kf-receipt-luxe .kfl-simple-row strong{font-variant-numeric:tabular-nums;font-weight:700}
-#kpFlowRoot .kf-receipt-luxe .kfl-grand-total{background:#ebe3fb;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:5px;margin:15px -5px 13px;padding:12px;color:var(--kfl-purple);font-size:17px;font-weight:850}
-#kpFlowRoot .kf-receipt-luxe .kfl-grand-total strong{color:var(--kfl-purple);font-size:19px;font-variant-numeric:tabular-nums;white-space:nowrap}
-#kpFlowRoot .kf-receipt-luxe .kfl-paid{text-align:center;padding:10px;margin-top:13px;border-radius:10px;font-size:13px;font-weight:850;letter-spacing:1.7px}
-#kpFlowRoot .kf-receipt-luxe .kfl-paid.is-paid{background:#dff5e9;color:#11824a}
-#kpFlowRoot .kf-receipt-luxe .kfl-paid.is-pending{background:#fff0da;color:#99651f}
-#kpFlowRoot .kf-receipt-luxe .kfl-method{border-top:1px solid #ded7ee;margin-top:18px;padding:15px 1px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
-#kpFlowRoot .kf-receipt-luxe .kfl-method span{font-size:11px;color:var(--kfl-muted)}
-#kpFlowRoot .kf-receipt-luxe .kfl-method strong{font-size:11px;line-height:1.5;color:var(--kfl-ink);font-weight:750}
-#kpFlowRoot .kf-receipt-luxe .kfl-notes{text-align:center;font-size:11px;color:var(--kfl-muted);margin:6px auto 12px;overflow-wrap:anywhere}
-#kpFlowRoot .kf-receipt-luxe .kfl-thanks{font-size:17px;text-align:center;font-weight:650;padding:15px 4px 16px;color:var(--kfl-ink)}
-#kpFlowRoot .kf-receipt-luxe .kfl-legal{background:var(--kfl-lilac);border-radius:12px;padding:11px 5px;color:#605482;font-weight:650;font-size:8.5px;letter-spacing:.4px;text-align:center;line-height:1.5}
-@media(max-width:590px){#kpFlowRoot .kf-receipt-luxe{padding:20px 13px 13px!important;border-radius:18px!important}#kpFlowRoot .kf-receipt-luxe .kfl-product-head,#kpFlowRoot .kf-receipt-luxe .kfl-product-line{grid-template-columns:minmax(0,1.5fr) 33px 65px 78px;gap:3px}#kpFlowRoot .kf-receipt-luxe .kfl-product-head{padding:9px 6px;font-size:7.5px}#kpFlowRoot .kf-receipt-luxe .kfl-product-line{padding:12px 4px}#kpFlowRoot .kf-receipt-luxe .kfl-item-name,#kpFlowRoot .kf-receipt-luxe .kfl-qty,#kpFlowRoot .kf-receipt-luxe .kfl-unit,#kpFlowRoot .kf-receipt-luxe .kfl-line-total{font-size:9.5px}#kpFlowRoot .kf-receipt-luxe .kfl-client-box{padding:14px 12px}#kpFlowRoot .kf-receipt-luxe .kfl-totals{padding:13px 12px}#kpFlowRoot .kf-receipt-luxe .kfl-grand-total{font-size:14px}#kpFlowRoot .kf-receipt-luxe .kfl-grand-total strong{font-size:16px}}
+#kpFlowRoot .kf-receipt-luxe .kfr-head{display:grid;grid-template-columns:minmax(0,1.4fr) auto;align-items:start;gap:12px;margin:0 0 24px}
+#kpFlowRoot .kf-receipt-luxe .kfr-brand{min-width:0}
+#kpFlowRoot .kf-receipt-luxe .kfr-brand-logo{max-width:160px;max-height:72px;object-fit:contain;object-position:left;display:block;margin:0 0 8px}
+#kpFlowRoot .kf-receipt-luxe .kfr-brand h2{font-family:Georgia,'Times New Roman',serif;font-size:clamp(25px,4vw,41px)!important;letter-spacing:.04em;color:#101426!important;font-weight:500!important;line-height:1.05;margin:0!important;overflow-wrap:anywhere}
+#kpFlowRoot .kf-receipt-luxe .kfr-brand-sub{display:block;letter-spacing:3px;font-size:9px;color:#7b7e8b!important;font-weight:700;margin-top:7px;text-transform:uppercase}
+#kpFlowRoot .kf-receipt-luxe .kfr-doc-heading{border-radius:13px;background:#f4f4f8;padding:17px 18px;text-align:center;min-width:151px}
+#kpFlowRoot .kf-receipt-luxe .kfr-doc-heading strong{display:block;font-size:clamp(13px,2vw,18px);color:#101426!important;white-space:nowrap;letter-spacing:.02em}
+#kpFlowRoot .kf-receipt-luxe .kfr-doc-heading span{display:block;color:#6c7180!important;font-size:12px;margin-top:5px}
+#kpFlowRoot .kf-receipt-luxe .kfr-facts{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:4px 0 25px}
+#kpFlowRoot .kf-receipt-luxe .kfr-facts>div+div{border-left:1px solid #e3e4e9;padding-left:18px}
+#kpFlowRoot .kf-receipt-luxe .kfr-fact{display:flex;gap:9px;align-items:flex-start;margin-bottom:14px}
+#kpFlowRoot .kf-receipt-luxe .kfr-ico{display:flex;justify-content:center;align-items:center;flex:none;width:23px;height:24px;color:#292e43!important;font-size:17px;line-height:1}
+#kpFlowRoot .kf-receipt-luxe .kfr-fact span{display:block;font-size:11px;color:#6e7480!important;line-height:1.3}
+#kpFlowRoot .kf-receipt-luxe .kfr-fact strong{display:block;font-size:12px;color:#20263b!important;line-height:1.45;font-weight:550;overflow-wrap:anywhere}
+#kpFlowRoot .kf-receipt-luxe .kfr-payment-state{border-radius:12px;background:#f2effb;padding:13px 12px;margin-bottom:15px}
+#kpFlowRoot .kf-receipt-luxe .kfr-payment-state strong{font-size:18px;color:#56319e!important;font-weight:800}
+#kpFlowRoot .kf-receipt-luxe .kfr-payment-state.paid{background:#ebf7f0}
+#kpFlowRoot .kf-receipt-luxe .kfr-payment-state.paid strong{color:#16784c!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-product-head,#kpFlowRoot .kf-receipt-luxe .kfr-product{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(68px,.76fr) 42px minmax(74px,.8fr);gap:7px;align-items:center}
+#kpFlowRoot .kf-receipt-luxe .kfr-product-head{background:#f4f4f7;border-radius:9px;padding:12px 9px;font-size:10px;font-weight:650;color:#293047!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-product-head>span:not(:first-child){text-align:right}
+#kpFlowRoot .kf-receipt-luxe .kfr-product{padding:17px 9px;border-bottom:1px solid #e4e5eb;font-size:11px;color:#283047!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-product .kfr-product-name{font-weight:750;font-size:12px;color:#192038!important;overflow-wrap:anywhere}
+#kpFlowRoot .kf-receipt-luxe .kfr-product>span:not(:first-child){text-align:right;white-space:nowrap}
+#kpFlowRoot .kf-receipt-luxe .kfr-product>span:last-child{font-weight:800;color:#151b2e!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-summary{max-width:350px;margin:17px 0 25px auto}
+#kpFlowRoot .kf-receipt-luxe .kfr-summary-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;font-size:11px;margin:9px 0;color:#4f586a!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-summary-row strong{color:#172034!important;font-weight:650;white-space:nowrap}
+#kpFlowRoot .kf-receipt-luxe .kfr-total{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:13px 15px;background:#f2effb;border-radius:12px;margin:15px 0}
+#kpFlowRoot .kf-receipt-luxe .kfr-total span{font-weight:750;color:#161c30!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-total strong{font-size:clamp(16px,2.5vw,22px);color:#161c30!important;white-space:nowrap}
+#kpFlowRoot .kf-receipt-luxe .kfr-foot-panels{display:grid;grid-template-columns:1fr 1fr;gap:0;background:#f6f6f9;border-radius:13px;padding:19px 18px;margin-top:16px}
+#kpFlowRoot .kf-receipt-luxe .kfr-foot-panel{padding:0 13px 0 0}
+#kpFlowRoot .kf-receipt-luxe .kfr-foot-panel+.kfr-foot-panel{border-left:1px solid #dfe1e9;padding:0 0 0 18px}
+#kpFlowRoot .kf-receipt-luxe .kfr-foot-title{display:flex;gap:7px;align-items:center;font-size:12px;font-weight:800;color:#1c2336!important;margin-bottom:9px}
+#kpFlowRoot .kf-receipt-luxe .kfr-foot-title .kfr-foot-icon{font-size:17px;color:#56319e!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-foot-panel p{font-size:11px;line-height:1.55;margin:0 0 9px;color:#515a6d!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-contact{margin:5px 0;font-size:10.5px;color:#343a50!important;overflow-wrap:anywhere}
+#kpFlowRoot .kf-receipt-luxe .kfr-contact b{color:#1a2034!important;font-weight:750}
+#kpFlowRoot .kf-receipt-luxe .kfr-thanks{text-align:center;background:#f2effb;border-radius:13px;padding:21px 14px;margin-top:13px}
+#kpFlowRoot .kf-receipt-luxe .kfr-thanks strong{display:block;color:#191b2d!important;font:26px Georgia,'Times New Roman',serif}
+#kpFlowRoot .kf-receipt-luxe .kfr-thanks span{display:block;font-size:9px;letter-spacing:3px;margin-top:7px;color:#777889!important}
+#kpFlowRoot .kf-receipt-luxe .kfr-legal{text-align:center;font-size:9px;color:#858897!important;margin:14px 0 0}
+@media(max-width:580px){#kpFlowRoot .kf-receipt-luxe{padding:18px 12px!important}#kpFlowRoot .kf-receipt-luxe .kfr-head{gap:5px}#kpFlowRoot .kf-receipt-luxe .kfr-doc-heading{padding:12px 9px;min-width:120px}#kpFlowRoot .kf-receipt-luxe .kfr-brand h2{font-size:26px!important}#kpFlowRoot .kf-receipt-luxe .kfr-facts{gap:9px}#kpFlowRoot .kf-receipt-luxe .kfr-facts>div+div{padding-left:9px}#kpFlowRoot .kf-receipt-luxe .kfr-fact{gap:4px}#kpFlowRoot .kf-receipt-luxe .kfr-ico{font-size:13px;width:16px}#kpFlowRoot .kf-receipt-luxe .kfr-product-head,#kpFlowRoot .kf-receipt-luxe .kfr-product{grid-template-columns:minmax(0,1.3fr) minmax(55px,.77fr) 26px minmax(59px,.81fr);gap:3px}#kpFlowRoot .kf-receipt-luxe .kfr-product-head{font-size:8px;padding:10px 5px}#kpFlowRoot .kf-receipt-luxe .kfr-product{font-size:9px;padding:13px 5px}#kpFlowRoot .kf-receipt-luxe .kfr-product .kfr-product-name{font-size:10px}#kpFlowRoot .kf-receipt-luxe .kfr-foot-panels{padding:14px 10px}#kpFlowRoot .kf-receipt-luxe .kfr-foot-panel{padding-right:8px}#kpFlowRoot .kf-receipt-luxe .kfr-foot-panel+.kfr-foot-panel{padding-left:10px}#kpFlowRoot .kf-receipt-luxe .kfr-foot-title{font-size:10px}#kpFlowRoot .kf-receipt-luxe .kfr-thanks strong{font-size:20px}}
 </style>
 <script id="kp-flow-2026-js">
 /* KPlace: Operación adaptable, empaque, caja, búsqueda, automatizaciones y documentos.
@@ -23031,8 +23039,8 @@ function listen(name,fn){try{K._unsubs.push(collection(name).onSnapshot(s=>{fn(s
 async function loadConfig(){
   if(K._loading)return;K._loading=true;
   try{let sn=await root().get();const v=sn.exists?sn.data():{};
-    K.config={mode:'solo',cashMode:'rapido',autoAssign:true,currency:'L',businessName:str(window.KPLACE_ACTIVE_CONTEXT?.companyName||'Mi negocio'),businessAddress:'',businessPhone:'',logo:'',...v.settings};
-  }catch(e){K.config=K.config||{mode:'solo',cashMode:'rapido',autoAssign:true,currency:'L',businessName:'Mi negocio',logo:''}}
+    K.config={mode:'solo',cashMode:'rapido',autoAssign:true,currency:'L',businessName:str(window.KPLACE_ACTIVE_CONTEXT?.companyName||'Mi negocio'),businessAddress:'',businessPhone:'',businessWhatsapp:'',businessInstagram:'',businessHours:'',logo:'',...v.settings};
+  }catch(e){K.config=K.config||{mode:'solo',cashMode:'rapido',autoAssign:true,currency:'L',businessName:'Mi negocio',businessWhatsapp:'',businessInstagram:'',businessHours:'',logo:''}}
   K._loading=false;if(K.page)draw();
 }
 async function saveConfig(next){if(!admin()){notice('Solo el Administrador general puede cambiar la configuración');return}try{await root().set({settings:{...K.config,...next,updatedAt:stamp(),updatedBy:uid()}},{merge:true});Object.assign(K.config,next);notice('Configuración guardada');draw()}catch(e){modalError(e,'guardar la configuración')}}
@@ -23317,7 +23325,7 @@ function orderDoc(o){
   charges.push({label:'Ajuste al total de la orden',value:amt(Math.abs(target-subtotal)),unit:'monto',effect:target>subtotal?'sumar':'restar'});
  }
  const pay=payParts(o).map(p=>({method:p.method||'efectivo',amount:p.value,paid:p.paid}));
- return {kind:'recibo',orderId:o.id,orderNo:orderNo(o),currency:K.config?.currency||'L',businessName:(str(K.config?.businessName)&&str(K.config?.businessName)!=='Mi negocio'?K.config.businessName:str(o.companyName||window.KPLACE_ACTIVE_CONTEXT?.companyName||K.config?.businessName||'Mi negocio')),businessAddress:K.config?.businessAddress||'',businessPhone:K.config?.businessPhone||'',logo:K.config?.logo||'',client:o.cliente||'',clientId:'',phone:o.numero||'',address:o.direccion||'',platform:o.plataforma||'',branch:orderBranch(o),items:products,charges,shipping:0,other:0,otherLabel:'Otros cargos',discount:0,taxPct:0,taxIncluded:true,payments:pay,notes:'Gracias por tu compra.',createdMillis:Date.now(),status:'borrador',sourceTotal:target};
+ return {kind:'recibo',orderId:o.id,orderNo:orderNo(o),currency:K.config?.currency||'L',businessName:(str(K.config?.businessName)&&str(K.config?.businessName)!=='Mi negocio'?K.config.businessName:str(o.companyName||window.KPLACE_ACTIVE_CONTEXT?.companyName||K.config?.businessName||'Mi negocio')),businessAddress:K.config?.businessAddress||'',businessPhone:K.config?.businessPhone||'',businessWhatsapp:K.config?.businessWhatsapp||'',businessInstagram:K.config?.businessInstagram||'',businessHours:K.config?.businessHours||'',logo:K.config?.logo||'',client:o.cliente||'',clientId:'',phone:o.numero||'',address:o.direccion||'',platform:o.plataforma||'',branch:orderBranch(o),items:products,charges,shipping:0,other:0,otherLabel:'Otros cargos',discount:0,taxPct:0,taxIncluded:true,payments:pay,notes:'Gracias por tu compra.',createdMillis:Date.now(),status:'borrador',sourceTotal:target};
 }
 function normalizeReceiptCharges(d){
  if(Array.isArray(d.charges))return d.charges;
@@ -23349,6 +23357,8 @@ const methods=[['efectivo','Efectivo'],['transferencia','Transferencia'],['link 
 function receiptPrefs(){let c=K.config||{};return card(`<div class="kf-row"><h2>Preferencias de recibos</h2>${button('Cerrar','receiptSettingsToggle','sm')}</div>
  <p>Estos datos se completan automáticamente en cada nuevo recibo. El recibo comercial no sustituye una factura fiscal.</p>
  <div class="kf-fields">${field('Nombre comercial',inp('kfCfgName',c.businessName||''))}${field('Moneda predeterminada',select('kfCfgCurrency',receiptCurrencies,c.currency||'L'))}${field('Dirección del negocio',inp('kfCfgAddress',c.businessAddress||''))}${field('Teléfono del negocio',inp('kfCfgPhone',c.businessPhone||''))}</div>
+ <div class="kf-fields">${field('WhatsApp para atención al cliente',inp('kfCfgWhatsapp',c.businessWhatsapp||'','tel','placeholder="Ej. +504 9999-9999"'))}${field('Instagram del negocio',inp('kfCfgInstagram',c.businessInstagram||'','text','placeholder="Ej. @mitienda"'))}${field('Horario de atención',inp('kfCfgHours',c.businessHours||'','text','placeholder="Ej. Lun a sáb, 9:00 a. m. – 6:00 p. m."'))}</div>
+ <p style="font-size:12px;opacity:.75">En el recibo solo se mostrarán los contactos que completés aquí. Estos datos pertenecen únicamente a esta empresa.</p>
  ${field('Logo (PNG o JPG)',`<input type="file" id="kfCfgLogo" accept="image/png,image/jpeg,image/webp">`)}
  ${c.logo?`<div style="margin-top:10px"><img class="kf-inline-logo" src="${esc(c.logo)}" alt="Logo del negocio"></div>`:''}
  <div class="kf-actions">${button('Guardar preferencias de recibos','saveReceiptSettings','primary')}</div>`)}
@@ -23364,7 +23374,7 @@ function documentEditor(){let d=K.doc,t=documentTotals(d);return card(`<div clas
  <div class="kf-tools" style="margin-top:14px">${button('Cambiar de orden','docClose','sm')}</div>
  ${msg('Comprobante comercial NO FISCAL. No incluye códigos de autorización ni reemplaza la factura que el negocio esté obligado a emitir.')}
  <div class="kf-fields">${field('Nombre del negocio',inp('kfDocBiz',d.businessName))}${field('Teléfono del negocio',inp('kfDocBizPhone',d.businessPhone))}${field('Cliente',inp('kfDocClient',d.client))}${field('Referencia del cliente (opcional)',inp('kfDocClientId',d.clientId))}${field('Teléfono del cliente',inp('kfDocPhone',d.phone))}${field('Moneda',select('kfDocCurrency',receiptCurrencies,d.currency||'L'))}</div>
- ${field('Dirección del negocio',inp('kfDocAddress',d.businessAddress))}${field('Origen de la venta (Instagram, WhatsApp, tienda...)',inp('kfDocPlatform',d.platform))}
+ ${field('Dirección del negocio',inp('kfDocAddress',d.businessAddress))}<div class="kf-fields">${field('WhatsApp de atención',inp('kfDocWhatsapp',d.businessWhatsapp??K.config?.businessWhatsapp??''))}${field('Instagram de atención',inp('kfDocInstagram',d.businessInstagram??K.config?.businessInstagram??''))}${field('Horario de atención',inp('kfDocHours',d.businessHours??K.config?.businessHours??''))}</div>${field('Origen de la venta (Instagram, WhatsApp, tienda...)',inp('kfDocPlatform',d.platform))}
  <div class="kf-divider"></div><div class="kf-row"><h3>Productos</h3>${button('+ Producto','docAddItem','sm')}</div>${d.items.map((i,idx)=>`<div class="kf-item"><div class="kf-fields">${field('Descripción',`<input data-doc-item="${idx}" data-key="name" value="${esc(i.name)}">`)}${field('Cantidad',`<input type="number" min="0" step="1" data-doc-item="${idx}" data-key="qty" value="${esc(i.qty)}">`)}${field('Precio unitario',`<input type="number" min="0" step="0.01" data-doc-item="${idx}" data-key="price" value="${esc(i.price)}">`)}</div>${button('Quitar producto','docDelItem:'+idx,'sm warn')}</div>`).join('')}
  <div class="kf-divider"></div><div class="kf-row"><h3 style="display:flex;align-items:center;gap:10px"><span style="width:5px;height:24px;border-radius:4px;background:#a855f7;display:inline-block"></span>Cargos y descuentos</h3></div>
 ${normalizeReceiptCharges(d).map((c,i)=>`<div class="kf-item" data-doc-charge-row="${i}"><div style="display:flex;gap:8px;align-items:center"><input data-doc-charge="${i}" data-key="label" value="${esc(c.label||'')}" placeholder="Concepto" aria-label="Concepto" style="font-weight:700;flex:1;min-width:0">${button('✕','docDelCharge:'+i,'sm warn')}</div><div style="display:flex;gap:8px;margin-top:8px"><input type="number" min="0" step="0.01" inputmode="decimal" data-doc-charge="${i}" data-key="value" value="${c.value?esc(c.value):''}" placeholder="0" aria-label="Valor" style="flex:1;min-width:0"><select data-doc-charge="${i}" data-key="unit" style="width:96px;flex:none"><option value="monto" ${c.unit!=='porcentaje'?'selected':''}>${esc(d.currency&&d.currency!=='L'?d.currency:'L.')}</option><option value="porcentaje" ${c.unit==='porcentaje'?'selected':''}>%</option></select><select data-doc-charge="${i}" data-key="effect" style="width:112px;flex:none"><option value="sumar" ${c.effect!=='restar'?'selected':''}>+ Suma</option><option value="restar" ${c.effect==='restar'?'selected':''}>− Resta</option></select></div></div>`).join('')}
@@ -23376,100 +23386,115 @@ ${normalizeReceiptCharges(d).map((c,i)=>`<div class="kf-item" data-doc-charge-ro
 }
 function receiptShortDate(){let d=K.doc||{};let v=str(d.receiptDate||today());const m=v.match(/^(\d{4})-(\d\d)-(\d\d)$/);return m?`${m[3]}/${m[2]}/${m[1]}`:v}
 function receiptMethod(p){return methods.find(m=>m[0]===p.method)?.[1]||str(p.method)||'No especificado'}
+function receiptContacts(d){
+ // Borradores antiguos usan las preferencias actuales de la empresa.
+ const conf=K.config||{};
+ return {whatsapp:str(d.businessWhatsapp??conf.businessWhatsapp),instagram:str(d.businessInstagram??conf.businessInstagram),hours:str(d.businessHours??conf.businessHours)};
+}
 function documentPreview(){
- const d=K.doc,t=documentTotals(d),settled=t.pending<0.005,receiptOtherLabel=str(d.otherLabel||'Otros cargos');
- const details=(d.payments||[]).filter(x=>amt(x.amount)>0).map(p=>`${esc(receiptMethod(p))} · ${money(p.amount)}${p.paid?' · confirmado':' · pendiente'}`);
+ const d=K.doc,t=documentTotals(d),settled=t.pending<0.005,contacts=receiptContacts(d);
+ const pay=(d.payments||[]).filter(p=>amt(p.amount)>0).map(p=>receiptMethod(p)).filter((v,i,a)=>a.indexOf(v)===i).join(', ')||'No registrado';
+ const facts=(ico,title,val)=>val?`<div class="kfr-fact"><i class="kfr-ico" aria-hidden="true">${ico}</i><div><span>${title}</span><strong>${esc(val)}</strong></div></div>`:'';
+ const social=[contacts.whatsapp?`<div class="kfr-contact"><b>WhatsApp:</b> ${esc(contacts.whatsapp)}</div>`:'',contacts.instagram?`<div class="kfr-contact"><b>Instagram:</b> ${esc(contacts.instagram)}</div>`:'',contacts.hours?`<div class="kfr-contact"><b>Horario:</b> ${esc(contacts.hours)}</div>`:''].join('');
  return `<div class="kf-receipt kf-receipt-luxe" id="kfDocPreview">
- <div class="kfl-head"><div class="kfl-brand">${d.logo?`<img class="kfl-brand-logo" src="${esc(d.logo)}" alt="Logo de la empresa">`:''}<strong>${esc(d.businessName||'Mi negocio')}</strong></div><div class="kfl-head-right"><h2>RECIBO DE COMPRA</h2><span>COMPROBANTE COMERCIAL NO FISCAL</span><div class="kfl-order-no">No. ${esc(d.orderNo||'—')}</div></div></div>
- <div class="kfl-business-meta"><span>${esc(d.businessAddress||'')}</span>${d.businessPhone?`<span>Tel: ${esc(d.businessPhone)}</span>`:''}<span>Fecha: ${esc(receiptShortDate())}</span></div>
- <div class="kfl-client-box"><div class="kfl-client-title">DATOS DEL CLIENTE</div><strong>${esc(d.client||'Cliente sin nombre')}</strong>${d.phone?`<span>Tel: ${esc(d.phone)}</span>`:''}${d.clientId?`<span>Referencia: ${esc(d.clientId)}</span>`:''}<span>Origen: ${esc(d.platform||'No indicado')}</span></div>
- <div class="kfl-products"><div class="kfl-product-head"><span>PRODUCTO</span><span>CANT.</span><span>PRECIO UNIT.</span><span>TOTAL</span></div>
- ${(d.items||[]).map(i=>`<div class="kfl-product-line"><div class="kfl-item-name">${esc(i.name)}</div><div class="kfl-qty">${esc(i.qty)}</div><div class="kfl-unit">${money(i.price)}</div><div class="kfl-line-total">${money(n(i.qty)*n(i.price))}</div></div>`).join('')}
- </div>
- <div class="kfl-totals"><div class="kfl-simple-row"><span>Subtotal</span><strong>${money(t.subtotal)}</strong></div>${t.lines.filter(l=>l.amount>0).map(l=>`<div class="kfl-simple-row"><span>${esc(l.label)}${l.unit==='porcentaje'?' ('+esc(l.value)+'%)':''}</span><strong>${l.effect==='restar'?'− ':'+ '}${money(l.amount)}</strong></div>`).join('')}
- <div class="kfl-grand-total"><span>TOTAL</span><strong>${money(t.total)}</strong></div><div class="kfl-simple-row"><span>Monto recibido</span><strong>${money(t.paid)}</strong></div>${!settled?`<div class="kfl-simple-row"><span>Saldo pendiente</span><strong>${money(t.pending)}</strong></div>`:''}
- <div class="kfl-paid ${settled?'is-paid':'is-pending'}">${settled?'✓ PAGADO':'PAGO PENDIENTE'}</div></div>
- <div class="kfl-method">${details.length?`<span>Forma de pago</span><strong>${details.join('<span class="kfl-dot"> · </span>')}</strong>`:`<span>Forma de pago</span><strong>No registrada</strong>`}</div>
- ${str(d.notes)&&str(d.notes)!=='Gracias por tu compra.'?`<div class="kfl-notes">${esc(d.notes)}</div>`:''}<div class="kfl-thanks">Gracias por tu compra.</div>
- <div class="kfl-legal">COMPROBANTE COMERCIAL · NO VÁLIDO COMO FACTURA FISCAL</div></div>`;
+ <div class="kfr-head"><div class="kfr-brand">${d.logo?`<img class="kfr-brand-logo" src="${esc(d.logo)}" alt="Logo del negocio">`:''}<h2>${esc(d.businessName||'Mi negocio')}</h2><span class="kfr-brand-sub">RECIBO COMERCIAL</span></div><div class="kfr-doc-heading"><strong>RECIBO DE COMPRA</strong><span>No. ${esc(d.orderNo||'—')}</span></div></div>
+ <div class="kfr-facts"><div>${facts('▦','Fecha de emisión',receiptShortDate())}${facts('♙','Cliente',d.client||'Cliente sin nombre')}${facts('☎','Teléfono',d.phone)}${facts('⌖','Dirección',d.address)}</div><div><div class="kfr-payment-state ${settled?'paid':''}">${facts(settled?'✓':'◷','Estado de pago',settled?'Pagado':'Pendiente')}</div>${facts('▤','Método de pago',pay)}${facts('▣','Sucursal',branchName(d.branch))}${facts('◇','Origen',d.platform)}</div></div>
+ <div class="kfr-product-head"><span>Producto</span><span>Precio unit.</span><span>Cant.</span><span>Total</span></div>${(d.items||[]).map(i=>`<div class="kfr-product"><div class="kfr-product-name">${esc(i.name||'Producto')}</div><span>${money(i.price)}</span><span>${esc(i.qty)}</span><span>${money(n(i.qty)*n(i.price))}</span></div>`).join('')}
+ <div class="kfr-summary"><div class="kfr-summary-row"><span>Subtotal</span><strong>${money(t.subtotal)}</strong></div>${t.lines.filter(l=>l.amount>0).map(l=>`<div class="kfr-summary-row"><span>${esc(l.label)}${l.unit==='porcentaje'?' ('+esc(l.value)+'%)':''}</span><strong>${l.effect==='restar'?'− ':'+ '}${money(l.amount)}</strong></div>`).join('')}
+ <div class="kfr-total"><span>Total a pagar</span><strong>${money(t.total)}</strong></div><div class="kfr-summary-row"><span>Monto recibido</span><strong>${money(t.paid)}</strong></div>${!settled?`<div class="kfr-summary-row"><span>Saldo pendiente</span><strong>${money(t.pending)}</strong></div>`:''}</div>
+ <div class="kfr-foot-panels"><section class="kfr-foot-panel"><div class="kfr-foot-title"><span class="kfr-foot-icon">◉</span> Atención al cliente</div><p>¿Necesitás ayuda con tu pedido? Estamos para ayudarte.</p>${social}</section><section class="kfr-foot-panel"><div class="kfr-foot-title"><span class="kfr-foot-icon">✓</span> Respaldo de compra</div><p>Este recibo acredita tu compra. Conserválo para cualquier consulta.</p></section></div>
+ <div class="kfr-thanks"><strong>¡Gracias por tu compra!</strong><span>ESPERAMOS VERTE PRONTO</span></div><div class="kfr-legal">COMPROBANTE COMERCIAL · NO VÁLIDO COMO FACTURA FISCAL</div></div>`;
 }
 K.saveDoc=async()=>{let d=K.doc;if(!d)return;if(!str(d.client)||!(d.items||[]).length){notice('Indicá el cliente y al menos un producto');return}
- try{const id=d.id||collection('document_drafts').doc().id;const allowed=['id','orderId','orderNo','currency','businessName','businessAddress','businessPhone','logo','client','clientId','phone','address','platform','branch','items','charges','shipping','other','otherLabel','discount','taxPct','taxIncluded','payments','notes','createdMillis','status','sourceTotal'];let data={};for(const key of allowed){if(d[key]!==undefined)data[key]=d[key]}Object.assign(data,{id,kind:'recibo',finalTotal:documentTotals(d).total,status:'borrador',savedBy:uid(),savedAt:stamp(),companyId:company(),createdMillis:d.createdMillis||Date.now()});await collection('document_drafts').doc(id).set(data,{merge:true});d.id=id;d.kind='recibo';notice('Recibo guardado como borrador');draw()}catch(e){modalError(e,'guardar el recibo')} };
+ try{const id=d.id||collection('document_drafts').doc().id;const allowed=['id','orderId','orderNo','currency','businessName','businessAddress','businessPhone','businessWhatsapp','businessInstagram','businessHours','logo','client','clientId','phone','address','platform','branch','items','charges','shipping','other','otherLabel','discount','taxPct','taxIncluded','payments','notes','createdMillis','status','sourceTotal'];let data={};for(const key of allowed){if(d[key]!==undefined)data[key]=d[key]}Object.assign(data,{id,kind:'recibo',finalTotal:documentTotals(d).total,status:'borrador',savedBy:uid(),savedAt:stamp(),companyId:company(),createdMillis:d.createdMillis||Date.now()});await collection('document_drafts').doc(id).set(data,{merge:true});d.id=id;d.kind='recibo';notice('Recibo guardado como borrador');draw()}catch(e){modalError(e,'guardar el recibo')} };
 function pdfObject(){
- const {jsPDF}=window.jspdf||{};
- if(!jsPDF)throw Error('No se cargó el generador PDF');
- const d=K.doc;
- if(!d)throw Error('Abrí primero un recibo');
- const t=documentTotals(d),pdf=new jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight();
- const M=40,R=W-M,C={purple:[103,57,164],ink:[31,29,49],muted:[97,94,116],line:[226,222,239],lavender:[244,241,252],green:[225,247,236],greenText:[13,117,67],paleAmber:[255,247,230],amber:[136,89,23]};
- let y=0;
- const text=(v,x,yy,sz=10,bold=false,color=C.ink,align='left')=>{pdf.setFont('helvetica',bold?'bold':'normal');pdf.setFontSize(sz);pdf.setTextColor(...color);pdf.text(String(v??''),x,yy,{align})};
- const shape=(x,yy,w,h,color,r=0)=>{pdf.setFillColor(...color);r?pdf.roundedRect(x,yy,w,h,r,r,'F'):pdf.rect(x,yy,w,h,'F')};
- const stroke=(x1,y1,x2,y2,color=C.line)=>{pdf.setDrawColor(...color);pdf.setLineWidth(.7);pdf.line(x1,y1,x2,y2)};
- const lines=(v,width,size=10)=>{pdf.setFont('helvetica','normal');pdf.setFontSize(size);return pdf.splitTextToSize(String(v??''),width)};
- const moneyPdf=v=>money(v);
- const foot=()=>{stroke(M,H-44,R,H-44);text('COMPROBANTE COMERCIAL · NO VÁLIDO COMO FACTURA FISCAL',W/2,H-27,8,false,C.muted,'center')};
- const newPage=()=>{foot();pdf.addPage();shape(0,0,W,12,C.purple);y=41;text(str(d.businessName||'Mi negocio'),M,y,13,true,C.ink);text('RECIBO DE COMPRA · CONTINUACIÓN',R,y,9,true,C.purple,'right');y+=26;stroke(M,y,R,y);y+=14};
- const need=h=>{if(y+h>H-82)newPage()};
- // Cabecera: solo la identidad de la empresa, nunca del software.
- shape(0,0,W,10,C.purple);
- if(d.logo&&/^data:image\//.test(d.logo)){try{const fmt=/^data:image\/jpeg/i.test(d.logo)?'JPEG':'PNG';pdf.addImage(d.logo,fmt,M,31,54,40,undefined,'FAST')}catch(e){}}
- const brandX=d.logo?M+66:M;
- const brandLines=lines(d.businessName||'Mi negocio',W/2-brandX+28,18).slice(0,2);
- brandLines.forEach((l,i)=>text(l,brandX,51+i*21,18,true,C.ink));
- text('RECIBO DE COMPRA',R,44,16,true,C.ink,'right');
- text('COMPROBANTE COMERCIAL NO FISCAL',R,62,8.3,false,C.purple,'right');
- shape(R-94,75,94,25,C.lavender,8);text('No. '+str(d.orderNo||'—'),R-47,92,11,true,C.ink,'center');
- y=119;stroke(M,y,R,y);y+=19;
- if(str(d.businessAddress)){const ad=lines(d.businessAddress,W*.57,9.5);ad.forEach(l=>{text(l,M,y,9.5,false,C.muted);y+=14})}
- if(str(d.businessPhone)){text('Tel: '+d.businessPhone,M,y,9.5,false,C.muted);y+=14}
- text(receiptShortDate(),R,133,10,false,C.muted,'right');
- y=Math.max(y+11,165);
- // Cliente
- const clientRows=[['Cliente',d.client||'Sin nombre'],...(str(d.phone)?[['Teléfono',d.phone]]:[]),...(str(d.platform)?[['Origen de venta',d.platform]]:[])];
- const clientH=26+clientRows.reduce((z,a)=>z+Math.max(1,lines(a[1],W-2*M-143,10).length)*14+3,0)+10;
- need(clientH+18);shape(M,y,W-2*M,clientH,C.lavender,12);text('DATOS DEL CLIENTE',M+16,y+21,9.2,true,C.purple);let cy=y+43;
- clientRows.forEach(([label,value])=>{text(label+':',M+16,cy,9.5,false,C.muted);const parts=lines(value,W-2*M-153,10);parts.forEach((l,i)=>text(l,M+132,cy+i*14,10,true,C.ink));cy+=Math.max(1,parts.length)*14+3});y+=clientH+20;
- // Productos: header y filas sin fotos.
- const colQty=333,colUnit=405,colTotal=R-12,descWidth=colQty-M-32;
- const productHeader=()=>{need(43);shape(M,y,W-2*M,26,C.lavender,7);text('PRODUCTO',M+12,y+17,8.8,true,C.purple);text('CANT.',colQty,y+17,8.4,true,C.purple,'center');text('PRECIO UNIT.',colUnit+4,y+17,8.3,true,C.purple,'center');text('TOTAL',R-11,y+17,8.8,true,C.purple,'right');y+=33};
- productHeader();
- for(let i=0;i<(d.items||[]).length;i++){
-   const item=d.items[i],nameLines=lines(item.name||'Producto',descWidth,10.5),rh=Math.max(38,nameLines.length*14+18);
-   if(y+rh>H-86){newPage();productHeader()}
-   nameLines.forEach((ln,j)=>text(ln,M+12,y+13+j*14,10.5,j===0,C.ink));
-   text(n(item.qty).toLocaleString('es-HN'),colQty,y+15,9.5,false,C.ink,'center');
-   text(moneyPdf(item.price),colUnit+41,y+15,9.1,false,C.ink,'right');
-   text(moneyPdf(n(item.qty)*n(item.price)),R-11,y+15,9.5,true,C.ink,'right');
-   stroke(M+10,y+rh-4,R-10,y+rh-4);y+=rh;
+ const PDF=window.jspdf?.jsPDF;
+ if(!PDF)throw Error('No se cargó el generador PDF');
+ const d=K.doc;if(!d)throw Error('Abrí primero un recibo');
+ const t=documentTotals(d),contacts=receiptContacts(d),pdf=new PDF({unit:'pt',format:'a4'});
+ const W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),M=43,R=W-M,usable=R-M;
+ const C={ink:[23,28,44],muted:[100,107,124],line:[226,228,235],soft:[246,246,249],lav:[242,239,251],purple:[89,55,151],green:[29,119,77]};
+ let y=0,pageNo=0;
+ const fill=(x,top,w,h,color,r=0)=>{pdf.setFillColor(...color);if(r)pdf.roundedRect(x,top,w,h,r,r,'F');else pdf.rect(x,top,w,h,'F')};
+ const line=(yy,x=M,right=R)=>{pdf.setDrawColor(...C.line);pdf.setLineWidth(.65);pdf.line(x,yy,right,yy)};
+ const txt=(strg,x,yy,size=10,bold=false,color=C.ink,align='left')=>{pdf.setFont('helvetica',bold?'bold':'normal');pdf.setFontSize(size);pdf.setTextColor(...color);pdf.text(String(strg??''),x,yy,{align})};
+ const wrap=(value,maxWidth,size=10,bold=false)=>{pdf.setFont('helvetica',bold?'bold':'normal');pdf.setFontSize(size);return pdf.splitTextToSize(String(value??''),maxWidth)};
+ const moneyText=v=>money(v);
+ const base=()=>{pageNo++;fill(0,0,W,H,[255,255,255]);line(H-43);txt('COMPROBANTE COMERCIAL · NO VÁLIDO COMO FACTURA FISCAL',M,H-26,7.4,false,C.muted);txt(pageNo,R,H-26,8,false,C.muted,'right')};
+ const newPage=()=>{pdf.addPage();base();y=49;txt(d.businessName||'Mi negocio',M,y,16,true);txt('RECIBO DE COMPRA · CONTINUACIÓN',R,y,9,true,C.purple,'right');y+=20;line(y);y+=20};
+ const ensure=(h)=>{if(y+h>H-65)newPage()};
+ const printValue=(label,value,x,w,top)=>{txt(label,x,top,8.4,false,C.muted);let lines=wrap(value||'—',w,10.5,true);lines.forEach((a,i)=>txt(a,x,top+18+i*13,10.5,true));return 28+Math.max(0,lines.length-1)*13};
+ base();
+ y=53;
+ let logoX=M;
+ if(d.logo&&/^data:image\/(png|jpeg|jpg|webp)/i.test(d.logo)){
+   try{const typ=/^data:image\/jpe?g/i.test(d.logo)?'JPEG':'PNG';pdf.addImage(d.logo,typ,M,y-8,68,46,undefined,'FAST');logoX=M+80}catch(e){}
+ }
+ const brandLines=wrap(d.businessName||'Mi negocio',Math.max(120,R-220-logoX),23,true).slice(0,2);
+ brandLines.forEach((l,i)=>txt(l,logoX,y+14+i*26,23,true));
+ fill(R-172,y-11,172,67,C.soft,9);txt('RECIBO DE COMPRA',R-86,y+12,13,true,C.ink,'center');txt('No. '+String(d.orderNo||'—'),R-86,y+37,10.5,false,C.muted,'center');
+ y=Math.max(brandLines.length*26+y+22,y+82);
+ // Fecha, cliente y estado.
+ const colW=(usable-33)/2, col2=M+colW+33;
+ const left=[['Fecha de emisión',receiptShortDate()],['Cliente',d.client||'Cliente sin nombre'],...(str(d.phone)?[['Teléfono',d.phone]]:[]),...(str(d.address)?[['Dirección',d.address]]:[])];
+ const methods=(d.payments||[]).filter(p=>amt(p.amount)>0).map(p=>receiptMethod(p)).filter((v,i,a)=>a.indexOf(v)===i).join(', ')||'No registrado';
+ const right=[['Estado de pago',t.pending<.005?'Pagado':'Pendiente'],['Método de pago',methods],['Sucursal',branchName(d.branch)],...(str(d.platform)?[['Origen',d.platform]]:[])];
+ const rowH=rows=>rows.reduce((h,r)=>h+28+Math.max(0,wrap(r[1],colW-10,10.5,true).length-1)*13+3,0);
+ const factH=Math.max(rowH(left),rowH(right))+19;
+ ensure(factH+20);
+ line(y);y+=23;const begin=y;
+ let yl=begin,yr=begin;
+ left.forEach(([a,b])=>{yl+=printValue(a,b,M,colW,yl)+3});
+ right.forEach(([a,b])=>{yr+=printValue(a,b,col2,colW,yr)+3});
+ pdf.setDrawColor(...C.line);pdf.line(col2-17,begin-13,col2-17,Math.max(yl,yr));
+ y=Math.max(yl,yr)+12;
+ // List of products: text only, no photos.
+ const unitX=394,qtyX=454,totalX=R-8,nameW=unitX-M-24;
+ const tableHead=()=>{ensure(43);fill(M,y,usable,33,C.soft,7);txt('Producto',M+11,y+21,9,true);txt('Precio unit.',unitX,y+21,8.5,true,C.ink,'right');txt('Cant.',qtyX+4,y+21,8.5,true,C.ink,'center');txt('Total',totalX,y+21,9,true,C.ink,'right');y+=40};
+ tableHead();
+ for(const item of d.items||[]){
+  const name=wrap(item.name||'Producto',nameW,10.4,true),h=Math.max(42,18+name.length*13);
+  if(y+h>H-75){newPage();tableHead()}
+  name.forEach((v,i)=>txt(v,M+9,y+17+i*13,10.4,true));
+  txt(moneyText(item.price),unitX,y+17,9.2,false,C.ink,'right');
+  txt(n(item.qty).toLocaleString('es-HN'),qtyX+4,y+17,9.2,false,C.ink,'center');
+  txt(moneyText(n(item.qty)*n(item.price)),totalX,y+17,9.5,true,C.ink,'right');
+  line(y+h-2);y+=h;
  }
  y+=14;
- // Resumen: ocupa todo el ancho, más aire y total destacado.
  const summary=[['Subtotal',t.subtotal],...t.lines.filter(l=>l.amount>0).map(l=>[l.label+(l.unit==='porcentaje'?' ('+l.value+'%)':''),l.signed])];
- const summaryH=16+summary.length*20+38+22+(t.pending>0.005?20:0)+47;
- need(summaryH+75);
- shape(M,y,W-2*M,summaryH,C.lavender,12);
- let sy=y+24;
- for(const [label,val] of summary){text(label,M+17,sy,10,false,C.muted);text((val<0?'− ':'')+moneyPdf(Math.abs(val)),R-17,sy,10,true,C.ink,'right');sy+=20}
- shape(M+10,sy-6,W-2*M-20,33,[234,227,250],8);
- text('TOTAL',M+20,sy+16,13,true,C.purple);text(moneyPdf(t.total),R-18,sy+16,14,true,C.purple,'right');sy+=52;
- text('Monto recibido',M+17,sy,10,false,C.muted);text(moneyPdf(t.paid),R-17,sy,10,true,C.ink,'right');sy+=20;
- if(t.pending>0.005){text('Saldo pendiente',M+17,sy,10,false,C.muted);text(moneyPdf(t.pending),R-17,sy,10,true,C.ink,'right');sy+=20}
- const paid=t.pending<0.005;shape(M+10,sy+1,W-2*M-20,30,paid?C.green:C.paleAmber,8);
- text(paid?'PAGADO':'PAGO PENDIENTE',W/2,sy+20,11,true,paid?C.greenText:C.amber,'center');
- y+=summaryH+17;
- const allPay=(d.payments||[]).filter(p=>amt(p.amount)>0).map(p=>receiptMethod(p)+' · '+moneyPdf(p.amount)+(p.paid?' (confirmado)':' (pendiente)'));
- const payText=allPay.length?allPay.join('  |  '):'No registrada';
- const payLines=lines('Forma de pago: '+payText,W-2*M,9.2);
- need(payLines.length*13+100);
- payLines.forEach((ln,i)=>text(ln,M,y+i*13,9.2,i===0,C.muted));y+=payLines.length*13+12;
- if(str(d.notes)&&str(d.notes)!=='Gracias por tu compra.'){
-   const noteLines=lines(d.notes,W-2*M-22,9);need(noteLines.length*12+24);
-   text('OBSERVACIONES',M,y,9,true,C.purple);y+=17;
-   noteLines.forEach((ln,i)=>text(ln,M+6,y+i*12,9,false,C.muted));y+=noteLines.length*12+14;
- }
- need(50);stroke(M,y,R,y);y+=26;text('Gracias por tu compra.',W/2,y,16,false,C.purple,'center');
- foot();
+ const sumRows=summary.map(r=>({a:r[0],v:r[1],lines:wrap(r[0],190,9.3)}));
+ let sumH=sumRows.reduce((a,b)=>a+Math.max(21,b.lines.length*13+5),0)+90+(t.pending>.005?18:0);
+ ensure(sumH+12);
+ const tx=M+usable*.49;
+ let sy=y+7;
+ for(const row of sumRows){row.lines.forEach((v,i)=>txt(v,tx,sy+i*13,9.5,false,C.muted));txt((row.v<0?'− ':'')+moneyText(Math.abs(row.v)),R-8,sy,10,true,C.ink,'right');sy+=Math.max(21,row.lines.length*13+5)}
+ fill(tx-10,sy+3,R-tx+18,46,C.lav,9);txt('Total a pagar',tx+1,sy+31,11,true);txt(moneyText(t.total),R-4,sy+31,14,true,[32,26,52],'right');sy+=66;
+ txt('Monto recibido',tx,sy,9.7,false,C.muted);txt(moneyText(t.paid),R-7,sy,9.9,true,C.ink,'right');sy+=18;
+ if(t.pending>.005){txt('Saldo pendiente',tx,sy,9.7,false,C.muted);txt(moneyText(t.pending),R-7,sy,9.9,true,C.ink,'right');sy+=18}
+ y=sy+9;
+ // Two simple panels: support + purchase proof. Contact fields appear only when configured.
+ const contactRows=[contacts.whatsapp?'WhatsApp: '+contacts.whatsapp:'',contacts.instagram?'Instagram: '+contacts.instagram:'',contacts.hours?'Horario: '+contacts.hours:''].filter(Boolean);
+ const helpText=wrap('¿Necesitás ayuda con tu pedido? Estamos para ayudarte.',(usable-55)/2,9.3);
+ const backingText=wrap('Este recibo acredita tu compra. Conserválo para cualquier consulta.',(usable-55)/2,9.3);
+ const leftRows=contactRows.flatMap(c=>wrap(c,(usable-55)/2,8.9));
+ const blocksH=Math.max(53+13*(helpText.length+leftRows.length),53+13*backingText.length,110);
+ ensure(blocksH+92);
+ fill(M,y,usable,blocksH,C.soft,11);
+ const half=usable/2;
+ pdf.setDrawColor(...C.line);pdf.line(M+half,y+17,M+half,y+blocksH-17);
+ txt('ATENCIÓN AL CLIENTE',M+16,y+24,10,true,C.ink);
+ let hy=y+44;
+ helpText.forEach(v=>{txt(v,M+16,hy,9.3,false,C.muted);hy+=13});
+ hy+=8;
+ leftRows.forEach(v=>{txt(v,M+16,hy,8.9,false,C.ink);hy+=13});
+ txt('RESPALDO DE COMPRA',M+half+16,y+24,10,true,C.ink);
+ let by=y+44;
+ backingText.forEach(v=>{txt(v,M+half+16,by,9.3,false,C.muted);by+=13});
+ y+=blocksH+14;
+ fill(M,y,usable,67,C.lav,10);
+ txt('¡Gracias por tu compra!',W/2,y+30,17,false,C.ink,'center');
+ txt('ESPERAMOS VERTE PRONTO',W/2,y+49,8.5,false,C.muted,'center');
  return {blob:pdf.output('blob'),file:'Recibo-'+String(d.orderNo||'Orden').replace(/[^a-zA-Z0-9_-]/g,'')+'.pdf'};
 }
 K.downloadDoc=()=>{try{let p=pdfObject(),url=URL.createObjectURL(p.blob),a=document.createElement('a');a.href=url;a.download=p.file;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);notice('Recibo comercial en PDF generado')}catch(e){modalError(e,'generar el PDF')}};
@@ -23631,7 +23656,7 @@ async function command(cmd){let [action,...rest]=cmd.split(':'),id=rest.join(':'
  case 'receiptSettingsToggle':K.receiptPrefsOpen=!K.receiptPrefsOpen;draw();break;
  case 'cashSettingsToggle':K.cashPrefsOpen=!K.cashPrefsOpen;draw();break;
  case 'saveCashSettings':await saveConfig({cashMode:$('kfCashPrefMode')?.value==='completo'?'completo':'rapido'});K.expandDenoms=false;K.quickCount='';K.counts={};break;
- case 'saveReceiptSettings':{await saveConfig({currency:$('kfCfgCurrency')?.value||'L',businessName:str($('kfCfgName')?.value),businessAddress:str($('kfCfgAddress')?.value),businessPhone:str($('kfCfgPhone')?.value),logo:K._newLogo||K.config.logo||''});K._newLogo=null;break}
+ case 'saveReceiptSettings':{await saveConfig({currency:$('kfCfgCurrency')?.value||'L',businessName:str($('kfCfgName')?.value),businessAddress:str($('kfCfgAddress')?.value),businessPhone:str($('kfCfgPhone')?.value),businessWhatsapp:str($('kfCfgWhatsapp')?.value),businessInstagram:str($('kfCfgInstagram')?.value),businessHours:str($('kfCfgHours')?.value),logo:K._newLogo||K.config.logo||''});K._newLogo=null;break}
  }}catch(e){modalError(e,'realizar esta acción')}
 }
 document.addEventListener('click',e=>{let b=e.target.closest?.('[data-kf]');if(b){e.preventDefault();e.stopImmediatePropagation();let cmd=b.dataset.kf;b.disabled=true;Promise.resolve(command(cmd)).finally(()=>{if(b.isConnected)b.disabled=false})}},true);
@@ -23645,7 +23670,7 @@ document.addEventListener('change',e=>{let t=e.target;if(!t||!K.page)return;
  if(t.id==='kfMoveBank'){const wrap=$('kfMoveOtherWrap');if(wrap)wrap.hidden=t.value!=='otro';return}
  if(t.hasAttribute('data-kf-select')){if(t.checked)K.selection.add(t.dataset.kfSelect);else K.selection.delete(t.dataset.kfSelect);let btn=document.querySelector('[data-kf="releaseMany"]');if(btn)btn.textContent='Liberar seleccionadas ('+K.selection.size+')';return}
  if(K.page==='documents'&&K.doc){let d=K.doc;
- const direct={kfDocCurrency:'currency',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocClient:'client',kfDocClientId:'clientId',kfDocPhone:'phone',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocOtherLabel:'otherLabel',kfDocTax:'taxPct',kfDocNotes:'notes'};
+ const direct={kfDocCurrency:'currency',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocWhatsapp:'businessWhatsapp',kfDocInstagram:'businessInstagram',kfDocHours:'businessHours',kfDocClient:'client',kfDocClientId:'clientId',kfDocPhone:'phone',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocOtherLabel:'otherLabel',kfDocTax:'taxPct',kfDocNotes:'notes'};
  if(direct[t.id]){let k=direct[t.id];d[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value;if(k==='currency')draw();else refreshDocPreview();return}
  if(t.id==='kfDocTaxIncluded'){d.taxIncluded=t.checked;refreshDocPreview();return}
  if(t.hasAttribute('data-doc-item')){let i=Number(t.dataset.docItem),key=t.dataset.key;if(d.items[i])d.items[i][key]=key==='name'?t.value:amt(t.value);refreshDocPreview();return}
@@ -23672,12 +23697,12 @@ document.addEventListener('input',e=>{
     refreshDocPreview();return;
   }
   if(K.page==='documents'&&K.doc){
-    const tmap={kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocNotes:'notes',kfDocClient:'client',kfDocBiz:'businessName',kfDocClientId:'clientId',kfDocBizPhone:'businessPhone',kfDocPhone:'phone',kfDocAddress:'businessAddress',kfDocPlatform:'platform'};
+    const tmap={kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocNotes:'notes',kfDocClient:'client',kfDocBiz:'businessName',kfDocClientId:'clientId',kfDocBizPhone:'businessPhone',kfDocWhatsapp:'businessWhatsapp',kfDocInstagram:'businessInstagram',kfDocHours:'businessHours',kfDocPhone:'phone',kfDocAddress:'businessAddress',kfDocPlatform:'platform'};
     const k=tmap[t.id];if(k){K.doc[k]=['discount','shipping','other'].includes(k)?amt(t.value):t.value;refreshDocPreview();return}
   }
   if(e.target.id==='kfQuickCount'){K.quickCount=e.target.value;let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfDocSearch'){K.note=e.target.value;let dst=$('kfDocRows');if(dst)dst.innerHTML=docOrderRows(branchOrders())}else if(e.target.id==='kfRuleThreshold'){/* valor del formulario se toma al guardar */}else if(e.target.matches('[id^="kfD"]')&&K.page==='cash'){let key=e.target.id.slice(3).replace('_','.');K.counts[Number(key)]=Math.max(0,Math.floor(n(e.target.value)));let node=$('kfCashArqueoResume');if(node)node.textContent=money(counted());let dif=$('kfCashDifference');if(dif)dif.textContent=money(counted()-cashProjection().expected)}else if(e.target.id==='kfCashReason'){K.note=e.target.value}});
 /* Formularios de documentos: impedir que cambios no disparados por blur se pierdan al guardar. */
-function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySelectorAll('#kpFlowRoot [data-doc-item]').forEach(t=>{let i=Number(t.dataset.docItem),k=t.dataset.key;if(K.doc.items[i])K.doc.items[i][k]=k==='name'?t.value:amt(t.value)});document.querySelectorAll('#kpFlowRoot [data-doc-pay]').forEach(t=>{let i=Number(t.dataset.docPay),k=t.dataset.key;if(K.doc.payments[i])K.doc.payments[i][k]=k==='paid'?t.checked:k==='amount'?amt(t.value):t.value});document.querySelectorAll('#kpFlowRoot [data-doc-charge]').forEach(t=>{const i=Number(t.dataset.docCharge),k=t.dataset.key,c=normalizeReceiptCharges(K.doc)[i];if(c)c[k]=k==='value'?amt(t.value):t.value});const map={kfDocCurrency:'currency',kfDocClient:'client',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocPhone:'phone',kfDocClientId:'clientId',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocOtherLabel:'otherLabel',kfDocTax:'taxPct',kfDocNotes:'notes'};Object.entries(map).forEach(([id,k])=>{let t=$(id);if(t)K.doc[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value});if($('kfDocTaxIncluded'))K.doc.taxIncluded=$('kfDocTaxIncluded').checked}
+function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySelectorAll('#kpFlowRoot [data-doc-item]').forEach(t=>{let i=Number(t.dataset.docItem),k=t.dataset.key;if(K.doc.items[i])K.doc.items[i][k]=k==='name'?t.value:amt(t.value)});document.querySelectorAll('#kpFlowRoot [data-doc-pay]').forEach(t=>{let i=Number(t.dataset.docPay),k=t.dataset.key;if(K.doc.payments[i])K.doc.payments[i][k]=k==='paid'?t.checked:k==='amount'?amt(t.value):t.value});document.querySelectorAll('#kpFlowRoot [data-doc-charge]').forEach(t=>{const i=Number(t.dataset.docCharge),k=t.dataset.key,c=normalizeReceiptCharges(K.doc)[i];if(c)c[k]=k==='value'?amt(t.value):t.value});const map={kfDocCurrency:'currency',kfDocClient:'client',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocWhatsapp:'businessWhatsapp',kfDocInstagram:'businessInstagram',kfDocHours:'businessHours',kfDocPhone:'phone',kfDocClientId:'clientId',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocOtherLabel:'otherLabel',kfDocTax:'taxPct',kfDocNotes:'notes'};Object.entries(map).forEach(([id,k])=>{let t=$(id);if(t)K.doc[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value});if($('kfDocTaxIncluded'))K.doc.taxIncluded=$('kfDocTaxIncluded').checked}
 const rawCommand=command;command=async function(cmd){if(/^doc(Save|PDF|Share)$/.test(cmd))flushDocForm();return rawCommand(cmd)};
 /* Cambio de rutas sin afectar menús existentes */
 const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|settings)$/.test(id)){K.open(id.slice(7));return}if(K.page&&!window.__kpUserNav&&Date.now()<(K.guardUntil||0))return;K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
