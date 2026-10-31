@@ -3320,6 +3320,14 @@ db.collection('config').doc('vendedores').onSnapshot({includeMetadataChanges:tru
       CURRENT_USER.esAdmin = !!yo.esAdmin;
       CURRENT_USER.esEncargadoEnvios = !!yo.esEncargadoEnvios;
       CURRENT_USER.esRepartidor = CURRENT_USER.esAdmin ? false : !!yo.esRepartidor;
+      CURRENT_USER.esEmpacador = !!yo.esEmpacador;
+      CURRENT_USER.kpRol = yo.kpRol || (yo.esAdmin?'admin_general':yo.esEncargadoEnvios?'admin_envios':yo.esRepartidor?'repartidor':yo.esEmpacador?'empacador':'vendedor');
+      CURRENT_USER.kpPermisosExtra = Array.isArray(yo.kpPermisosExtra)?yo.kpPermisosExtra.slice():[];
+      CURRENT_USER.kpSucursalesAsignadas = yo.kpSucursalesAsignadas;
+      CURRENT_USER.sucursalId = yo.sucursalId || CURRENT_USER.sucursalId;
+      CURRENT_USER.kpEstado = yo.kpEstado || (yo.activo===false?'inactivo':'activo');
+      CURRENT_USER.activo = yo.activo !== false;
+      CURRENT_USER.email = yo.email || CURRENT_USER.email;
       CURRENT_USER.cargo = cargoLabel(CURRENT_USER);
       CURRENT_USER.usuario = yo.usuario || CURRENT_USER.usuario || yo.nombre;
       if(yo.fotoPerfil) CURRENT_USER.fotoPerfil = yo.fotoPerfil;
@@ -14361,7 +14369,7 @@ const invitacionError=e=>{const c=(e&&e.code)||'';if(c==='invite/email-mismatch'
 const wait=()=>new Promise(r=>{let n=0;const t=setInterval(()=>{if(loaded||++n>40){clearInterval(t);r();}},250);});
 window.kpAfterUsers=function(cache){if(!cache)loaded=true;};
 const nuevo=(u,adm)=>{const e=norm(u.email);return {nombre:u.displayName||e.split('@')[0],usuario:e.split('@')[0],email:e,activo:true,aprobado:true,esAdmin:adm,esRepartidor:false,esEncargadoEnvios:false,esEmpacador:false,soloOrdenes:!adm,fotoPerfil:''};};
-function enter(v){finishLogin({nombre:v.nombre,usuario:v.usuario||v.nombre,email:norm(v.email),soloOrdenes:!!v.soloOrdenes,esAdmin:!!v.esAdmin,esRepartidor:!!v.esRepartidor,esEncargadoEnvios:!!v.esEncargadoEnvios,esEmpacador:!!v.esEmpacador,fotoPerfil:v.fotoPerfil||'',numeroUsuario:v.numeroUsuario||'',cargo:cargoLabel(v)});msg('');if(v.esAdmin)setTimeout(solicitudes,1500);}
+function enter(v){if(v.activo===false||v.kpEstado==='suspendido'||v.kpEstado==='inactivo'){msg('Esta cuenta está suspendida o inactiva. Consultá con tu administrador.');return;}finishLogin({...v,nombre:v.nombre,usuario:v.usuario||v.nombre,email:norm(v.email),cargo:cargoLabel(v)});msg('');if(v.esAdmin)setTimeout(solicitudes,1500);}
 async function onUser(u){
   if(busy)return;busy=true;
   try{
@@ -23029,9 +23037,13 @@ const today=()=>typeof window.todayStr==='function'?window.todayStr():new Date()
 const uid=()=>str(window.CURRENT_USER?.email||window.CURRENT_USER?.usuario||window.CURRENT_USER?.nombre||'');
 const username=()=>str(window.CURRENT_USER?.nombre||'Usuario');
 const admin=()=>!!window.CURRENT_USER?.esAdmin;
+const hasPerm=p=>!!window.KPTeam?.has(window.CURRENT_USER,p);
+const cashOperator=()=>admin()||hasPerm('cash.operate');
+const cashReader=()=>hasPerm('cash.view')&&!cashOperator()&&!window.CURRENT_USER?.esRepartidor;
+const receiptsUser=()=>admin()||hasPerm('receipts.create');
 const user=()=>!!window.CURRENT_USER;
 const employee=()=>{const self=window.CURRENT_USER||{};return (window.VENDEDORES||[]).find(u=>[u.email,u.usuario,u.nombre].some(x=>x&&[self.email,self.usuario,self.nombre].some(y=>norm(x)===norm(y))))||self};
-const packer=()=>admin()||!!employee().esEmpacador||!!window.CURRENT_USER?.esEmpacador;
+const packer=()=>admin()||hasPerm('packing.manage')||!!employee().esEmpacador||!!window.CURRENT_USER?.esEmpacador;
 const driver=()=>!!window.CURRENT_USER?.esRepartidor;
 const seller=()=>user()&&!admin()&&!driver()&&!packer();
 const company=()=>{let c=str(window.KPLACE_ACTIVE_CONTEXT?.companyId||window.CURRENT_USER?.companyId);return c||'kplace_legacy_company';};
@@ -23084,7 +23096,7 @@ function draw(){if(!K.page||!user())return;let v=$('view');if(!v)return;
  const oldFocus=document.activeElement;
  const focusKey=oldFocus?.id||'';
  const renderers={packing:packingScreen,cash:cashScreen,documents:documentsScreen,settings:settingsScreen};
- const allowed=K.page==='packing'?packer():['cash','documents','settings'].includes(K.page)?admin()||K.page==='cash'&&(driver()||seller()):false;
+ const allowed=K.page==='packing'?packer():K.page==='cash'?(cashOperator()||cashReader()||driver()||seller()):K.page==='documents'?receiptsUser():K.page==='settings'?admin():false;
  node.classList.toggle('kf-cash-screen',K.page==='cash');
  node.innerHTML=allowed?tabBar()+renderers[K.page]():card(msg('No tenés permisos para esta sección. Contactá al Administrador general.'));
  if(Number.isFinite(oldTop)&&K.page==='packing'&&K.order){
@@ -23107,9 +23119,10 @@ K.open=function(page,orderId){
  const reopeningSamePage=K.page===page;
  if(!reopeningSamePage){K.note='';K.pick=null;K.doc=null;K.receiptPrefsOpen=false;K.cashPrefsOpen=false}
  if(page==='packing'&&!packer()){notice('Acceso exclusivo de Empacador o Administrador general.');return}
- if(['documents','settings'].includes(page)&&!admin()){notice('Solo el Administrador general puede acceder aquí.');return}
- if(page==='cash'&&!admin()&&!driver()&&!seller()){notice('No tenés acceso a Caja.');return}
- clearListeners();K.page=page;window.activeTab='kplace_'+page;K.selection.clear();K.order=orderId||(reopeningSamePage?K.order:null);if(!reopeningSamePage)K.pick=null;K.branch=admin()?(K.branch||ownBranch()):ownBranch();K.cashDate=K.cashDate||today();if(page==='documents')K.receiptDate=K.receiptDate||str(window.selectedDate||today());
+ if(page==='settings'&&!admin()){notice('Solo el Administrador general puede acceder aquí.');return}
+ if(page==='documents'&&!receiptsUser()){notice('No tenés acceso para crear recibos.');return}
+ if(page==='cash'&&!cashOperator()&&!cashReader()&&!driver()&&!seller()){notice('No tenés acceso a Caja.');return}
+ clearListeners();K.page=page;window.activeTab='kplace_'+page;K.selection.clear();K.order=orderId||(reopeningSamePage?K.order:null);if(!reopeningSamePage)K.pick=null;K.branch=(admin()||window.CURRENT_USER?.kpRol==='contador_general')?(K.branch||ownBranch()):ownBranch();K.cashDate=K.cashDate||today();if(page==='documents')K.receiptDate=K.receiptDate||str(window.selectedDate||today());
  if(page==='packing'){listen('packing_incidents',a=>K.incidents=a)}
  if(page==='cash'){listen('cash_movements',a=>K.cashRows=a);listen('cash_settlements',a=>K.settlements=a);listen('cash_closures',a=>K.closures=a)}
  if(page==='documents'){listen('document_drafts',a=>K.drafts=a);if(orderId){K.doc=null;K.newDocument(orderId)}}
@@ -23226,7 +23239,23 @@ function counted(){return K.config?.cashMode==='rapido'&&!K.expandDenoms?amt(K.q
 function cashPrefs(){let c=K.config||{};return card(`<div class="kf-row"><h2>Configuración de caja</h2>${button('Cerrar','cashSettingsToggle','sm')}</div><p>Elegí el método predeterminado para contar el efectivo. Podés abrir un arqueo detallado cuando lo necesités.</p>
  ${field('Método de cierre',select('kfCashPrefMode',[['rapido','Cierre rápido'],['completo','Arqueo completo por denominaciones']],c.cashMode||'rapido'))}
  <div class="kf-actions">${button('Guardar configuración de caja','saveCashSettings','primary')}</div>`)}
-function cashScreen(){if(!admin())return driverCashScreen();const x=cashProjection();const clos=K.closures.find(z=>z.date===K.cashDate&&z.branch===currentBranch());let pending=K.settlements.filter(z=>z.status==='solicitada'&&(K.branch==='all'||z.branch===currentBranch()));
+function cashReadOnlyScreen(){
+ const allowed=branches().filter(b=>window.KPTeam?.canScope(window.CURRENT_USER,b.id));
+ const branchIds=allowed.map(b=>b.id),all=window.CURRENT_USER?.kpRol==='contador_general';
+ const chosen=(K.branch==='all'&&all)?'all':branchIds.includes(currentBranch())?currentBranch():(branchIds[0]||ownBranch());
+ K.branch=chosen;
+ const cash=K.cashRows.filter(m=>(chosen==='all'||m.branch===chosen)&&(!m.date||m.date===K.cashDate));
+ const settlements=K.settlements.filter(m=>chosen==='all'||m.branch===chosen);
+ const closures=K.closures.filter(m=>chosen==='all'||m.branch===chosen);
+ const incoming=cash.filter(m=>['ingreso','fondo','devolucion_cambio'].includes(m.type)).reduce((a,m)=>a+amt(m.amount),0);
+ const outgoing=cash.filter(m=>['gasto','retiro','anticipo_repartidor'].includes(m.type)).reduce((a,m)=>a+amt(m.amount),0);
+ return header('Caja · consulta financiera','Movimientos y liquidaciones de tus sucursales, sin permiso para registrar ni modificar operaciones.')
+ +card(`<div class="kf-cash-filter-grid">${field('Sucursal',select('kfBranch',[(all?['all','Todas las sucursales']:null),...allowed.map(b=>[b.id,b.nombre])].filter(Boolean),chosen))}${field('Fecha de movimientos',inp('kfCashDate',K.cashDate,'date'))}</div>`)
+ +`<div class="kf-numbers">${stat('Entradas registradas',money(incoming))}${stat('Salidas registradas',money(outgoing))}${stat('Liquidaciones',settlements.length)}${stat('Cierres',closures.length)}</div>`
+ +card('<h2>Movimientos de caja</h2>'+(cash.sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0)).slice(0,100).map(m=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(m.type||'Movimiento')} · ${money(amt(m.amount))}</strong><small>${esc(m.date||'')} · ${esc(m.byName||'')} · ${esc(m.note||'Sin nota')} ${m.bank?' · '+esc(m.bank):''}</small></div></div>`).join('')||'<p>No hay movimientos para esta fecha.</p>'))
+ +card('<h2>Liquidaciones de repartidores</h2>'+(settlements.slice(-50).reverse().map(m=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${esc(m.byName||'Repartidor')} · ${money(amt(m.amount))}</strong><small>${esc(m.date||'')} · ${esc(m.status||'Pendiente')}</small></div></div>`).join('')||'<p>No hay liquidaciones registradas.</p>'));
+}
+function cashScreen(){if(cashReader())return cashReadOnlyScreen();if(!cashOperator())return driverCashScreen();const x=cashProjection();const clos=K.closures.find(z=>z.date===K.cashDate&&z.branch===currentBranch());let pending=K.settlements.filter(z=>z.status==='solicitada'&&(K.branch==='all'||z.branch===currentBranch()));
  const dateField=field('Fecha',inp('kfCashDate',K.cashDate,'date'));
  return header('Cierre de caja inteligente','Ventas, efectivo bajo custodia, liquidaciones y arqueos, separados de los cobros pendientes.',button(K.cashPrefsOpen?'Ocultar configuración':'Configuración de caja','cashSettingsToggle','sm'))+
   (K.cashPrefsOpen?cashPrefs():'')+
@@ -23248,7 +23277,7 @@ function driverCashScreen(){let mine=K.settlements.filter(x=>x.byId===uid()).sor
  card(`<h2>Historial</h2>${mine.map(z=>`<div class="kf-entry"><div class="kf-entry-text"><strong>${money(z.amount)} · ${esc(z.date)}</strong><small>${esc(z.note||'')}</small></div>${status(z.status==='confirmada'?'Recibida':'Pendiente',z.status==='confirmada'?'ok':'busy')}</div>`).join('')||'<p>Sin liquidaciones registradas.</p>'}`);
 }
 K.newMovement=async()=>{
- if(!admin())return;
+ if(!cashOperator())return;
  const branch=currentBranch(),date=K.cashDate;
  if(K.branch==='all'){notice('Seleccioná una sucursal antes de registrar el movimiento');return}
  if(K.closures.some(c=>c.branch===branch&&c.date===date)){notice('La caja de este día ya está cerrada. No se pueden cambiar sus movimientos.');return}
@@ -23287,7 +23316,7 @@ K.newMovement=async()=>{
  }catch(e){modalError(e,'registrar el movimiento')}
 };
 K.carryFund=async()=>{
- if(!admin())return;
+ if(!cashOperator())return;
  if(K.branch==='all'){notice('Elegí una sucursal concreta.');return}
  const date=K.cashDate,branch=currentBranch(),prevDate=previousCashDate(date),sourceId=str($('kfCarrySource')?.value);
  const src=previousFunds().find(m=>m.id===sourceId);
@@ -23313,17 +23342,17 @@ K.carryFund=async()=>{
 };
 K.requestSettlement=async()=>{const amount=amt($('kfSetAmount')?.value),note=str($('kfSetNote')?.value),b=currentBranch();if(!amount){notice('Ingresá el importe a entregar');return}if(b==='all'){notice('Seleccioná una sucursal');return}
  try{await collection('cash_settlements').add({date:K.cashDate,branch:b,amount,note,byId:uid(),byName:username(),status:'solicitada',createdAt:stamp(),createdMillis:Date.now()});K.pick=null;notice('Liquidación solicitada, pendiente de confirmación');draw()}catch(e){modalError(e,'solicitar la liquidación')}};
-K.confirmSettlement=async id=>{if(!admin())return;let z=K.settlements.find(x=>x.id===id);if(!z||z.status!=='solicitada')return;let a=prompt('¿Cuánto efectivo recibiste físicamente de '+z.byName+'? (L)',z.amount);if(a===null)return;let amount=amt(a);if(amount<=0||amount>z.amount){notice('El monto recibido debe ser mayor a 0 y no superar el solicitado. Si hay saldo, registrá otra liquidación.');return}
+K.confirmSettlement=async id=>{if(!cashOperator())return;let z=K.settlements.find(x=>x.id===id);if(!z||z.status!=='solicitada')return;let a=prompt('¿Cuánto efectivo recibiste físicamente de '+z.byName+'? (L)',z.amount);if(a===null)return;let amount=amt(a);if(amount<=0||amount>z.amount){notice('El monto recibido debe ser mayor a 0 y no superar el solicitado. Si hay saldo, registrá otra liquidación.');return}
  if(!confirm('¿Confirmás haber recibido '+money(amount)+' en efectivo?'))return;
  try{await window.db.runTransaction(async tx=>{let ref=collection('cash_settlements').doc(id),s=await tx.get(ref);if(!s.exists||s.data().status!=='solicitada')throw Error('La liquidación fue atendida por otra persona');tx.update(ref,{status:'confirmada',confirmedAmount:amount,remainingAmount:amt(s.data().amount-amount),confirmedBy:username(),confirmedById:uid(),confirmedDate:today(),confirmedAt:stamp()})});notice('Recepción confirmada');draw()}catch(e){modalError(e,'confirmar la liquidación')}};
-K.closeCash=async()=>{if(!admin())return;if(K.branch==='all'){notice('Seleccioná una sucursal concreta para cerrar caja');return}const x=cashProjection();if(K.config?.cashMode==='rapido'&&!K.expandDenoms&&(K.quickCount===''||K.quickCount==null)){notice('Introducí el efectivo que contaste antes de cerrar.');return}const countedAmount=amt(counted()),diff=Math.round((countedAmount-x.expected)*100)/100,reason=str($('kfCashReason')?.value);
+K.closeCash=async()=>{if(!cashOperator())return;if(K.branch==='all'){notice('Seleccioná una sucursal concreta para cerrar caja');return}const x=cashProjection();if(K.config?.cashMode==='rapido'&&!K.expandDenoms&&(K.quickCount===''||K.quickCount==null)){notice('Introducí el efectivo que contaste antes de cerrar.');return}const countedAmount=amt(counted()),diff=Math.round((countedAmount-x.expected)*100)/100,reason=str($('kfCashReason')?.value);
  if(Math.abs(diff)>.005&&!reason){notice('Explicá la diferencia antes de cerrar la caja');return}if(!confirm('¿Cerrar la caja de '+branchName(currentBranch())+' del '+K.cashDate+'? Este cierre no podrá modificarse.'))return;
  try{const id=currentBranch()+'_'+K.cashDate;await window.db.runTransaction(async tx=>{const ref=collection('cash_closures').doc(id),s=await tx.get(ref);if(s.exists)throw Error('Esta caja ya fue cerrada');tx.set(ref,{date:K.cashDate,branch:currentBranch(),expected:x.expected,counted:countedAmount,difference:diff,reason,breakdown:{sold:x.sold,confirmed:x.confirmed,cashLocal:x.cashLocal,heldByDriver:x.heldByDriver,pending:x.pending,bank:x.bank,cashIn:x.cashIn,cashOut:x.cashOut,companyCash:x.companyCash,companyBank:x.companyBank,bankIn:x.bankIn,bankOut:x.bankOut,driverBalances:x.driverBalances,paidSettlement:x.paidSettlement},denominations:{...K.counts},closedBy:username(),closedById:uid(),closedAt:stamp(),companyId:company()})});notice('Cierre de caja registrado');draw()}catch(e){modalError(e,'cerrar la caja')}};
 /* Exportación de conciliaciones: los resultados son instantáneas, no certificaciones bancarias. */
-K.cashExcel=()=>{if(!admin())return;const x=cashProjection();if(!window.XLSX){notice('La librería Excel no está disponible');return}
+K.cashExcel=()=>{if(!cashOperator())return;const x=cashProjection();if(!window.XLSX){notice('La librería Excel no está disponible');return}
  const data=[['CIERRE DE CAJA KPLACE'],['Sucursal',branchName(currentBranch())],['Fecha',K.cashDate],['Concepto','Lempiras / moneda configurada'],['Ventas del día',x.sold],['Pagos marcados pagados',x.confirmed],['Efectivo local marcado pagado',x.cashLocal],['En manos de repartidores',x.heldByDriver],['Liquidaciones confirmadas',x.paidSettlement],['Fondo inicial en efectivo',x.initialCash],['Adicional recibido en efectivo',x.additionalCash],['Fondo conservado de ayer en efectivo',x.carriedCash],['Fondo inicial por banco',x.initialBank],['Adicional recibido por banco',x.additionalBank],['Saldo bancario conservado de ayer',x.carriedBank],['Otras entradas en efectivo',x.cashIn-x.companyCash-x.carriedCash],['Gastos y salidas en efectivo',x.cashOut],['Otras entradas bancarias registradas',x.bankIn-x.companyBank],['Pagos bancarios registrados',x.bankOut],['Efectivo esperado',x.expected],['Efectivo contado',counted()],['Diferencia',counted()-x.expected],[],['MOVIMIENTOS'],['Fecha','Tipo','Monto','Canal de entrega / cobro','Banco','Entregado por / origen','Recibido por / custodio / repartidor','Referencia bancaria','Registrado por','Motivo','Origen del fondo','Fecha de origen'],...x.moves.map(m=>[m.date,cashTypeName(m.type,m.fundOrigin),m.amount,m.channel==='transferencia'?'Transferencia bancaria':m.channel==='efectivo'?'Efectivo':'No indicado (registro anterior)',m.bank||'',m.sourcePerson||(m.type==='fondo'?'Empresa':''),m.type==='fondo'?fundCustodian(m):m.personName||m.recipient||'',m.reference||'',m.byName,m.note,m.type==='fondo'?(m.fundOrigin==='arrastre'?'Utilizado de ayer':m.fundOrigin==='adicional'?'Adicional':'Inicial'):'',m.sourceDate||'']),[],['FONDOS DE CAMBIO POR REPARTIDOR'],['Repartidor','Entregado','Devuelto','Pendiente'],...Object.values(x.driverBalances).map(p=>[p.name,p.advance,p.returned,p.balance])];
  const sheet=window.XLSX.utils.aoa_to_sheet(data),book=window.XLSX.utils.book_new();sheet['!cols']=[{wch:32},{wch:32},{wch:19},{wch:25},{wch:25},{wch:27},{wch:30},{wch:26},{wch:25},{wch:38},{wch:24},{wch:20}];window.XLSX.utils.book_append_sheet(book,sheet,'Caja');window.XLSX.writeFile(book,'KPlace_Caja_'+K.cashDate+'.xlsx');};
-K.cashPdf=()=>{if(!admin())return;const c=K.closures.find(c=>c.date===K.cashDate&&c.branch===currentBranch());if(!c){notice('Primero tenés que cerrar la caja');return}
+K.cashPdf=()=>{if(!cashOperator())return;const c=K.closures.find(c=>c.date===K.cashDate&&c.branch===currentBranch());if(!c){notice('Primero tenés que cerrar la caja');return}
  const PDF=window.jspdf?.jsPDF;if(!PDF){notice('No se cargó el generador PDF');return}let pdf=new PDF({unit:'pt',format:'a4'}),y=55;pdf.setFontSize(18);pdf.text('KPlace · Cierre de caja',42,y);y+=34;pdf.setFontSize(11);for(const [k,v] of [['Sucursal',branchName(c.branch)],['Fecha',c.date],['Cerró',c.closedBy],['Efectivo esperado',money(c.expected)],['Efectivo contado',money(c.counted)],['Diferencia',money(c.difference)],['Motivo',c.reason||'Sin diferencias']]){const lines=pdf.splitTextToSize(k+': '+String(v),500);pdf.text(lines,42,y);y+=15*lines.length+7}pdf.text('Registro del sistema. Sujeto a conciliación con cobros reales.',42,770);pdf.save('KPlace_Cierre_'+c.date+'.pdf')};
 /* === Recibos de compra: únicamente documentos comerciales no fiscales === */
 const receiptCurrencies=[['L','L · Lempiras'],['Q','Q · Quetzales'],['$','$ · Dólares'],['C$','C$ · Córdobas'],['₡','₡ · Colones'],['B/.','B/. · Balboas']];
@@ -23769,8 +23798,8 @@ function injectNavigation(){
  const top=document.querySelector('.kp-top-actions');
  const entries=[
   ['packing','📦','Empaque',packer()],
-  ['documents','🧾','Recibos',admin()],
-  ['cash','💰','Caja',admin()||driver()||seller()]
+  ['documents','🧾','Recibos',receiptsUser()],
+  ['cash','💰','Caja',cashOperator()||cashReader()||driver()||seller()]
  ];
  const anchor=(nav,ids)=>ids.map(id=>nav.querySelector('[data-kf-nav="'+id+'"], [data-section="'+id+'"]')).find(Boolean)||null;
  for(const nav of [side,drawer]){
@@ -23815,8 +23844,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')K.closeSearch();if((
 window.kpGenerateDocumentFromOrder=function(orderId){K.open('documents',orderId)};
 window.kpOpenPacking=()=>K.open('packing');window.kpOpenCash=()=>K.open('cash');window.kpOpenAutomations=()=>notice('Las automatizaciones están desactivadas por ahora');window.kpFlowOpen=(page)=>K.open(page);
 /* Abrir el editor desde el detalle de una orden sin cambiar sus controles existentes */
-document.addEventListener('click',e=>{if(!admin())return;const b=e.target.closest?.('[data-kf-order-invoice]');if(b){e.preventDefault();K.open('documents',b.dataset.kfOrderInvoice)}},true);
-function augmentOrderSheets(){if(!admin())return;document.querySelectorAll('.sheet.show .card').forEach(card=>{if(card.dataset.kfInvoiceAdded)return;const i=card.innerHTML.match(/(?:openOrderSheet|verOrden|editOrder)\([^)]*\)/);let sheet=card.closest('.sheet');const o=orders().find(o=>{let n=orderNo(o);return (card.textContent||'').includes(n)&&n.length>=3});if(o){let b=document.createElement('button');b.className='btn sm';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=o.id;card.appendChild(b);card.dataset.kfInvoiceAdded='1'}})}
+document.addEventListener('click',e=>{if(!receiptsUser())return;const b=e.target.closest?.('[data-kf-order-invoice]');if(b){e.preventDefault();K.open('documents',b.dataset.kfOrderInvoice)}},true);
+function augmentOrderSheets(){if(!receiptsUser())return;document.querySelectorAll('.sheet.show .card').forEach(card=>{if(card.dataset.kfInvoiceAdded)return;const i=card.innerHTML.match(/(?:openOrderSheet|verOrden|editOrder)\([^)]*\)/);let sheet=card.closest('.sheet');const o=orders().find(o=>{let n=orderNo(o);return (card.textContent||'').includes(n)&&n.length>=3});if(o){let b=document.createElement('button');b.className='btn sm';b.textContent='Generar recibo';b.dataset.kfOrderInvoice=o.id;card.appendChild(b);card.dataset.kfInvoiceAdded='1'}})}
 let sheetTimer=0;new MutationObserver(()=>{if(sheetTimer)return;sheetTimer=setTimeout(()=>{sheetTimer=0;augmentOrderSheets()},350)}).observe(document.body,{childList:true,subtree:true});
 function syncMikeVisibility(){
  try{
@@ -24159,5 +24188,286 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
 })();
 </script>
 
+<!-- KPlace Equipo y permisos v2026 -->
+<style id="kp-team-v2-css">
+.kpt-wrap{max-width:1200px;margin:auto}.kpt-header,.kpt-panel,.kpt-card{border:1px solid var(--line,#dce1eb);background:var(--card,#fff);border-radius:17px;padding:18px;margin-bottom:14px}.kpt-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.kpt-header h2{margin:3px 0}.kpt-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.kpt-stats>div{background:var(--card,#fff);border:1px solid var(--line,#ddd);border-radius:14px;padding:12px}.kpt-stats strong{font-size:26px;display:block}.kpt-stats small{color:var(--muted,#64748b)}.kpt-filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:9px}.kpt-filters input,.kpt-filters select,.kpt-field input,.kpt-field select,.kpt-field textarea{width:100%;min-width:0;border:1px solid var(--line,#cbd5e1);border-radius:10px;padding:11px;background:var(--card,#fff);color:inherit}.kpt-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}.kpt-card{display:flex;gap:12px;align-items:center;margin:0}.kpt-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#5241a7,#8774d5);color:white;display:grid;place-items:center;font-weight:800;flex-shrink:0}.kpt-info{flex:1;min-width:0}.kpt-info strong{display:block}.kpt-info small{display:block;color:var(--muted,#64748b);margin-top:3px}.kpt-badge{font-size:11px;padding:3px 7px;border-radius:6px;background:rgba(110,102,168,.13)}.kpt-badge.on{color:#078451;background:#dcfce7}.kpt-badge.off{color:#64748b}.kpt-badge.pause{color:#a35b00;background:#fff2d6}.kpt-card button{white-space:nowrap}.kpt-formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kpt-field{display:flex;flex-direction:column;gap:5px}.kpt-field label{font-size:12px;font-weight:700}.kpt-check{display:flex;align-items:center;gap:10px;border:1px solid var(--line,#ddd);padding:10px;border-radius:10px;font-size:13px}.kpt-check input{width:16px;height:16px;flex-shrink:0}.kpt-perms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kpt-subtitle{font-weight:800;margin:12px 0 8px}.kpt-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:15px}.kpt-muted{color:var(--muted,#64748b);font-size:12px}.kpt-sep{border:0;border-top:1px solid var(--line,#ddd);margin:15px 0}.kpt-modal{max-height:88vh;overflow:auto;width:min(730px,95vw)}@media(max-width:780px){.kpt-filters{grid-template-columns:1fr 1fr}.kpt-filters input{grid-column:1/-1}.kpt-formgrid,.kpt-perms{grid-template-columns:1fr}.kpt-header{align-items:flex-start}}@media(max-width:420px){.kpt-filters{grid-template-columns:1fr}.kpt-stats strong{font-size:21px}.kpt-card{padding:12px}}
+</style>
+<style id="kp-team-v3-polish">
+#kptModal{z-index:100190}#kptModal .kpt-modal{box-shadow:0 30px 100px rgba(0,0,0,.32)}
+.kpt-header h2{font-size:clamp(21px,2.5vw,29px);font-weight:850}.kpt-card{min-width:0;box-shadow:0 2px 12px rgba(23,30,60,.04)}
+.kpt-card .kpt-info{overflow-wrap:anywhere}.kpt-stats>div{min-width:0}.kpt-stats strong{font-variant-numeric:tabular-nums}
+.kpt-access-summary{border:1px solid var(--line,#35425c);border-radius:12px;padding:12px;display:grid;gap:8px}.kpt-access-summary small{color:var(--muted,#adb2c0)}.kpt-access-list{display:flex;flex-wrap:wrap;gap:6px}
+#kptModal .kpt-field>label{font-size:12px;font-weight:750;margin-bottom:4px;display:block}#kptBranchScope[hidden]{display:none!important}
+#kptModal .kpt-field input,#kptModal .kpt-field select{min-height:43px}
+body.kp-dark .kpt-header,body.kp-dark .kpt-panel,body.kp-dark .kpt-card,body.kp-dark .kpt-stats>div{background:#172033;border-color:#344157;color:#f1f2fa}
+body.kp-dark .kpt-card{box-shadow:0 5px 19px rgba(0,0,0,.11)}
+body.kp-dark .kpt-field input,body.kp-dark .kpt-field select,body.kp-dark .kpt-filters input,body.kp-dark .kpt-filters select{background:#101a2b;border-color:#3b455f;color:#f1f4ff}
+body.kp-dark .kpt-check{border-color:#3e4963;color:#e6eaf4}body.kp-dark .kpt-badge.on{background:#183a31;color:#91e9c0}
+body.kp-dark .kpt-badge.pause{background:#453522;color:#ffd08a}body.kp-dark .kpt-badge.off{background:#30384b;color:#bac4d7}
+@media(max-width:680px){.kpt-card{flex-wrap:wrap}.kpt-card button{margin-left:auto}.kpt-filters{grid-template-columns:1fr 1fr}.kpt-filters input{grid-column:1/-1}}
+</style>
+<style id="kp-team-v3-addendum">.kpt-header-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.kpt-header-actions button{white-space:nowrap}@media(max-width:470px){.kpt-header-actions{width:100%}.kpt-header-actions .btn{flex:1}}</style>
+<script id="kp-team-v2-js">
+(function(){
+'use strict';
+const ROLES={
+ admin_general:{label:'Administrador general',grants:['*'],seniority:100},
+ gerente_general:{label:'Gerente general',grants:['orders.view','orders.create','orders.edit','shipping.view','shipping.manage','inventory.view','inventory.edit','packing.manage','cash.view','cash.operate','reports.view','reports.export','team.view','team.manage','customer.view','refunds.view'],seniority:80},
+ admin_sucursal:{label:'Administrador de sucursal',grants:['orders.view','orders.create','orders.edit','shipping.view','shipping.manage','inventory.view','inventory.edit','packing.manage','cash.view','cash.operate','reports.view','reports.export','team.view','team.manage','customer.view','refunds.view'],seniority:70},
+ vendedor:{label:'Vendedor',grants:['orders.view','orders.create','inventory.view','receipts.create','customer.view'],seniority:20},
+ cajero:{label:'Cajero',grants:['orders.view','cash.view','cash.operate','receipts.create'],seniority:20},
+ inventario:{label:'Encargado de inventario',grants:['inventory.view','inventory.edit','inventory.transfer'],seniority:25},
+ empacador:{label:'Empacador',grants:['orders.view','packing.manage','inventory.view'],seniority:15},
+ admin_envios:{label:'Administrador de envíos',grants:['orders.view','shipping.view','shipping.manage','tracking.view'],seniority:40},
+ repartidor:{label:'Repartidor',grants:['delivery.mine','delivery.update','delivery.evidence','delivery.settlement'],seniority:10},
+ atencion:{label:'Atención al cliente',grants:['orders.view','tracking.view','customer.view','refunds.view'],seniority:20},
+ contador_general:{label:'Contador general',grants:['cash.view','reports.view','reports.export','settlements.view','refunds.view'],seniority:45},
+ contador_sucursal:{label:'Contador de sucursal',grants:['cash.view','reports.view','reports.export','settlements.view','refunds.view'],seniority:40}
+};
+const PERMS={
+ 'orders.view':'Consultar órdenes','orders.create':'Crear órdenes','orders.edit':'Editar órdenes',
+ 'shipping.view':'Consultar envíos','shipping.manage':'Gestionar despachos','tracking.view':'Rastreo',
+ 'inventory.view':'Consultar inventario','inventory.edit':'Modificar inventario','inventory.transfer':'Transferir existencias',
+ 'packing.manage':'Preparar órdenes','cash.view':'Consultar Caja','cash.operate':'Registrar cobros y movimientos',
+ 'reports.view':'Consultar reportes','reports.export':'Exportar Excel','receipts.create':'Crear recibos',
+ 'customer.view':'Atender clientes y reclamos','refunds.view':'Consultar devoluciones',
+ 'team.view':'Ver equipo','team.manage':'Administrar empleados',
+ 'delivery.mine':'Ver entregas asignadas','delivery.update':'Confirmar entregas',
+ 'delivery.evidence':'Adjuntar comprobantes','delivery.settlement':'Consultar liquidaciones propias',
+ 'settlements.view':'Consultar liquidaciones'
+};
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const members=()=>window.VENDEDORES||[];
+const me=()=>window.CURRENT_USER||null;
+const myRole=()=>role(me());
+function role(u){if(!u)return 'vendedor';if(u.esAdmin)return 'admin_general';if(u.kpRol&&ROLES[u.kpRol])return u.kpRol;if(u.esEmpacador)return 'empacador';if(u.esEncargadoEnvios)return 'admin_envios';if(u.esRepartidor)return 'repartidor';return 'vendedor';}
+const label=u=>ROLES[role(u)]?.label||'Vendedor';
+const branch=u=>String(u?.sucursalId||u?.sucursal||(window.KP?.branches?.[0]?.id)||'sucursal_1');
+const branchList=()=>Array.isArray(window.KP?.branches)&&KP.branches.length?KP.branches.filter(b=>b&&b.id):[{id:'sucursal_1',nombre:'Sucursal principal'}];
+const branchName=id=>branchList().find(b=>String(b.id)===String(id))?.nombre||id;
+const isBoss=()=>myRole()==='admin_general'||myRole()==='gerente_general'||myRole()==='admin_sucursal';
+const allAccess=u=>role(u)==='admin_general';
+function scopes(u){if(allAccess(u)||role(u)==='contador_general')return ['*'];const ids=Array.isArray(u?.kpSucursalesAsignadas)&&u.kpSucursalesAsignadas.length?u.kpSucursalesAsignadas.map(String):[branch(u)];return ids;}
+function canScope(u,id){return scopes(u).includes('*')||scopes(u).includes(String(id));}
+function defaults(u){return ROLES[role(u)]?.grants||[];}
+function has(u,p){return !!u&&(allAccess(u)||defaults(u).includes(p)||(Array.isArray(u.kpPermisosExtra)&&u.kpPermisosExtra.includes(p)));}
+function canManage(target){const a=me();if(!a||!has(a,'team.manage'))return false;if(allAccess(a))return true;if(!['admin_sucursal','gerente_general'].includes(myRole()))return false;if(!scopes(target).every(id=>canScope(a,id)))return false;return ROLES[role(target)].seniority<ROLES[myRole()].seniority;}
+function allowedExtras(){if(allAccess(me()))return Object.keys(PERMS).filter(p=>p!=='team.manage');return Object.keys(PERMS).filter(p=>has(me(),p)&&!['team.manage','team.view'].includes(p));}
+function status(u){const st=String(u?.kpEstado||'').toLowerCase();return st==='suspendido'?'Suspendido':u?.activo===false||st==='inactivo'?'Inactivo':'Activo';}
+function who(u){return String(u?.usuario||u?.nombre||'').trim().toLowerCase();}
+function notify(s){if(typeof window.toast==='function')toast(s);else alert(s);}
+function container(){return document.getElementById('view');}
+const state={search:'',role:'',branch:'',status:''};
+function eligible(){return members().filter(u=>(allAccess(me())||scopes(u).some(id=>canScope(me(),id)))&&u.aprobado!==false);}
+function options(arr,current){return arr.map(([v,t])=>`<option value="${escape(v)}" ${String(current)===String(v)?'selected':''}>${escape(t)}</option>`).join('');}
+function roleOptions(){return Object.entries(ROLES).filter(([k])=>allAccess(me())||(['gerente_general','admin_sucursal'].includes(myRole())&&ROLES[k].seniority<ROLES[myRole()].seniority&&k!=='contador_general')).map(([k,v])=>[k,v.label]);}
+function renderTeam(){const root=container();if(!root)return;if(!has(me(),'team.view')){root.innerHTML='<p>No tenés permiso para consultar el equipo.</p>';return;}
+ const list=eligible();const count=x=>list.filter(x).length;
+ root.innerHTML=`<div class="kpt-wrap"><div class="kpt-header"><div><div class="kp-kicker">ADMINISTRACIÓN DE PERSONAL</div><h2>Usuarios y equipo</h2><p class="kpt-muted">Roles predeterminados, permisos individuales y sucursales.</p></div><div class="kpt-header-actions">${allAccess(me())?'<button class="btn" onclick="abrirCrearInvitacion()">Crear invitación</button>':''}<button class="btn primary" onclick="KPTeam.openNew()" ${has(me(),'team.manage')?'':'disabled'}>＋ Nuevo empleado</button></div></div>
+ <div class="kpt-stats"><div><small>Empleados</small><strong>${list.length}</strong></div><div><small>Activos</small><strong>${count(u=>status(u)==='Activo')}</strong></div><div><small>Con permisos extra</small><strong>${count(u=>(u.kpPermisosExtra||[]).length>0)}</strong></div></div>
+ <div class="kpt-panel"><div class="kpt-filters"><input id="kptSearch" placeholder="Buscar nombre, usuario o número..." value="${escape(state.search)}" oninput="KPTeam.search(this.value)"><select id="kptRole" onchange="KPTeam.filter('role',this.value)">${options([['','Todas las categorías'],...Object.entries(ROLES).map(([k,r])=>[k,r.label])],state.role)}</select><select id="kptBranch" onchange="KPTeam.filter('branch',this.value)">${options([['','Todas las sucursales'],...branchList().filter(b=>allAccess(me())||canScope(me(),b.id)).map(b=>[String(b.id),b.nombre])],state.branch)}</select><select id="kptStatus" onchange="KPTeam.filter('status',this.value)">${options([['','Todos los estados'],['Activo','Activos'],['Suspendido','Suspendidos'],['Inactivo','Inactivos']],state.status)}</select></div><div class="kpt-actions"><span id="kptCount" class="kpt-muted"></span><button class="btn sm" onclick="KPTeam.resetFilters()">Limpiar filtros</button></div><div id="kptList" class="kpt-list"></div></div></div>`;
+ renderList();}
+function renderList(){const target=document.getElementById('kptList');if(!target)return;const q=state.search.toLowerCase();const result=eligible().filter(u=>(!state.role||role(u)===state.role)&&(!state.branch||canScope(u,state.branch))&&(!state.status||status(u)===state.status)&&[u.nombre,u.usuario,u.numeroUsuario,u.email,label(u)].join(' ').toLowerCase().includes(q));const count=document.getElementById('kptCount');if(count)count.textContent=result.length+' empleado(s) encontrados';target.innerHTML=result.map(u=>{const idx=members().indexOf(u);const st=status(u),extras=(u.kpPermisosExtra||[]).length;return `<div class="kpt-card"><div class="kpt-avatar">${escape(String(u.nombre||'?').split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase())}</div><div class="kpt-info"><strong>${escape(u.nombre||'Sin nombre')}</strong><small>${escape(label(u))} · ${escape(scopes(u).includes('*')?'Todas las sucursales':scopes(u).map(branchName).join(', '))}</small><small>${escape(u.email||'Sin correo Google')} · N.º ${escape(u.numeroUsuario||'—')} · <span class="kpt-badge ${st==='Activo'?'on':st==='Suspendido'?'pause':'off'}">${st}</span> ${extras?`<span class="kpt-badge">${extras} extra</span>`:''}</small></div><button class="btn sm" onclick="KPTeam.edit(${idx})">Ver ficha</button></div>`}).join('')||'<p class="kpt-muted">No hay empleados con esos filtros.</p>';}
+function modal(body){const old=document.getElementById('kptModal');old?.remove();const wrap=document.createElement('div');wrap.className='kp-v23-modal-bg';wrap.id='kptModal';wrap.innerHTML=`<div class="kp-v23-modal kpt-modal" role="dialog" aria-modal="true" aria-label="Ficha de empleado"><button class="kp-v23-modal-close" onclick="KPTeam.close()" aria-label="Cerrar">×</button>${body}</div>`;wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove()});document.body.append(wrap);}
+function baseFields(u,create){const boss=allAccess(me());const selected=role(u);const allowRoles=roleOptions();const branchIds=branchList().filter(b=>boss||canScope(me(),b.id));return `<div class="kpt-formgrid"><div class="kpt-field"><label>Nombre y apellido</label><input id="kptName" value="${escape(u.nombre||'')}"></div><div class="kpt-field"><label>Usuario (nombre corto)</label><input id="kptLogin" autocomplete="off" value="${escape(u.usuario||'')}" ${create?'':'readonly'}></div><div class="kpt-field"><label>Correo de Google para ingresar</label><input type="email" id="kptEmail" autocomplete="off" placeholder="empleado@gmail.com" value="${escape(u.email||'')}" ${create||!u.email?'':'readonly'}></div><div class="kpt-field"><label>Categoría / rol</label><select id="kptRoleEdit" onchange="KPTeam.roleChanged()">${options(allowRoles,selected)}</select></div><div class="kpt-field"><label>Sucursal principal</label><select id="kptBranchEdit">${options(branchIds.map(b=>[String(b.id),b.nombre]),branch(u))}</select></div></div><div id="kptBranchScope" class="kpt-field" style="margin-top:12px"><label>Sucursales asignadas (contadores de sucursal y gerentes)</label><div class="kpt-perms">${branchIds.map(b=>`<label class="kpt-check"><input type="checkbox" class="kpt-branch-extra" value="${escape(b.id)}" ${scopes(u).includes('*')?'':scopes(u).includes(String(b.id))?'checked':''}>${escape(b.nombre)}</label>`).join('')}</div><small class="kpt-muted">El Contador general consulta todas las sucursales. El de sucursal solo las asignadas.</small></div>`;}
+function details(u,create,idx){const allowed=allowedExtras(),extra=u.kpPermisosExtra||[];modal(`<div class="kp-kicker">${create?'NUEVO EMPLEADO':'FICHA DEL EMPLEADO'}</div><h2>${create?'Crear usuario':escape(u.nombre||'Empleado')}</h2><p class="kpt-muted">Los permisos normales se asignan automáticamente por categoría. Los adicionales se pueden revocar sin afectar el rol.</p>${baseFields(u,create)}<p class="kpt-muted" style="margin-top:9px">Cada empleado ingresa con el correo de Google indicado. No se utilizan contraseñas ni PIN en KPlace.</p><hr class="kpt-sep"><div class="kpt-subtitle">Permisos predeterminados</div><div id="kptDefaultPerms" class="kpt-perms"></div><div class="kpt-subtitle">Accesos adicionales autorizados</div><div class="kpt-perms">${allowed.map(p=>`<label class="kpt-check"><input class="kpt-extra" type="checkbox" value="${escape(p)}" ${extra.includes(p)?'checked':''}><span>${escape(PERMS[p])}</span></label>`).join('')}</div><div class="kpt-actions"><button class="btn sm" onclick="KPTeam.resetExtra()">Restablecer permisos</button></div>${create?'':`<hr class="kpt-sep"><div class="kpt-subtitle">Estado del acceso</div><div class="kpt-field"><select id="kptState">${options([['Activo','Activo'],['Suspendido','Suspendido temporalmente'],['Inactivo','Inactivo · sin acceso']],status(u))}</select></div><p class="kpt-muted">El historial del empleado se conserva. La disponibilidad del repartidor es independiente de este estado.</p><div class="kpt-actions"><button class="btn sm red" onclick="KPTeam.remove(${idx})">Eliminar permanentemente</button></div>`}<hr class="kpt-sep"><div class="kpt-actions"><button class="btn" onclick="KPTeam.close()">Cancelar</button><button class="btn primary" id="kptSave" onclick="KPTeam.save(${create?'null':idx})">Guardar ${create?'empleado':'cambios'}</button></div>`);roleChanged();}
+function roleChanged(){const selected=document.getElementById('kptRoleEdit')?.value||'vendedor';const scope=document.getElementById('kptBranchScope');if(scope)scope.hidden=!['contador_sucursal','gerente_general'].includes(selected);const d=ROLES[selected]?.grants||[];const dest=document.getElementById('kptDefaultPerms');if(dest)dest.innerHTML=d.includes('*')?'<span class="kpt-badge">Acceso completo</span>':d.map(p=>`<span class="kpt-badge on">✓ ${escape(PERMS[p]||p)}</span>`).join('');document.querySelectorAll('.kpt-extra').forEach(el=>{const hasDefault=d.includes('*')||d.includes(el.value);el.disabled=hasDefault;el.closest('label').style.opacity=hasDefault?'.45':'1';});}
+function resetExtra(){document.querySelectorAll('.kpt-extra').forEach(x=>x.checked=false);}
+async function save(idx){const create=idx===null;const old=create?null:members()[idx];if(!create&&!old){notify('Empleado no encontrado');return;}if(!create&&!canManage(old)){notify('No tenés autorización para modificar este empleado');return;}
+ const nombre=(document.getElementById('kptName')?.value||'').trim(),usuario=(document.getElementById('kptLogin')?.value||'').trim(),email=(document.getElementById('kptEmail')?.value||'').trim().toLowerCase(),kpRol=document.getElementById('kptRoleEdit')?.value,sucursalId=document.getElementById('kptBranchEdit')?.value,kpEstado=create?'Activo':document.getElementById('kptState')?.value;
+ if(!nombre||!usuario||!email||!ROLES[kpRol]||!sucursalId||!['Activo','Suspendido','Inactivo'].includes(kpEstado)){notify('Completá nombre, usuario, correo Google, rol y sucursal');return;}if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){notify('Ingresá un correo electrónico válido');return;}if(create&&!has(me(),'team.manage')){notify('No tenés permiso para crear empleados');return;}
+ if(!allAccess(me())&&ROLES[kpRol].seniority>=ROLES[myRole()].seniority){notify('No podés asignar un rol de igual o mayor jerarquía');return;}
+ if(!allAccess(me())&&!canScope(me(),sucursalId)){notify('Sucursal no autorizada');return;}if(!create&&who(old)===who(me())&&kpRol!==role(old)){notify('No podés cambiar tu propio rol');return;}if(!create&&who(old)===who(me())&&kpEstado!=='Activo'){notify('No podés desactivar tu propia cuenta');return;}if(!allAccess(me())&&kpRol==='contador_general'){notify('Solo el administrador general puede asignar un contador general');return;}
+ let kpSucursalesAsignadas=[...document.querySelectorAll('.kpt-branch-extra:checked')].map(x=>x.value);if(!kpSucursalesAsignadas.includes(sucursalId))kpSucursalesAsignadas.push(sucursalId);if(kpRol==='contador_general'||kpRol==='admin_general')kpSucursalesAsignadas=['*'];else if(!['contador_sucursal','gerente_general'].includes(kpRol))kpSucursalesAsignadas=[sucursalId];
+ if(!allAccess(me())&&kpSucursalesAsignadas.some(b=>!canScope(me(),b))){notify('No podés conceder acceso a otra sucursal');return;}
+ const kpPermisosExtra=[...document.querySelectorAll('.kpt-extra:checked')].map(x=>x.value).filter(p=>allowedExtras().includes(p)&&!ROLES[kpRol].grants.includes(p));
+ const flags={esAdmin:kpRol==='admin_general',esEncargadoEnvios:kpRol==='admin_envios',esRepartidor:kpRol==='repartidor',esEmpacador:kpRol==='empacador'};
+ const changes={nombre,usuario,email,kpRol,kpEstado:kpEstado.toLowerCase(),activo:kpEstado==='Activo',sucursalId,sucursalNombre:branchName(sucursalId),kpSucursalesAsignadas,kpPermisosExtra,cargo:ROLES[kpRol].label,...flags,aprobado:true};
+ const button=document.getElementById('kptSave');if(button)button.disabled=true;
+ try{const list=await db.runTransaction(async tx=>{
+  const usersRef=db.collection('config').doc('vendedores'),accessRef=db.collection('config').doc('acceso');
+  const [sn,access]=await Promise.all([tx.get(usersRef),tx.get(accessRef)]);
+  const data=sn.data()||{}, rows=Array.isArray(data.lista)?data.lista.slice():[];
+  const key=x=>String(x||'').trim().toLowerCase();
+  if(rows.some(v=>key(v.usuario)===key(usuario)&&(create||key(v.usuario)!==key(old.usuario))))throw new Error('Ese usuario ya existe');
+  if(rows.some(v=>key(v.email)===email&&(create||key(v.usuario)!==key(old.usuario))))throw new Error('Ese correo Google ya está asignado a otro empleado');
+  let previous=null;
+  if(create){const used=new Set(rows.map(v=>Number(v.numeroUsuario)).filter(Number.isInteger));let n=10001;while(used.has(n))n++;rows.push({...changes,numeroUsuario:String(n)});}
+  else {const pos=rows.findIndex(v=>key(v.usuario)===key(old.usuario));if(pos<0)throw new Error('El usuario cambió en Firebase. Actualizá la página.');previous=rows[pos];if(!canManage(previous))throw new Error('Acceso no autorizado');rows[pos]={...previous,...changes};}
+  const audit=Array.isArray(data.kpAuditoriaPermisos)?data.kpAuditoriaPermisos.slice(-199):[];
+  audit.push({fecha:new Date().toISOString(),accion:create?'crear_usuario':'editar_usuario',usuarioObjetivo:usuario,realizadoPor:who(me()),rolAnterior:previous?role(previous):null,rolNuevo:kpRol,permisosAntes:previous?.kpPermisosExtra||[],permisosDespues:kpPermisosExtra,estadoAnterior:previous?status(previous):null,estadoNuevo:kpEstado});
+  tx.set(usersRef,{lista:rows,kpAuditoriaPermisos:audit},{merge:true});
+  const ad=access.data()||{};const emails=new Set((ad.emails||[]).map(key).filter(Boolean));const admins=new Set((ad.admins||[]).map(key).filter(Boolean));
+  if(changes.activo)emails.add(email);else emails.delete(email);
+  if(kpRol==='admin_general'&&changes.activo)admins.add(email);else admins.delete(email);
+  tx.set(accessRef,{emails:[...emails],admins:[...admins]},{merge:true});
+  return rows;
+ });
+ window.VENDEDORES=list;KPTeam.close();renderTeam();notify(create?'Empleado creado y correo de Google autorizado':'Usuario actualizado');
+ }catch(e){console.error('KP Equipo guardar',e);notify('No se pudo guardar: '+(e.message||e));if(button)button.disabled=false;}}
+async function remove(idx){
+ const u=members()[idx];if(!u||!canManage(u))return notify('Acceso no autorizado');if(who(u)===who(me()))return notify('No podés eliminar tu cuenta');
+ if(!confirm('¿Eliminar permanentemente a '+(u.nombre||u.usuario)+'? Se conservarán las órdenes históricas, pero perderá su acceso de Google.'))return;
+ try{
+ const rows=await db.runTransaction(async tx=>{
+  const usersRef=db.collection('config').doc('vendedores'),accessRef=db.collection('config').doc('acceso');
+  const [sn,access]=await Promise.all([tx.get(usersRef),tx.get(accessRef)]);const data=sn.data()||{};
+  const oldRows=Array.isArray(data.lista)?data.lista:[];
+  const target=oldRows.find(v=>String(v.usuario||'').toLowerCase()===String(u.usuario||'').toLowerCase());
+  if(!target||!canManage(target))throw new Error('Ya no podés eliminar esa cuenta');
+  const rows=oldRows.filter(v=>String(v.usuario||'').toLowerCase()!==String(u.usuario||'').toLowerCase());
+  const audit=Array.isArray(data.kpAuditoriaPermisos)?data.kpAuditoriaPermisos.slice(-199):[];
+  audit.push({fecha:new Date().toISOString(),accion:'eliminar_usuario',usuarioObjetivo:u.usuario,realizadoPor:who(me()),rolAnterior:role(target)});
+  tx.set(usersRef,{lista:rows,kpAuditoriaPermisos:audit},{merge:true});
+  const key=x=>String(x||'').trim().toLowerCase(),a=access.data()||{};
+  tx.set(accessRef,{emails:(a.emails||[]).map(key).filter(x=>x!==key(u.email)),admins:(a.admins||[]).map(key).filter(x=>x!==key(u.email))},{merge:true});return rows;
+ });window.VENDEDORES=rows;KPTeam.close();renderTeam();notify('Empleado eliminado; se conserva el historial de órdenes.');
+ }catch(e){console.error('Eliminar empleado:',e);notify('No se pudo eliminar: '+(e.message||e));}
+}
+const KPTeam={render:renderTeam,search:v=>{state.search=v;renderList();},filter:(k,v)=>{state[k]=v;renderList();},resetFilters:()=>{state.search='';state.role='';state.branch='';state.status='';renderTeam();},close:()=>document.getElementById('kptModal')?.remove(),openNew:()=>{if(!has(me(),'team.manage'))return notify('Sin permiso');const own=branchList().find(b=>canScope(me(),b.id))?.id||branch(me());details({kpRol:'vendedor',sucursalId:own,kpSucursalesAsignadas:[own]},true);},edit:i=>{const u=members()[i];if(!u||!canScope(me(),branch(u)))return notify('Usuario no disponible');if(!canManage(u))return modal(`<h3>${escape(u.nombre)}</h3><p>${escape(label(u))} · ${escape(status(u))}</p><p class="kpt-muted">No tenés permiso para modificar esta cuenta.</p><button class="btn" onclick="KPTeam.close()">Cerrar</button>`);details(u,false,i);},save,roleChanged,resetExtra,remove,role,label,has,canScope};
+window.KPTeam=KPTeam;
+window.KP_ROLE_PRESETS=ROLES;
+// El panel único reemplaza las versiones anteriores, incluso al refrescar Firebase.
+window.renderAdmin=renderTeam;
+window.openUsersPanel=function(){if(!has(me(),'team.view'))return notify('Sin permiso para Equipo');window.setTab('admin');};
+const originalCargo=window.cargoLabel;
+window.cargoLabel=function(u){if(u&&u.kpRol&&ROLES[u.kpRol])return ROLES[u.kpRol].label;return originalCargo?originalCargo(u):label(u)};
+const originalSetTab=window.setTab;
+window.setTab=function(id){
+ if(id==='usuarios')id='admin';
+ if(id==='inventario')id='adminOrdersInventory';
+ if(id==='adminOrdersInventory'&&has(me(),'inventory.view')){window.activeTab=id;window.KP_FLOW?.leave?.();window.renderOrdenesInventario?.();window.updateKPlaceNav?.();window.kpUpdateDateNav?.();return;}
+ if(id==='adminEnviosDevoluciones'&&has(me(),'refunds.view')){window.activeTab=id;window.KP_FLOW?.leave?.();window.renderDevolucionesTab?.();window.updateKPlaceNav?.();return;}
+ if(id==='admin'){
+  if(!has(me(),'team.view'))return notify('No tenés permiso para consultar Equipo');
+  if(window.KP_FLOW&&typeof KP_FLOW.leave==='function')KP_FLOW.leave();
+  window.activeTab='admin';renderTeam();window.updateKPlaceNav?.();window.kpUpdateDateNav?.();return;
+ }
+ if(id==='reportes'&&has(me(),'reports.view')){
+  window.activeTab='reportes';window.KP_FLOW?.leave?.();renderFinancialReports();window.updateKPlaceNav?.();window.kpUpdateDateNav?.();return;
+ }
+ return originalSetTab?.apply(this,[id]);
+};
+function renderFinancialReports(){
+ if(!has(me(),'reports.view'))return notify('Sin acceso a reportes');
+ if(!window.KP?.renderReportes)return notify('El módulo de reportes todavía no está disponible');
+ if(!allAccess(me())&&myRole()!=='contador_general'){
+  const allowed=branchList().filter(b=>canScope(me(),b.id));
+  if(!allowed.some(b=>String(b.id)===String(KP._reportBranch)))KP._reportBranch=allowed[0]?.id||branch(me());
+ }
+ KP._repSig='';withScope(()=>KP.renderReportes());filterReportSelect();
+}
+function withScope(callback){
+ if(allAccess(me())||myRole()==='contador_general')return callback();
+ const old=window.ORDERS;window.ORDERS=(old||[]).filter(o=>canScope(me(),String(o.sucursalId||branch(me()))));
+ try{return callback();}finally{window.ORDERS=old;}
+}
+function filterReportSelect(){
+ const input=document.getElementById('kpReportBranch');if(!input)return;
+ [...input.options].forEach(o=>{if(o.value==='todas'&&!(allAccess(me())||myRole()==='contador_general')){o.remove();return;}if(o.value!=='todas'&&!canScope(me(),o.value))o.remove();});
+ input.addEventListener('change',e=>{e.stopImmediatePropagation();
+  const id=e.target.value;if(!canScope(me(),id)&&!(id==='todas'&&(allAccess(me())||myRole()==='contador_general'))){notify('Sucursal no autorizada');return;}
+  KP._reportBranch=id;renderFinancialReports();
+ },true);
+}
+// Al exportar desde Reportes se respetan las sucursales asignadas.
+function wrapReportExports(){
+ for(const name of ['exportReportExcel','exportOrdersDetail','exportReportSheet','exportIncidentsExcel']){
+  if(typeof window.KP?.[name]!=='function'||KP[name].__kptWrapped)continue;
+  const prior=KP[name];KP[name]=function(...args){if(!has(me(),'reports.export'))return notify('No tenés permiso para exportar');return withScope(()=>prior.apply(this,args));};KP[name].__kptWrapped=true;
+ }
+}
+// La navegación de los roles nuevos se adapta sin alterar el menú del dueño.
+const originalRender=window.render;
+if(typeof originalRender==='function')window.render=function(){
+ if(window.activeTab==='admin'&&has(me(),'team.view'))return renderTeam();
+ if(window.activeTab==='reportes'&&has(me(),'reports.view'))return renderFinancialReports();
+ if(window.activeTab==='adminOrdersInventory'&&has(me(),'inventory.view'))return window.renderOrdenesInventario?.();
+ if(window.activeTab==='adminEnviosDevoluciones'&&has(me(),'refunds.view'))return window.renderDevolucionesTab?.();
+ return originalRender.apply(this,arguments);
+};
+const originalBuildTabs=window.buildTabs;
+window.buildTabs=function(){const out=originalBuildTabs?.apply(this,arguments);try{syncNavigation()}catch(e){console.warn('Equipo: navegación',e)}return out;};
+const originalToggleMenu=window.toggleMenu;
+window.toggleMenu=function(){const out=originalToggleMenu?.apply(this,arguments);setTimeout(syncNavigation,0);return out;};
+const PAGE_PERMISSIONS={
+  inicio:'orders.view',principal:'customer.view',hoy:'orders.view',boxful:'shipping.view',
+  rastreosNacionales:'tracking.view',programadas:'orders.view',retrasos:'shipping.view',
+  repartidor:'shipping.manage',adminEnviosTegus:'shipping.manage',adminEnviosNacional:'shipping.manage',
+  adminEnviosDevoluciones:'refunds.view',adminOrdersInventory:'inventory.view',
+  admin:'team.view',reportes:'reports.view',integraciones:'admin.only',
+  kplace_packing:'packing.manage',kplace_cash:'cash.view',kplace_documents:'receipts.create'
+};
+const MENU_MAP={inicio:'inicio',ordenes:'hoy',envios:'boxful',rastreos:'rastreosNacionales',repartidores:'repartidor',inventario:'adminOrdersInventory',chat:'principal',usuarios:'admin',reportes:'reportes',integraciones:'integraciones',admin:'admin',kplace_cash:'kplace_cash',kplace_packing:'kplace_packing',kplace_documents:'kplace_documents'};
+function canPage(id){if(!me())return false;if(allAccess(me()))return true;const perm=PAGE_PERMISSIONS[id];return !perm||perm!=='admin.only'&&has(me(),perm);}
+function syncNavigation(){
+ if(!me())return;
+ const tabs=document.getElementById('tabs');
+ if(tabs&&!allAccess(me())){
+  [...tabs.querySelectorAll('[data-tab]')].forEach(t=>{t.style.display=canPage(t.dataset.tab)?'':'none';});
+  if(has(me(),'team.view')&&!tabs.querySelector('[data-tab="admin"]')){
+   const b=document.createElement('div');b.className='tab';b.dataset.tab='admin';b.textContent='Equipo';b.onclick=()=>window.setTab('admin');tabs.append(b);
+  }
+  if(has(me(),'reports.view')&&!tabs.querySelector('[data-tab="reportes"]')){
+   const b=document.createElement('div');b.className='tab';b.dataset.tab='reportes';b.textContent='Reportes';b.onclick=()=>window.setTab('reportes');tabs.append(b);
+  }
+ }
+ for(const nav of [document.getElementById('kpSideNav'),...document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav')]){
+  if(!nav)continue;
+  for(const b of nav.querySelectorAll('button[data-section],button[data-kf-nav]')){
+   let id=MENU_MAP[b.dataset.section]||b.dataset.section||(b.dataset.kfNav?'kplace_'+b.dataset.kfNav:'');
+   const allowed=canPage(id);
+   if(b.style.display!==(!allowed?'none':''))b.style.display=!allowed?'none':'';
+  }
+  if(has(me(),'team.view')&&!nav.querySelector('[data-section="usuarios"], [data-section="admin"]')){
+    const btn=document.createElement('button');btn.dataset.section='usuarios';btn.innerHTML='👥 Usuarios y equipo';btn.onclick=()=>{window.closeKPlaceMenu?.();window.setTab('admin');};nav.append(btn);
+  }
+ }
+ const side=document.querySelector('#kpSideNav [data-section="usuarios"]');if(side)side.onclick=()=>window.setTab('admin');
+}
+// Vista de configuración para cualquier rol, manteniendo el perfil, tema y cierre de sesión actuales.
+const originalSettings=window.toggleSettingsMenu;
+if(typeof originalSettings==='function')window.toggleSettingsMenu=function(){
+ const out=originalSettings.apply(this,arguments);
+ setTimeout(()=>{
+  const root=document.getElementById('kpSettingsOrganized');const home=root?.querySelector('#kpsoHome');if(!home||home.querySelector('#kptMyAccess'))return;
+  const section=document.createElement('section');section.className='kpso-group';section.id='kptMyAccess';
+  const u=me();section.innerHTML='<h3 class="kpso-group-title">MI FUNCIÓN EN KPLACE</h3><div class="kpt-access-summary"><strong>'+escape(label(u))+'</strong><small>'+escape(scopes(u).includes('*')?'Todas las sucursales':scopes(u).map(branchName).join(', '))+'</small><div class="kpt-access-list">'+(allAccess(u)?'<span class="kpt-badge on">Acceso completo</span>':[...new Set([...defaults(u),...(u.kpPermisosExtra||[])])].map(p=>'<span class="kpt-badge">'+escape(PERMS[p]||p)+'</span>').join(''))+'</div></div>';
+  home.insertBefore(section,home.lastElementChild);
+ },0);return out;
+};
+// Al cambiar un empleado en Firestore también se actualizan su rol y acceso local.
+function reconcileSession(){
+ const old=me();if(!old)return;
+ const live=members().find(u=>(u.email&&String(u.email).toLowerCase()===String(old.email||'').toLowerCase())||who(u)===who(old));
+ if(!live){if(members().length&&old.email&&!window.__kptDeactivated){window.__kptDeactivated=true;localStorage.removeItem('eunoia_current_user');notify('Tu usuario ya no existe en Equipo');setTimeout(()=>window.cerrarSesion?.(),350);}return;}
+ if(status(live)!=='Activo'){
+  localStorage.removeItem('eunoia_current_user');
+  if(!window.__kptDeactivated){window.__kptDeactivated=true;notify('Tu cuenta fue desactivada. Volvé a ingresar cuando un administrador la reactive.');setTimeout(()=>window.cerrarSesion?.(),350);}
+  return;
+ }
+ const before=[old.esAdmin,old.esRepartidor,old.esEncargadoEnvios,old.kpRol,JSON.stringify(old.kpPermisosExtra||[])].join('|');
+ const fresh={...live,esAdmin:role(live)==='admin_general',esRepartidor:role(live)==='repartidor',esEncargadoEnvios:role(live)==='admin_envios',esEmpacador:role(live)==='empacador',cargo:label(live)};
+ Object.assign(old,fresh);localStorage.setItem('eunoia_current_user',JSON.stringify(old));
+ const after=[old.esAdmin,old.esRepartidor,old.esEncargadoEnvios,old.kpRol,JSON.stringify(old.kpPermisosExtra||[])].join('|');
+ if(before!==after){window.renderUserTag?.(old);window.buildTabs?.();window.render?.();}else if(activeTab==='admin'&&document.getElementById('kptList'))renderTeam();
+}
+const onUsers=function(){reconcileSession();wrapReportExports();syncNavigation();};
+// Existe un listener central en config/vendedores; el nuevo listener solo sincroniza el módulo.
+if(window.db?.collection)db.collection('config').doc('vendedores').onSnapshot(()=>{setTimeout(onUsers,0)},e=>console.warn('Equipo: sincronización',e));
+const oldFinishLogin=window.finishLogin;
+if(typeof oldFinishLogin==='function')window.finishLogin=function(user){
+ const live=members().find(v=>(v.email&&String(v.email).toLowerCase()===String(user?.email||'').toLowerCase())||who(v)===who(user));
+ if(status(live||user)!=='Activo')return notify('Cuenta suspendida o inactiva. Contactá al administrador.');
+ const fresh={...(live||user)};fresh.kpRol=role(fresh);fresh.cargo=label(fresh);
+ const out=oldFinishLogin.call(this,fresh);
+ const landing={contador_general:'reportes',contador_sucursal:'reportes',inventario:'adminOrdersInventory',empacador:'kplace_packing',atencion:'principal',cajero:'kplace_cash'}[fresh.kpRol];
+ if(landing)setTimeout(()=>{if(me()&&window.setTab)window.setTab(landing);},100);
+ return out;
+};
+window.kpTeamSync=()=>{reconcileSession();syncNavigation();};
+setTimeout(()=>{wrapReportExports();syncNavigation()},100);
+})();
+</script>
 </body>
 </html>
