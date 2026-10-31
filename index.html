@@ -24529,7 +24529,24 @@ setTimeout(()=>{wrapReportExports();syncNavigation()},100);
 .kpc-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}.kpc-contact-grid input,.kpc-contact-grid select{width:100%;min-width:0;box-sizing:border-box;padding:12px;border-radius:11px;border:1px solid #4b4264;background:#141728;color:#fff}
 .kpc-person{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #39344d;border-radius:14px;margin:8px 0}.kpc-person-info{flex:1;min-width:0}.kpc-person-info b,.kpc-person-info small{display:block;overflow-wrap:anywhere}.kpc-person-info small{color:#b2a9c7;margin-top:3px}.kpc-person-actions{display:flex;gap:6px;flex-wrap:wrap}.kpc-person-actions button{padding:9px;border-radius:10px;border:1px solid #514367;background:#241c39;color:#f4eaff;cursor:pointer}
 .kpc-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:15px}.kpc-modal{width:100%;max-width:480px;max-height:90dvh;overflow:auto;border-radius:22px;background:#141828;color:#f6f2ff;border:1px solid #4a3b66;padding:20px;box-sizing:border-box;box-shadow:0 20px 70px #0009}.kpc-modal h2{font-size:22px;margin:0 0 6px}.kpc-modal p{color:#b5b1c6;margin:5px 0 12px}.kpc-modal button{cursor:pointer}.kpc-call-controls{display:flex;justify-content:center;gap:12px;margin:22px 0 5px;flex-wrap:wrap}.kpc-call-controls button{border:0;border-radius:30px;padding:14px 18px;background:#40375a;color:#fff}.kpc-call-controls .hang{background:#c62d50}.kpc-call-status{text-align:center;color:#bcb2d3;margin-top:15px}.kpc-call-identity{text-align:center;padding:20px 0}.kpc-call-identity h2{margin:10px 0}.kpc-call-identity small{display:block;color:#b9aed1;margin-top:6px}.kpc-call-log{font-size:12px;color:#a9a1b9;margin-top:8px}.kpc-chat-call{margin-left:auto;flex-shrink:0}.kpc-chat-call{display:flex;align-items:center;gap:6px}.kpc-chat-call button{border:0;background:#382552;color:#fff;border-radius:50%;width:40px;height:40px}.kpc-chat-call .kpc-chat-block{border-radius:10px;width:auto;height:36px;font-size:11px;padding:0 9px}
-@media(max-width:520px){.kpc-conta<script id="kp-colleagues-calls-js">
+@media (max-width:520px){
+ .kpc-colleagues{margin:14px 0;padding:14px;border-radius:18px}
+ .kpc-colleagues-head{flex-wrap:wrap;align-items:center}
+ .kpc-colleagues-head .kpc-colleagues-btn{width:100%}
+ .kpc-contact-grid{grid-template-columns:1fr}
+ .kpc-person{flex-wrap:wrap;gap:8px}
+ .kpc-person-info{flex:1 1 100%}
+ .kpc-person-actions{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .kpc-person-actions button{min-width:0;font-size:12px;padding:10px 4px}
+ .kpc-chat-call{gap:4px}
+ .kpc-chat-call button{width:38px;height:38px;flex:none}
+ .kpc-chat-call .kpc-chat-block{width:36px;height:36px;padding:0;font-size:0;position:relative}
+ .kpc-chat-call .kpc-chat-block::before{content:'⛔';font-size:17px}
+ .kpw-head .kpw-t{min-width:0;flex:1}
+ .kpw-head .kpw-t b,.kpw-head .kpw-t small{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+}
+</style>
+<script id="kp-colleagues-calls-js">
 (function(){
 'use strict';
 if(window.KPColleagues)return;
