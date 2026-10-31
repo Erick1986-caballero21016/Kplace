@@ -24207,6 +24207,47 @@ body.kp-dark .kpt-badge.pause{background:#453522;color:#ffd08a}body.kp-dark .kpt
 @media(max-width:680px){.kpt-card{flex-wrap:wrap}.kpt-card button{margin-left:auto}.kpt-filters{grid-template-columns:1fr 1fr}.kpt-filters input{grid-column:1/-1}}
 </style>
 <style id="kp-team-v3-addendum">.kpt-header-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.kpt-header-actions button{white-space:nowrap}@media(max-width:470px){.kpt-header-actions{width:100%}.kpt-header-actions .btn{flex:1}}</style>
+<!-- KPlace · Ajustes de legibilidad móvil de Equipo -->
+<style id="kp-team-mobile-spacing">
+/* Mantener el buscador y las tarjetas cómodos para pantallas pequeñas. */
+.kpt-wrap{padding-bottom:28px}
+.kpt-header,.kpt-panel{padding:clamp(17px,3vw,25px);margin-bottom:18px}
+.kpt-header{gap:20px}
+.kpt-header h2{line-height:1.2;margin:7px 0 12px}
+.kpt-header .kpt-muted{line-height:1.55;max-width:55ch}
+.kpt-stats{gap:12px;margin:18px 0 20px}
+.kpt-stats>div{padding:15px;min-height:95px}
+.kpt-stats small{line-height:1.35;display:block}
+.kpt-filters{gap:12px}
+.kpt-filters input,.kpt-filters select{min-height:50px;min-width:0;text-overflow:ellipsis;box-sizing:border-box}
+.kpt-actions{margin:18px 0 15px;align-items:center;justify-content:space-between}
+.kpt-list{gap:14px}
+.kpt-card{padding:17px;gap:15px;min-width:0}
+.kpt-card .kpt-info{line-height:1.4;min-width:0}
+.kpt-card .kpt-info small{line-height:1.5;overflow-wrap:anywhere}
+.kpt-card .kpt-avatar{width:48px;height:48px}
+@media(max-width:680px){
+ .kpt-filters{grid-template-columns:minmax(0,1fr)}
+ .kpt-filters input{grid-column:auto}
+ .kpt-panel,.kpt-header{padding:18px}
+ .kpt-list{grid-template-columns:minmax(0,1fr)}
+ .kpt-card{display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:13px;row-gap:13px;align-items:start;padding:16px}
+ .kpt-card .kpt-avatar{grid-column:1;grid-row:1}
+ .kpt-card .kpt-info{grid-column:2;grid-row:1}
+ .kpt-card button{grid-column:2;grid-row:2;justify-self:start;margin-left:0!important;min-height:40px}
+ .kpt-actions{gap:13px;align-items:center}
+ .kpt-actions .btn{min-height:40px}
+}
+@media(max-width:380px){
+ .kpt-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ .kpt-stats>div{padding:11px;min-height:91px}
+ .kpt-stats small{font-size:11px}
+ .kpt-stats strong{font-size:22px}
+ .kpt-actions{align-items:flex-start;flex-direction:column}
+ .kpt-actions .btn{align-self:flex-end}
+ .kpt-header-actions{gap:10px}
+}
+</style>
 <script id="kp-team-v2-js">
 (function(){
 'use strict';
@@ -24412,7 +24453,14 @@ function syncNavigation(){
    const b=document.createElement('div');b.className='tab';b.dataset.tab='reportes';b.textContent='Reportes';b.onclick=()=>window.setTab('reportes');tabs.append(b);
   }
  }
- for(const nav of [document.getElementById('kpSideNav'),...document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav')]){
+ // El cajón móvil contiene un menú auxiliar de notificaciones antes del MENÚ principal.
+ // Nunca agregar «Usuarios y equipo» dentro de ese menú auxiliar.
+ const drawer=document.getElementById('kpMenuDrawer');
+ drawer?.querySelectorAll('.kpn-top [data-section="usuarios"], .kpn-top [data-section="admin"]').forEach(b=>b.remove());
+ const mainNavs=[document.getElementById('kpSideNav'),
+  ...Array.from(drawer?.querySelectorAll('.kp-drawer-nav:not(.kpn-top)')||[])
+   .filter(n=>n.querySelector('[data-section="inicio"], [data-section="hoy"], [data-section="ordenes"], [data-section="adminOrdersInventory"], [data-section="admin"]'))];
+ for(const nav of mainNavs){
   if(!nav)continue;
   for(const b of nav.querySelectorAll('button[data-section],button[data-kf-nav]')){
    let id=MENU_MAP[b.dataset.section]||b.dataset.section||(b.dataset.kfNav?'kplace_'+b.dataset.kfNav:'');
@@ -24420,7 +24468,11 @@ function syncNavigation(){
    if(b.style.display!==(!allowed?'none':''))b.style.display=!allowed?'none':'';
   }
   if(has(me(),'team.view')&&!nav.querySelector('[data-section="usuarios"], [data-section="admin"]')){
-    const btn=document.createElement('button');btn.dataset.section='usuarios';btn.innerHTML='👥 Usuarios y equipo';btn.onclick=()=>{window.closeKPlaceMenu?.();window.setTab('admin');};nav.append(btn);
+    const btn=document.createElement('button');btn.type='button';btn.dataset.section='admin';
+    btn.innerHTML='<span class="dico">👥</span>Usuarios y equipo';
+    btn.onclick=()=>{window.closeKPlaceMenu?.();window.setTab('admin');};
+    const anchor=nav.querySelector('[data-section="adminOrdersInventory"], [data-section="inventario"]');
+    if(anchor)anchor.insertAdjacentElement('afterend',btn);else nav.append(btn);
   }
  }
  const side=document.querySelector('#kpSideNav [data-section="usuarios"]');if(side)side.onclick=()=>window.setTab('admin');
