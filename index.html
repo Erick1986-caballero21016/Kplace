@@ -25391,16 +25391,17 @@ const CSS=`#kpb-overlay{position:fixed;inset:0;z-index:100050;background:#0b0d1a
 #kpb-back{width:46px;height:46px;padding:0!important;font-size:24px;line-height:1}
 body:has(#kpb-overlay.open) #kpMikeFab,body:has(#kpb-overlay.open) #kpMikeCompact,body:has(#kpb-overlay.open) [id^=kpMike]{display:none!important}`;
 function ui(){if($('kpb-overlay'))return;const s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);const o=document.createElement('div');o.id='kpb-overlay';o.innerHTML='<section id="kpb-panel" role="dialog" aria-modal="true" aria-label="Bloc de notas"><header><button id="kpb-back" type="button" aria-label="Abrir menú">☰</button><div class="kpb-brand"><span class="kpb-kicker">KPLACE · ORGANIZACIÓN</span><h2>📝 Bloc de notas</h2><span class="kpb-subtitle">Tus ideas, tareas y recordatorios</span></div></header><div class="kpb-shell"><aside id="kpb-groups"></aside><section class="kpb-workspace"><nav id="kpb-tabs"></nav><div id="kpb-body"></div></section></div></section>';document.body.appendChild(o);
-$('kpb-back').onclick=()=>{close();setTimeout(()=>document.getElementById('menuBtn')?.click(),150)};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}});o.addEventListener('input',e=>{if(e.target.id==='kpb-q'){q=e.target.value;fill()}});o.addEventListener('mousedown',e=>{if(e.target===o)close()})}
+$('kpb-back').onclick=()=>{close();setTimeout(()=>document.getElementById('menuBtn')?.click(),150)};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}});o.addEventListener('input',e=>{if(e.target.id==='kpb-q'){q=e.target.value;fill()}});o.addEventListener('mousedown',e=>{if(e.target===o)close()});o.addEventListener('click',e=>{if(!e.target.closest('.kpb-dd'))document.querySelectorAll('.kpb-dd.open').forEach(x=>x.classList.remove('open'))},true)}
 function open(){ui();start();$('kpb-overlay').classList.add('open');draw();try{window.closeKPlaceMenu?.()}catch(e){}}
 function close(){$('kpb-overlay')?.classList.remove('open')}
+function ddText(){const t=$('kpb-dd-txt');if(!t)return;const on=[...document.querySelectorAll('.kpb-chip.on')].map(i=>i.textContent.trim());t.textContent=on.length?on.join(', '):'Elige para quién'}
 function drawTimes(){const d=$('kpb-times');if(d)d.innerHTML=Array.from({length:times},(_,i)=>`<input type="time" class="kpb-h" value="${['09:00','14:00','18:00','20:00'][i]}">`).join('')}
 function form(){const r=myRole();
 if(tab==='nota')return `<div class="kpb-card"><h3>Nueva anotación</h3><p class="kpb-help">Un apunte privado, como un bloc de notas. Solo lo ves tú y Mike te ayuda con él.</p><label>Título</label><input id="kpb-t" type="text" placeholder="Ej. Ideas para promoción"><label>Nota</label><textarea id="kpb-x"></textarea><button class="kpb-go" data-a="save">Guardar anotación</button></div>`;
 if(tab==='pendiente')return `<div class="kpb-card"><h3>Nuevo pendiente</h3><p class="kpb-help">Algo que debes hacer. Márcalo cuando lo termines.</p><label>¿Qué tienes que hacer?</label><input id="kpb-x" type="text"><label>Fecha y hora límite (opcional)</label><input id="kpb-v" type="datetime-local"><label class="kpb-switch"><span>Avisarme con una notificación a esa hora</span><input id="kpb-nf" type="checkbox" checked></label><button class="kpb-go" data-a="save">Guardar pendiente</button></div>`;
 if(tab==='recordatorio')return `<div class="kpb-card"><h3>Nuevo recordatorio</h3><p class="kpb-help">Te avisa a las horas que elijas, cada día, durante el tiempo que decidas.</p><label>¿Qué quieres recordar?</label><input id="kpb-x" type="text"><label>Empieza el</label><input id="kpb-f" type="date" value="${today()}"><label>¿Cuántas veces al día avisarte?</label><select id="kpb-n">${[1,2,3,4].map(n=>`<option ${n===times?'selected':''} value="${n}">${n} ${n>1?'veces':'vez'}</option>`).join('')}</select><label>¿A qué horas?</label><div class="kpb-btns" id="kpb-times"></div><label>¿Por cuánto tiempo?</label><select id="kpb-d">${Object.entries(DUR).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('')}</select><button class="kpb-go" data-a="save">Guardar recordatorio</button></div>`;
 const own=r==='admin_general'?`<select id="kpb-s"><option value="todas">Todas las sucursales</option>${brs().map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}</select>`:`<input type="text" disabled value="Tu sucursal"><input id="kpb-s" type="hidden" value="${esc(myBr()[0]||'todas')}">`;
-return `<div class="kpb-card"><h3>Nuevo anuncio</h3><p class="kpb-help">Un aviso para tu equipo. Les sale como notificación. Elige a quién va dirigido.</p><label>Mensaje</label><textarea id="kpb-x"></textarea><label>Para quién</label><div class="kpb-chips">${[['todos','Todos'],...Object.entries(ROLES)].map(([k,v])=>`<button type="button" class="kpb-chip" data-a="role" data-id="${k}">${v}</button>`).join('')}</div><label>Sucursal</label>${own}<button class="kpb-go" data-a="save">Publicar anuncio</button></div>`}
+return `<div class="kpb-card"><h3>Nuevo anuncio</h3><p class="kpb-help">Un aviso para tu equipo. Les sale como notificación. Elige a quién va dirigido.</p><label>Mensaje</label><textarea id="kpb-x"></textarea><label>Para quién</label><div class="kpb-dd"><button type="button" class="kpb-dd-btn" data-a="dd"><span id="kpb-dd-txt">Elige para quién</span><span class="kpb-dd-arrow">▾</span></button><div class="kpb-dd-list">${[['todos','Todos'],...Object.entries(ROLES)].map(([k,v])=>`<button type="button" class="kpb-chip" data-a="role" data-id="${k}">${v}</button>`).join('')}</div></div><label>Sucursal</label>${own}<button class="kpb-go" data-a="save">Publicar anuncio</button></div>`}
 function item(x){const when=x.createdMillis?new Date(x.createdMillis).toLocaleString():'';const del=`<button class="kpb-sm kpb-del" data-a="del" data-id="${esc(x.id)}">Borrar</button>`;
 if(x.tipo==='nota')return `<div class="kpb-post"><b>${esc(x.titulo||'Sin título')}</b><p>${esc(x.texto)}</p><small>${esc(when)}</small><div class="kpb-btns" style="margin-top:8px">${del}</div></div>`;
 if(x.tipo==='pendiente')return `<div class="kpb-post ${x.done?'done':''}"><p>${esc(x.texto)}</p><small>${x.vence?'Límite: '+esc(new Date(x.vence).toLocaleString())+(x.notificar?' · con aviso':''):'Sin fecha límite'}</small><div class="kpb-btns" style="margin-top:8px"><button class="kpb-sm" data-a="done" data-id="${esc(x.id)}">${x.done?'Reabrir':'✓ Hecho'}</button>${del}</div></div>`;
@@ -25427,7 +25428,8 @@ if(tab==='recordatorio'){d.fecha=$('kpb-f')?.value||today();d.duracion=$('kpb-d'
 if(tab==='anuncio'){d.roles=[...document.querySelectorAll('.kpb-chip.on')].map(i=>i.dataset.id);if(!d.roles.length){window.toast?.('Elige para quién es el anuncio');return}d.sucursal=$('kpb-s')?.value||'todas';d.leidoPor=[me()]}
 try{await col().add(d);$('kpb-overlay').dataset.formTab='';if(tab==='anuncio'){annView='ver';group='team'}draw();window.toast?.('Guardado')}catch(e){console.error(e);window.toast?.('No se pudo guardar: '+(e.message||'error'))}}
 async function onClick(e){const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
-if(a==='role'){b.classList.toggle('on');if(id==='todos'&&b.classList.contains('on'))document.querySelectorAll('.kpb-chip.on:not([data-id="todos"])').forEach(x=>x.classList.remove('on'));else if(id!=='todos'&&b.classList.contains('on'))document.querySelector('.kpb-chip[data-id="todos"]')?.classList.remove('on');return}
+if(a==='dd'){b.closest('.kpb-dd').classList.toggle('open');return}
+if(a==='role'){b.classList.toggle('on');setTimeout(ddText,0);if(id==='todos')setTimeout(()=>b.closest('.kpb-dd')?.classList.remove('open'),0);if(id==='todos'&&b.classList.contains('on'))document.querySelectorAll('.kpb-chip.on:not([data-id="todos"])').forEach(x=>x.classList.remove('on'));else if(id!=='todos'&&b.classList.contains('on'))document.querySelector('.kpb-chip[data-id="todos"]')?.classList.remove('on');return}
 if(a==='group'){group=id;tab=id==='team'?'anuncio':'nota';annView='ver';q='';$('kpb-overlay').dataset.formTab='';draw()}
 else if(a==='tab'){if(id.indexOf('anuncio-')===0){tab='anuncio';annView=id.slice(8);group='team'}else{tab=id;group='mine'}q='';$('kpb-overlay').dataset.formTab='';draw()}else if(a==='save')await save();
 else if(a==='del'){if(!confirm('¿Borrar esto?'))return;try{await col().doc(id).delete()}catch(er){window.toast?.('No se pudo borrar')}}
@@ -25824,6 +25826,129 @@ body:has(#kpb-overlay.open) #kpMikeFab,body:has(#kpb-overlay.open) #kpMikeCompac
  #kpb-panel #kpb-groups button{flex:1;min-height:50px;justify-content:center}
  #kpb-panel #kpb-body{padding:15px 13px 90px!important}
  #kpb-panel .kpb-toolbar,#kpb-panel .kpb-toolbar input{width:100%;max-width:none}
+}
+</style>
+
+
+<style id="kpb-dd-2026">
+#kpb-panel .kpb-dd{position:relative}
+#kpb-panel .kpb-dd-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:12px 14px;text-align:left;font:inherit;font-size:14px;color:#f8f7ff;background:#0d1424;border:1px solid #42415b;border-radius:13px;cursor:pointer}
+#kpb-panel .kpb-dd.open .kpb-dd-btn{border-color:#a78bfa;box-shadow:0 0 0 2px #8b5cf633}
+#kpb-panel .kpb-dd-btn #kpb-dd-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+#kpb-panel .kpb-dd-arrow{flex:none;transition:transform .18s;color:#c4a7ff}
+#kpb-panel .kpb-dd.open .kpb-dd-arrow{transform:rotate(180deg)}
+#kpb-panel .kpb-dd-list{display:none;margin-top:6px;padding:6px;max-height:280px;overflow-y:auto;background:#10142a;border:1px solid #42415b;border-radius:13px;box-shadow:0 12px 30px #0006}
+#kpb-panel .kpb-dd.open .kpb-dd-list{display:block}
+#kpb-panel .kpb-dd-list .kpb-chip{display:flex!important;align-items:center;justify-content:space-between;width:100%;text-align:left;margin:0 0 3px;padding:11px 12px!important;border-radius:10px!important;background:transparent!important;border:1px solid transparent!important;font-size:14px;font-weight:600;cursor:pointer}
+#kpb-panel .kpb-dd-list .kpb-chip:hover{background:#ffffff0e!important}
+#kpb-panel .kpb-dd-list .kpb-chip.on{background:#6247a566!important;border-color:#a88be8!important;color:#fff!important}
+#kpb-panel .kpb-dd-list .kpb-chip.on::after{content:"✓";color:#d9c8ff;font-weight:800}
+</style>
+
+<script id="kp-flow-nav-fix">
+(function(){
+if(window.__kpFlowNavFix)return;window.__kpFlowNavFix=1;
+/* Manejador único en fase de captura: Empaque, Recibos y Caja siempre abren,
+   aunque otro código haya reemplazado o bloqueado el clic original. */
+window.addEventListener('click',function(ev){
+  var b=ev.target&&ev.target.closest?ev.target.closest('[data-kf-nav]'):null;if(!b)return;
+  var page=b.dataset.kfNav;if(!/^(packing|documents|cash|settings)$/.test(page))return;
+  ev.preventDefault();ev.stopImmediatePropagation();
+  window.__kpUserNav=true;setTimeout(function(){window.__kpUserNav=false},900);
+  function go(){try{window.kpFlowOpen(page)}catch(err){console.error('KPlace menú',err);try{window.toast&&window.toast('No se pudo abrir esta sección: '+(err&&err.message||err))}catch(_){}}}
+  go();
+  try{window.closeKPlaceMenu&&window.closeKPlaceMenu()}catch(_){}
+  setTimeout(function(){if(String(window.activeTab)!=='kplace_'+page)go()},350);
+},true);
+})();
+</script>
+
+<script id="kp-inventory-shell">
+(function(){
+'use strict';
+if(window.__kpiShell)return;window.__kpiShell=1;
+var S={g:'inv',t:'ex'};
+var GROUPS=[['inv','📦','Inventario',[['ex','Existencias'],['fo','Fotos de productos']]],['imp','📥','Carga masiva',[['im','Exportar e importar']]]];
+function avail(s,k){var el=s.querySelector('[data-kpi-sec="'+k+'"]');return !!(el&&el.children.length)}
+function paint(s){
+  var gs=GROUPS.map(function(g){return [g[0],g[1],g[2],g[3].filter(function(t){return avail(s,t[0])})]}).filter(function(g){return g[3].length});
+  if(!gs.length)return;
+  var cur=gs.find(function(g){return g[0]===S.g})||gs[0];S.g=cur[0];
+  if(!cur[3].some(function(t){return t[0]===S.t}))S.t=cur[3][0][0];
+  s.querySelector('.kpi-groups').innerHTML=gs.map(function(g){return '<button type="button" data-kpi-g="'+g[0]+'" class="'+(g[0]===S.g?'active':'')+'"><span class="kpi-gi">'+g[1]+'</span><span>'+g[2]+'</span></button>'}).join('');
+  s.querySelector('.kpi-tabs').innerHTML=cur[3].map(function(t){return '<button type="button" data-kpi-t="'+t[0]+'" class="'+(t[0]===S.t?'on':'')+'">'+t[1]+'</button>'}).join('');
+  s.querySelectorAll('[data-kpi-sec]').forEach(function(e){e.hidden=e.dataset.kpiSec!==S.t});
+}
+function build(v){
+  var s=document.createElement('div');s.id='kpiShell';s.className='kpi-panel';
+  s.innerHTML='<header class="kpi-head"><div class="kpi-brand"><span class="kpi-eyebrow">KPLACE · INVENTARIO</span><h2>📦 Inventario y ubicaciones</h2><span class="kpi-sub">Gestiona productos y existencias por bodega o tienda.</span></div></header><div class="kpi-wrap"><aside class="kpi-groups"></aside><section class="kpi-work"><nav class="kpi-tabs"></nav><div class="kpi-body"><div data-kpi-sec="ex"></div><div data-kpi-sec="fo"></div><div data-kpi-sec="im"></div></div></section></div>';
+  s.addEventListener('click',function(e){
+    var b=e.target.closest('[data-kpi-g],[data-kpi-t]');if(!b||!s.contains(b))return;
+    if(b.dataset.kpiG){S.g=b.dataset.kpiG;var g=GROUPS.find(function(x){return x[0]===S.g});var f=g&&g[3].find(function(t){return avail(s,t[0])});if(f)S.t=f[0]}
+    else S.t=b.dataset.kpiT;
+    paint(s);
+  });
+  v.insertBefore(s,v.firstChild);return s;
+}
+var obs=null;
+function decorate(){
+  if(String(window.activeTab)!=='adminOrdersInventory')return;
+  var v=document.getElementById('view');if(!v)return;
+  var mgr=v.querySelector('#kpInventoryManager');if(!mgr)return;
+  if(obs)obs.disconnect();
+  try{
+    var s=v.querySelector('#kpiShell')||build(v);
+    var foto=v.querySelector('#kpFotosBox'),exp=v.querySelector('.kp-v23-export-grid'),hero=v.querySelector('.kp-v23-hero');
+    var ex=s.querySelector('[data-kpi-sec="ex"]'),fo=s.querySelector('[data-kpi-sec="fo"]'),im=s.querySelector('[data-kpi-sec="im"]');
+    var changed=false;
+    if(mgr.parentElement!==ex){ex.appendChild(mgr);changed=true}
+    if(foto&&foto.parentElement!==fo){fo.appendChild(foto);foto.open=true;changed=true}
+    if(exp&&exp.parentElement!==im){im.appendChild(exp);changed=true}
+    if(hero&&!s.contains(hero))hero.style.display='none';
+    if(changed||!s.querySelector('.kpi-tabs button'))paint(s);
+  }catch(err){console.warn('Inventario shell',err)}
+  if(obs){var vv=document.getElementById('view');if(vv)obs.observe(vv,{childList:true})}
+}
+function init(){
+  var v=document.getElementById('view');if(!v){setTimeout(init,500);return}
+  obs=new MutationObserver(function(){clearTimeout(init._t);init._t=setTimeout(decorate,30)});
+  obs.observe(v,{childList:true});
+  setInterval(decorate,1500);decorate();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+<style id="kp-inventory-shell-css">
+/* Inventario y ubicaciones · mismo lenguaje visual que Finanzas y Bloc de notas */
+#kpiShell.kpi-panel{width:100%;max-width:1200px;margin:0 auto 24px;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(138deg,#131827 0%,#1d1934 72%,#231b37 100%);border:1px solid #4b4560;color:#f6f5fa;border-radius:22px;box-shadow:0 30px 100px #000a;line-height:1.4}
+#kpiShell *{box-sizing:border-box}
+#kpiShell .kpi-head{display:flex;align-items:center;gap:15px;min-height:106px;padding:22px 26px;background:linear-gradient(115deg,#211a3c 0%,#17162d 58%,#101525 100%);border-bottom:1px solid #8b6cf044}
+#kpiShell .kpi-brand{display:flex;flex-direction:column;gap:3px;min-width:0}
+#kpiShell .kpi-eyebrow{font-size:10px;letter-spacing:2px;font-weight:850;color:#c4a7ff}
+#kpiShell .kpi-head h2{margin:4px 0 0;font-size:clamp(21px,3vw,27px);font-weight:780;letter-spacing:-.6px;color:#fff}
+#kpiShell .kpi-sub{font-size:12px;color:#b8aecf}
+#kpiShell .kpi-wrap{display:flex;min-height:0}
+#kpiShell .kpi-groups{width:208px;flex:none;padding:15px 11px;display:flex;flex-direction:column;align-content:flex-start;gap:9px;background:#0b0e1b;border-right:1px solid #ffffff12}
+#kpiShell .kpi-groups button{min-height:58px;display:flex;align-items:center;gap:10px;padding:13px;text-align:left;font:inherit;font-size:13px;font-weight:700;color:#aaa9bd;background:#ffffff05;border:1px solid transparent;border-radius:15px;cursor:pointer;transition:background .18s,border-color .18s}
+#kpiShell .kpi-groups button:hover:not(.active){background:#ffffff0e;color:#fff}
+#kpiShell .kpi-groups button.active{color:#fff;background:linear-gradient(120deg,#6944aa,#453779);border-color:#a58ae066;box-shadow:0 8px 22px #0004}
+#kpiShell .kpi-gi{font-size:18px;line-height:1}
+#kpiShell .kpi-work{flex:1;min-width:0;display:flex;flex-direction:column}
+#kpiShell .kpi-tabs{display:flex;flex-wrap:nowrap;overflow:auto;gap:8px;padding:14px 16px 13px;background:#101222;border-bottom:1px solid #ffffff12;scrollbar-width:none}
+#kpiShell .kpi-tabs button{white-space:nowrap;background:#1a1b2d;border:1px solid #ffffff14;color:#b9b8cb;padding:11px 16px;border-radius:999px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+#kpiShell .kpi-tabs button.on{background:linear-gradient(115deg,#7651bd,#57418e);border-color:#a88be4;color:#fff;box-shadow:0 5px 15px #0003}
+#kpiShell .kpi-body{padding:22px 24px 30px;background:linear-gradient(180deg,#121426 0%,#151426 100%);min-width:0}
+#kpiShell [data-kpi-sec][hidden]{display:none!important}
+#kpiShell .kpi-body #kpInventoryManager{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;margin:0!important;max-width:none!important}
+#kpiShell .kpi-body .kp-v23-export-grid{margin:0!important;max-width:520px}
+#kpiShell .kpi-body #kpFotosBox{margin:0!important}
+@media(max-width:850px){
+ #kpiShell.kpi-panel{border-radius:16px}
+ #kpiShell .kpi-head{min-height:88px;padding:16px 15px}
+ #kpiShell .kpi-wrap{flex-direction:column}
+ #kpiShell .kpi-groups{width:100%;flex-direction:row;padding:10px 12px;border-right:0;border-bottom:1px solid #ffffff18}
+ #kpiShell .kpi-groups button{flex:1;min-height:50px;justify-content:center}
+ #kpiShell .kpi-body{padding:14px 12px 24px}
 }
 </style>
 
