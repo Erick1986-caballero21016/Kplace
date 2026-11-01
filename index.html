@@ -9606,6 +9606,13 @@ if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!
   document.addEventListener('click',function(ev){
     const btn=ev.target.closest('#kpSideNav button[data-section], #kpMenuDrawer button[data-section]');
     if(!btn) return;
+    // Cerrar el menú móvil ANTES de ejecutar la navegación.
+    if(btn.closest('#kpMenuDrawer')) {
+      try { window.closeKPlaceMenu?.(); } catch(e) {}
+      document.getElementById('kpMenuDrawer')?.classList.remove('show');
+      document.getElementById('kpMenuDrawer')?.setAttribute('aria-hidden','true');
+      document.getElementById('kpMenuOverlay')?.classList.remove('show');
+    }
     const section=btn.getAttribute('data-section');
     const map={inicio:'inicio',ordenes:'hoy',envios:'boxful',rastreos:'rastreosNacionales',repartidores:'repartidor',inventario:'adminOrdersInventory',chat:'principal',usuarios:'admin',reportes:'inicio'};
     if(section && map[section]){ ev.preventDefault(); ev.stopPropagation(); window.setTab(map[section]); }
@@ -9783,6 +9790,9 @@ if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!
     const map={inicio:'inicio',chat:'principal',ordenes:'hoy',envios:'boxful',rastreos:'rastreosNacionales',repartidores:'repartidor',inventario:'adminOrdersInventory',usuarios:'admin',devoluciones:'adminEnviosDevoluciones'};
     const target=map[id]||id;
     ev.preventDefault();ev.stopImmediatePropagation();
+    // El manejador en fase de captura cancela el onclick original del botón.
+    // Por eso cerramos aquí el drawer antes de navegar.
+    if(menu){try{window.closeKPlaceMenu?.()}catch(e){}}
     window.kpSafeSetTab(target);
   },true);
 
@@ -25372,7 +25382,7 @@ const CSS=`#kpb-overlay{position:fixed;inset:0;z-index:100050;background:#0b0d1a
 .kpb-switch{display:flex!important;align-items:center;justify-content:space-between;gap:12px;background:#ffffff0d;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:14px!important;color:#eceef8!important}.kpb-switch input{width:22px!important;height:22px;accent-color:#8b6cf0;flex:none}
 #kpb-back{width:46px;height:46px;padding:0!important;font-size:24px;line-height:1}
 body:has(#kpb-overlay.open) #kpMikeFab,body:has(#kpb-overlay.open) #kpMikeCompact,body:has(#kpb-overlay.open) [id^=kpMike]{display:none!important}`;
-function ui(){if($('kpb-overlay'))return;const s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);const o=document.createElement('div');o.id='kpb-overlay';o.innerHTML='<header><button id="kpb-back" type="button" aria-label="Abrir menú">☰</button><h2>📝 Bloc de notas</h2></header><nav id="kpb-tabs"></nav><div id="kpb-body"></div>';document.body.appendChild(o);
+function ui(){if($('kpb-overlay'))return;const s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);const o=document.createElement('div');o.id='kpb-overlay';o.innerHTML='<header><button id="kpb-back" type="button" aria-label="Abrir menú">☰</button><div class="kpb-brand"><span class="kpb-kicker">KPLACE · ORGANIZACIÓN</span><h2>📝 Bloc de notas</h2><span class="kpb-subtitle">Tus ideas, tareas y recordatorios</span></div></header><nav id="kpb-tabs"></nav><div id="kpb-body"></div>';document.body.appendChild(o);
 $('kpb-back').onclick=()=>{close();setTimeout(()=>document.getElementById('menuBtn')?.click(),150)};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}})}
 function open(){ui();start();$('kpb-overlay').classList.add('open');draw();try{window.closeKPlaceMenu?.()}catch(e){}}
 function close(){$('kpb-overlay')?.classList.remove('open')}
@@ -25641,7 +25651,26 @@ function renderDelivery(e){const os=orders().filter(o=>String(o.fecha||'')===tod
 function renderRestock(e){const items=inv().filter(i=>Number.isFinite(n(i.cantidad))&&n(i.cantidad)<=5);e.innerHTML=cards(card('Variantes con 5 o menos unidades',items.length),card('Sin existencias',items.filter(i=>n(i.cantidad)===0).length))+`<div class="kpf-section-card"><h4>Productos con stock bajo</h4><p class="kpf-muted">Mostramos niveles actuales. No sugerimos cantidades de compra sin información confiable de rotación y tiempos del proveedor.</p><div class="kpf-scroll"><table><thead><tr><th>Producto</th><th>Bodega</th><th>Existencia</th></tr></thead><tbody>${items.slice(0,150).map(i=>`<tr><td>${safe(label(i))}</td><td>${safe(i.ubicacionId||'Principal')}</td><td>${safe(i.cantidad)}</td></tr>`).join('')||'<tr><td colspan="3">No hay existencias bajas según este umbral.</td></tr>'}</tbody></table></div></div>`}
 function renderReceive(e){const a=records('Compras'),pending=a.filter(x=>x.estado!=='recibida');e.innerHTML=cards(card('Pendientes de recepción',pending.length),card('Recibidas',a.length-pending.length))+`<div id="kpf-action-panel"></div><div class="kpf-section-card"><h4>Compras por recibir</h4><p class="kpf-muted">Cada confirmación suma unidades únicamente a la variante y bodega vinculadas, en una transacción de Firestore.</p>${gridFor('Compras',a)}</div>`;e.querySelectorAll('[data-receive]').forEach(b=>b.onclick=()=>receivePurchase(b.dataset.receive))}
 function renderActivity(e){const a=records('Historial de actividad').sort((x,y)=>String(y.fecha).localeCompare(String(x.fecha)));e.innerHTML=cards(card('Operaciones registradas en estos módulos',a.length))+`<div class="kpf-section-card"><h4>Auditoría administrativa</h4><div class="kpf-scroll"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Operación</th><th>Detalle</th></tr></thead><tbody>${a.map(r=>`<tr><td>${safe(r.fecha)}</td><td>${safe(r.actor)}</td><td>${safe(r.evento)}</td><td>${safe(r.detalle)}</td></tr>`).join('')||'<tr><td colspan="4">Todavía no hay eventos registrados.</td></tr>'}</tbody></table></div></div>`+alert('Este historial cubre las nuevas operaciones administrativas, no todas las acciones anteriores de KPlace.');}
-function printSection(){try{guard();const panel=$('kpf-main');if(!panel)return;const title=active;const w=window.open('','_blank','width=1000,height=750');if(!w){msg('Permití las ventanas emergentes para imprimir el reporte.',true);return;}const css='body{font-family:Arial,sans-serif;color:#222;padding:24px}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:12px}th{background:#f2f2f2}.kpf-card{display:inline-block;padding:12px;border:1px solid #ddd;margin:5px;min-width:130px}.kpf-card small,.kpf-card span{display:block;color:#555}button,form,#kpf-action-panel{display:none!important}';w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+safe(title)+'</title><style>'+css+'</style></head><body><h1>KPlace · '+safe(title)+'</h1><p>Generado: '+safe(new Date().toLocaleString('es-HN'))+'</p>'+panel.innerHTML+'</body></html>');w.document.close();w.focus();setTimeout(()=>w.print(),300);}catch(e){msg(e.message||String(e),true)}}
+function printSection(){try{guard();const panel=$('kpf-main');if(!panel)return;const title=active;const w=window.open('','_blank','width=1000,height=750');if(!w){msg('Permití las ventanas emergentes para imprimir el reporte.',true);return;}const css='body{font-family:Arial,sans-serif;color:#222;padding:24px}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:12px}th{background:#f2f2f2}.kpf-card{display:inline-block;padding:12px;border:1px solid #ddd;margin:5px;min-width:130px}.kpf-card small,.kpf-card span{display:block;color:#555}button,form,#kpf-action-panel{display:none!important}';w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+safe(title)+'</title><style>'+css+'</style></head><body><h1>KPlace · '+safe(title)+'</h1><p>Generado: '+safe(new Date().toLocaleString('es-HN'))+'</p>'+panel.innerHTML+'
+<script id="kp-menu-close-on-select-final">
+(function(){
+  function closeDrawer(){
+    try {
+      const drawer=document.getElementById('kpMenuDrawer');
+      const overlay=document.getElementById('kpMenuOverlay');
+      if(drawer){drawer.classList.remove('show');drawer.setAttribute('aria-hidden','true');}
+      if(overlay) overlay.classList.remove('show');
+    } catch(e) {}
+  }
+  document.addEventListener('click', function(ev){
+    const item=ev.target.closest && ev.target.closest('#kpMenuDrawer .kp-drawer-nav button, #kpMenuDrawer [data-section], #kpMenuDrawer [data-kf-nav]');
+    if(item) closeDrawer();
+  }, true);
+  window.closeKPlaceMenu=closeDrawer;
+})();
+</script>
+
+</body></html>');w.document.close();w.focus();setTimeout(()=>w.print(),300);}catch(e){msg(e.message||String(e),true)}}
 function exportCSV(){try{guard();const rows=fields[active]?records():active==='Ganancias reales'?sales().map(o=>({orden:ordNo(o),fecha:o.fecha,ventaNeta:refunded(o)})):active==='Resumen financiero'||active==='Flujo de efectivo'?data.flatMap(x=>x.rows.map(r=>({...r,seccion:x.section}))):active==='Reabastecimiento'?inv().filter(i=>n(i.cantidad)<=5).map(i=>({producto:label(i),bodega:i.ubicacionId,existencia:i.cantidad})):active==='Recepción de mercadería'?records('Compras'):records(active);if(!rows.length){msg('No hay datos para exportar.');return;}const HIDE=new Set(['empresaId','companyId','createdBy','updatedBy','createdAt','updatedAt','actualizado','ownerKey','sucursalId','recibidaPor','ultimaRecepcionPor']);const NAMES={id:'ID',orden:'N.º de orden',fecha:'Fecha',ventaNeta:'Venta neta',monto:'Monto',concepto:'Concepto',categoria:'Categoría',proveedor:'Proveedor',producto:'Producto',cantidad:'Cantidad',costo:'Costo unitario',bodega:'Bodega',estado:'Estado',total:'Total',lineas:'Productos',cliente:'Cliente',tipo:'Tipo',vence:'Vence',empleado:'Empleado',periodo:'Período',meta:'Meta',porcentaje:'Comisión %',abonado:'Abonado',seccion:'Sección',existencia:'Existencia',telefono:'Teléfono',notas:'Notas'};
 const pretty=k=>NAMES[k]||String(k).replace(/([A-Z])/g,' $1').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
 const cell=(k,v)=>{if(v==null)return '';if(v&&typeof v.toDate==='function')return v.toDate().toISOString().slice(0,16).replace('T',' ');if(k==='lineas'&&Array.isArray(v))return v.map(l=>(l.producto||l.productoId)+' x'+l.cantidad+' a '+l.costo+(l.recibido!=null?' ('+l.recibido+' recibidas)':'')).join(' | ');if(Array.isArray(v))return v.map(x=>typeof x==='object'?Object.values(x).join(' '):x).join(' | ');if(typeof v==='object'){if('seconds' in v)return new Date(v.seconds*1000).toISOString().slice(0,16).replace('T',' ');return JSON.stringify(v)}if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v))return v.slice(0,16).replace('T',' ');return v};
@@ -25656,5 +25685,81 @@ const oldLoad=load;load=async function(){await oldLoad();if(active==='Compras')a
 })();
 
 </script>
+
+<style id="kp-finance-bloc-refresh-2026">
+/* KPlace · renovación visual de Finanzas y Bloc de notas */
+#kpf-overlay{padding:0!important;background:rgba(5,7,18,.84)!important;backdrop-filter:blur(10px)!important}
+#kpf-panel{background:linear-gradient(155deg,#0d1020 0%,#141326 56%,#19152b 100%)!important;border:1px solid #39334f!important;border-radius:24px!important;box-shadow:0 28px 90px #000b!important}
+#kpf-panel>header{position:relative!important;min-height:112px!important;padding:22px 24px!important;gap:15px!important;justify-content:flex-start!important;align-items:center!important;background:linear-gradient(115deg,#211a3c 0%,#17162d 58%,#101525 100%)!important;border-bottom:1px solid #8b6cf044!important}
+#kpf-panel .kpf-eyebrow{display:inline-block!important;color:#c4a7ff!important;font-size:10px!important;letter-spacing:2.2px!important;font-weight:850!important}
+#kpf-panel header h2{font-size:clamp(21px,3vw,27px)!important;letter-spacing:-.7px!important;margin:5px 0 0!important}
+#kpf-panel #kpf-close{order:-1!important;flex:none!important;width:48px!important;height:48px!important;border-radius:15px!important;background:linear-gradient(145deg,#ffffff18,#ffffff08)!important;border:1px solid #ffffff26!important;box-shadow:0 5px 16px #0003!important;color:#f3edff!important}
+#kpf-panel .kpf-content-shell{background:transparent!important}
+#kpf-panel .kpf-groups{background:#0b0e1b!important;border-right:1px solid #ffffff12!important;padding:15px 11px!important;gap:9px!important}
+#kpf-panel .kpf-groups button{min-height:58px!important;border-radius:15px!important;border:1px solid transparent!important;background:#ffffff05!important;color:#aaa9bd!important;transition:background .18s,border-color .18s,transform .18s!important}
+#kpf-panel .kpf-groups button.active{background:linear-gradient(120deg,#6944aa,#453779)!important;border-color:#a58ae066!important;color:#fff!important;box-shadow:0 8px 22px #0004!important}
+#kpf-panel .kpf-groups button:active,#kpf-panel .kpf-tabs button:active{transform:scale(.98)!important}
+#kpf-panel .kpf-tabs{padding:14px 16px 13px!important;gap:8px!important;background:#101222!important;border-bottom:1px solid #ffffff12!important;scrollbar-width:none!important}
+#kpf-panel .kpf-tabs button{background:#1a1b2d!important;border:1px solid #ffffff14!important;color:#b9b8cb!important;padding:11px 16px!important;border-radius:999px!important;font-size:12px!important;font-weight:700!important}
+#kpf-panel .kpf-tabs button.active{background:linear-gradient(115deg,#7651bd,#57418e)!important;border-color:#a88be4!important;color:#fff!important;box-shadow:0 5px 15px #0003!important}
+#kpf-panel .kpf-body{background:linear-gradient(180deg,#121426 0%,#151426 100%)!important;padding:22px 24px 32px!important}
+#kpf-panel .kpf-titleline h3{font-size:22px!important;letter-spacing:-.45px!important}
+#kpf-panel .kpf-subtitle{color:#aaa9c1!important}
+#kpf-panel .kpf-hint{background:#292044!important;border:1px solid #7254ad55!important;border-left:4px solid #9871e8!important;border-radius:15px!important;padding:14px 16px!important;color:#d7c9f6!important;line-height:1.55!important}
+#kpf-panel .kpf-help{background:#19182a!important;border:1px solid #ffffff14!important;border-radius:13px!important;color:#c6c3d8!important}
+#kpf-panel .kpf-help summary{color:#c9b4f4!important}
+#kpf-panel #kpf-search{background:#0d1424!important;border:1px solid #42415a!important;border-radius:13px!important;min-height:48px!important;color:#fff!important}
+#kpf-panel .kpf-quiet,#kpf-panel .kpf-rowbtn{background:#202035!important;border:1px solid #ffffff17!important;border-radius:12px!important;color:#e5e1f0!important;min-height:43px!important}
+/* Se oscurece el fondo de las tarjetas, sin cambiar sus acentos morado/verde/naranja/azul. */
+#kpf-panel .kpf-card{background:linear-gradient(145deg,#1a1b30 0%,#131526 100%)!important;border-left:1px solid #ffffff12!important;border-right:1px solid #ffffff12!important;border-bottom:1px solid #ffffff12!important;box-shadow:0 8px 22px #0002!important}
+#kpf-panel .kpf-card small{color:#b9b7cd!important}
+#kpf-panel .kpf-card strong{color:#f8f7ff!important}
+#kpf-panel .kpf-card span{color:#9998b0!important}
+#kpf-panel .kpf-section-card{background:#191a2c!important;border:1px solid #ffffff14!important;border-radius:17px!important}
+#kpf-panel form input,#kpf-panel form select,#kpf-panel form textarea{background:#0d1424!important;border:1px solid #41415a!important;border-radius:12px!important}
+#kpf-panel .kpf-primary{background:linear-gradient(115deg,#7954c3,#5d469b)!important;border:1px solid #a88be2!important;border-radius:12px!important}
+#kpf-panel table{color:#e8e6f1!important}
+#kpf-panel th{background:#202036!important;color:#c5bddb!important}
+#kpf-panel td{border-bottom-color:#ffffff12!important}
+/* Bloc de notas: cabecera, navegación y superficies con el mismo lenguaje visual. */
+#kpb-overlay{background:linear-gradient(180deg,#090b17 0%,#101122 100%)!important;color:#f1effa!important}
+#kpb-overlay>header{position:relative!important;min-height:106px!important;display:flex!important;align-items:center!important;gap:15px!important;padding:calc(env(safe-area-inset-top,0px) + 14px) 18px 15px!important;background:linear-gradient(115deg,#241b43 0%,#1b1835 58%,#111629 100%)!important;border-bottom:1px solid #9473d344!important;box-shadow:0 8px 25px #0003!important}
+#kpb-overlay .kpb-brand{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0!important}
+#kpb-overlay .kpb-kicker{font-size:9px!important;letter-spacing:2px!important;font-weight:850!important;color:#c4a7ff!important}
+#kpb-overlay header h2{font-size:22px!important;line-height:1.2!important;font-weight:780!important;letter-spacing:-.5px!important;color:#fff!important}
+#kpb-overlay .kpb-subtitle{font-size:11px!important;color:#b8aecf!important}
+#kpb-overlay #kpb-back{flex:none!important;width:48px!important;height:48px!important;border-radius:15px!important;background:#ffffff12!important;border:1px solid #ffffff26!important;color:#f3edff!important;box-shadow:0 5px 16px #0003!important}
+#kpb-tabs{padding:13px 16px!important;gap:9px!important;background:#101222!important;border-bottom:1px solid #ffffff12!important;scrollbar-width:none!important}
+#kpb-tabs button{background:#1a1b2d!important;border:1px solid #ffffff18!important;color:#c4c1d3!important;padding:11px 17px!important;border-radius:999px!important;font-size:13px!important;font-weight:700!important;transition:background .18s,border-color .18s!important}
+#kpb-tabs button.on{background:linear-gradient(115deg,#7952c8,#5b43a0)!important;border-color:#a88be8!important;color:#fff!important;box-shadow:0 5px 16px #0004!important}
+#kpb-body{padding:18px 16px 100px!important;max-width:900px!important;width:100%!important;margin:0 auto!important}
+#kpb-overlay .kpb-card{background:linear-gradient(145deg,#191a2d 0%,#141627 100%)!important;border:1px solid #ffffff18!important;border-radius:20px!important;padding:20px!important;box-shadow:0 10px 28px #0002!important;margin-bottom:14px!important}
+#kpb-overlay .kpb-card h3{font-size:19px!important;font-weight:780!important;letter-spacing:-.3px!important;color:#f7f5ff!important;margin-bottom:5px!important}
+#kpb-overlay .kpb-help{font-size:13px!important;line-height:1.45!important;color:#c4a9f3!important;margin-bottom:14px!important}
+#kpb-overlay .kpb-card label{font-size:12px!important;font-weight:700!important;color:#b9b8cd!important;margin:13px 0 6px!important}
+#kpb-overlay .kpb-card input[type=text],#kpb-overlay .kpb-card input[type=date],#kpb-overlay .kpb-card input[type=time],#kpb-overlay .kpb-card input[type=datetime-local],#kpb-overlay .kpb-card select,#kpb-overlay .kpb-card textarea{background:#0d1424!important;border:1px solid #42415b!important;border-radius:13px!important;padding:13px 14px!important;color:#f8f7ff!important;min-height:48px!important}
+#kpb-overlay .kpb-card textarea{min-height:115px!important}
+#kpb-overlay .kpb-go{background:linear-gradient(115deg,#7952c8,#6046aa)!important;border:1px solid #a88be8!important;border-radius:14px!important;min-height:52px!important;font-weight:750!important;box-shadow:0 7px 18px #0003!important}
+#kpb-overlay .kpb-post{background:#191a2d!important;border:1px solid #ffffff16!important;border-radius:16px!important;padding:15px!important;box-shadow:0 6px 18px #0002!important}
+#kpb-overlay .kpb-post b{color:#f5f2ff!important}
+#kpb-overlay .kpb-post p{color:#e3e0ef!important;line-height:1.5!important}
+#kpb-overlay .kpb-post small{color:#a6a4bd!important}
+#kpb-overlay .kpb-sm,#kpb-overlay .kpb-chip{background:#24223a!important;border:1px solid #ffffff20!important;border-radius:11px!important;color:#e9e5f4!important;padding:9px 12px!important}
+#kpb-overlay .kpb-chip.on{background:#6247a5!important;border-color:#a88be8!important;color:#fff!important}
+@media(max-width:600px){
+ #kpf-panel>header{min-height:100px!important;padding:16px 15px!important}
+ #kpf-panel .kpf-body{padding:17px 13px 30px!important}
+ #kpf-panel .kpf-titleline{align-items:stretch!important}
+ #kpf-panel .kpf-toolbar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;width:100%!important}
+ #kpf-panel #kpf-search{grid-column:1/-1!important;max-width:none!important;width:100%!important}
+ #kpf-panel .kpf-quiet{padding:9px 5px!important;font-size:11px!important}
+ #kpf-panel .kpf-groups button{min-height:53px!important}
+ #kpb-overlay>header{min-height:98px!important;padding-left:14px!important;padding-right:14px!important}
+ #kpb-overlay header h2{font-size:20px!important}
+ #kpb-body{padding:15px 13px 90px!important}
+ #kpb-overlay .kpb-card{padding:17px!important;border-radius:18px!important}
+}
+</style>
+
 </body>
 </html>
