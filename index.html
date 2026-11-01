@@ -23855,8 +23855,8 @@ function injectNavigation(){
    let after=null;
    if(id==='packing')after=anchor(nav,['hoy','ordenes']);
    else if(id==='documents')after=anchor(nav,['packing','hoy','ordenes']);
-   else if(id==='cash')after=anchor(nav,['reportes','documents','packing','adminOrdersInventory']);
-   if(after&&after!==el)after.insertAdjacentElement('afterend',el);
+   else if(id==='cash')after=anchor(nav,['cotizaciones','reportes','documents','packing','adminOrdersInventory']);
+   if(after&&after!==el){if(after.nextElementSibling!==el)after.insertAdjacentElement('afterend',el)}
    else if(!el.isConnected)nav.appendChild(el);
   }
  }
@@ -25949,6 +25949,97 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  #kpiShell .kpi-groups{width:100%;flex-direction:row;padding:10px 12px;border-right:0;border-bottom:1px solid #ffffff18}
  #kpiShell .kpi-groups button{flex:1;min-height:50px;justify-content:center}
  #kpiShell .kpi-body{padding:14px 12px 24px}
+}
+</style>
+
+
+<script id="kp-laptop-chrome">
+(function(){
+'use strict';
+if(window.__kpg)return;window.__kpg=1;
+/* Diseño tipo Finanzas para todas las pestañas — SOLO laptop (≥1000px).
+   Barra lateral y encabezado persistentes fuera de #view: no se reconstruyen al refrescar la página. */
+var GROUPS=[[/inicio|^hoy/i,'PANEL'],[/bloc|chat|canales/i,'COMUNICACIÓN'],[/[oó]rden|empaque|recibo|env[ií]o|rastreo|repartidor|programad|retraso/i,'OPERACIÓN'],[/inventario/i,'INVENTARIO'],[/usuario|reporte|cotizaci|equipo/i,'ADMINISTRACIÓN'],[/caja|finanza|compra/i,'FINANZAS']];
+var sig='',btns=[],side=null,head=null;
+function srcNav(){
+  var s=document.getElementById('kpSideNav');if(s&&s.querySelector('button'))return s;
+  return [].slice.call(document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top)')).find(function(n){return n.querySelector('[data-section],[data-kf-nav]')})||null;
+}
+function parse(b){
+  var sp=b.querySelector('span'),ic=sp?sp.textContent.trim():'•';
+  var label=[].slice.call(b.childNodes).filter(function(n){return n.nodeType===3}).map(function(n){return n.textContent}).join('').replace(/\s+/g,' ').trim()||b.textContent.replace(sp?sp.textContent:'','').replace(/\s+/g,' ').trim();
+  return {ic:ic,label:label};
+}
+var SECMAP={inicio:'inicio',hoy:'ordenes',principal:'chat',admin:'usuarios',reportes:'reportes',boxful:'envios',rastreosNacionales:'rastreos',repartidor:'repartidores',adminOrdersInventory:'inventario',cotizaciones:'cotizaciones'};
+var lastClick=-1;
+function activeIdx(all){
+  var t=String(window.activeTab||''),idx=-1;
+  if(t.indexOf('kplace_')===0){all.forEach(function(b,i){if(b.dataset.kfNav===t.slice(7))idx=i})}
+  else{var sec=SECMAP[t]||(/chat|canal|dm/i.test(t)?'chat':null);if(sec)all.forEach(function(b,i){if(b.dataset.section===sec)idx=i})}
+  if(idx<0&&lastClick>=0&&lastClick<all.length)idx=lastClick;
+  if(idx<0)all.forEach(function(b,i){if(b.classList.contains('active'))idx=i});
+  return idx;
+}
+function groupOf(l){for(var i=0;i<GROUPS.length;i++)if(GROUPS[i][0].test(l))return GROUPS[i][1];return 'ORGANIZACIÓN'}
+function ensure(){
+  var app=document.getElementById('app'),view=document.getElementById('view');
+  if(!app||!view)return false;
+  if(!side){side=document.createElement('aside');side.id='kpgSide';side.setAttribute('aria-label','Secciones');
+    side.addEventListener('click',function(e){var b=e.target.closest('button[data-i]');if(!b)return;lastClick=+b.dataset.i;var s=btns[+b.dataset.i];if(s)s.click()});
+    app.appendChild(side)}
+  if(!head){head=document.createElement('header');head.id='kpgHead';head.innerHTML='<span class="kpg-eyebrow"></span><h2></h2>';app.insertBefore(head,view)}
+  else if(head.nextElementSibling!==view&&head.parentElement===app&&view.parentElement===app){app.insertBefore(head,view)}
+  return true;
+}
+function sync(){
+  try{
+    var nav=srcNav();if(!nav||!ensure())return;
+    var all=[].slice.call(nav.querySelectorAll('button')).filter(function(b){return getComputedStyle(b).display!=='none'&&b.textContent.trim()});
+    var list=all.map(parse),s2=list.map(function(x){return x.label}).join('|');
+    if(!all.length){document.body.classList.remove('kpg-on');return}
+    btns=all;
+    if(s2!==sig){sig=s2;side.innerHTML=list.map(function(x,i){return '<button type="button" data-i="'+i+'"><span class="kpg-ic">'+x.ic+'</span><span class="kpg-tx">'+x.label+'</span></button>'}).join('')}
+    var act=activeIdx(all);
+    [].slice.call(side.children).forEach(function(c,i){c.classList.toggle('active',i===act)});
+    var cur=act>=0?list[act]:list[0];
+    var h2=head.querySelector('h2'),eb=head.querySelector('.kpg-eyebrow');
+    var t=cur.ic+' '+cur.label,e='KPLACE · '+groupOf(cur.label);
+    if(h2.textContent!==t)h2.textContent=t;if(eb.textContent!==e)eb.textContent=e;
+    var tb=document.querySelector('.topbar');if(tb){var hh=tb.offsetHeight+'px';if(document.documentElement.style.getPropertyValue('--kpg-top')!==hh)document.documentElement.style.setProperty('--kpg-top',hh)}
+    var own=String(window.activeTab)==='adminOrdersInventory'||!!document.getElementById('kpiShell');
+    document.body.classList.toggle('kpg-nohead',own);
+    var tt=String(window.activeTab||'');
+    document.body.classList.toggle('kpg-on',!(SECMAP[tt]==='chat'||/chat|canal|dm/i.test(tt)));
+  }catch(err){console.warn('kpg',err)}
+}
+setInterval(sync,600);
+document.addEventListener('click',function(){setTimeout(sync,120)},true);
+setTimeout(sync,900);
+})();
+</script>
+<style id="kp-laptop-chrome-css">
+#kpgSide,#kpgHead{display:none}
+@media (min-width:1000px){
+ body.kpg-on #kpgSide{display:flex;position:fixed;left:0;top:var(--kpg-top,80px);bottom:0;width:208px;z-index:30;flex-direction:column;gap:9px;padding:15px 11px;overflow-y:auto;background:#fff;border-right:1px solid #e4e8ef;scrollbar-width:thin}
+ body.kpg-on #kpgSide button{flex:none;min-height:52px;display:flex;align-items:center;gap:11px;padding:11px 13px;text-align:left;font:inherit;font-size:13px;font-weight:700;color:#465164;background:#f6f8fb;border:1px solid transparent;border-radius:15px;cursor:pointer;transition:background .18s,border-color .18s}
+ body.kpg-on #kpgSide button:hover:not(.active){background:#eef1f7;color:#6d3fc0}
+ body.kpg-on #kpgSide button.active{color:#fff;background:linear-gradient(120deg,#6944aa,#453779);border-color:#a58ae066;box-shadow:0 8px 22px #0003}
+ body.kpg-on #kpgSide .kpg-ic{font-size:18px;line-height:1;width:22px;text-align:center;flex:none}
+ body.kpg-on #app{padding-left:208px}
+ body.kpg-on .topbar{padding-left:0}
+ body.kpg-on #kpgHead{display:flex;flex-direction:column;gap:3px;max-width:1240px;margin:20px auto 0;padding:22px 26px;min-height:96px;justify-content:center;color:#2a1b4d;background:linear-gradient(115deg,#f3eefe,#ffffff);border:1px solid #e1d8f5;border-radius:22px 22px 0 0}
+ body.kpg-on #kpgHead .kpg-eyebrow{font-size:10px;letter-spacing:2px;font-weight:850;color:#7d52d3}
+ body.kpg-on #kpgHead h2{margin:0;font-size:clamp(21px,2.6vw,27px);font-weight:780;letter-spacing:-.6px}
+ body.kpg-on.kpg-nohead #kpgHead{display:none}
+ body.kpg-on:not(.kpg-nohead) #view{margin-top:0}
+ /* oscuro: mismo lenguaje que Finanzas */
+ body.kp-dark.kpg-on #kpgSide{background:#0b0e1b;border-right-color:#ffffff12}
+ body.kp-dark.kpg-on #kpgSide button{color:#aaa9bd;background:#ffffff05}
+ body.kp-dark.kpg-on #kpgSide button:hover:not(.active){background:#ffffff0e;color:#fff}
+ body.kp-dark.kpg-on #kpgSide button.active{color:#fff;background:linear-gradient(120deg,#6944aa,#453779);border-color:#a58ae066}
+ body.kp-dark.kpg-on #kpgHead{color:#fff;background:linear-gradient(115deg,#211a3c 0%,#17162d 58%,#101525 100%);border:1px solid #4b4560;border-bottom:1px solid #8b6cf044}
+ body.kp-dark.kpg-on #kpgHead .kpg-eyebrow{color:#c4a7ff}
+ body.kp-dark.kpg-on:not(.kpg-nohead) #view{background:linear-gradient(180deg,#121426 0%,#151426 100%);border:1px solid #4b4560;border-top:0;border-radius:0 0 22px 22px;margin-bottom:28px;box-shadow:0 30px 80px #0007}
 }
 </style>
 
