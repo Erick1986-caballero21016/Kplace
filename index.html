@@ -9197,7 +9197,7 @@ render = function(){
       </div>
       <div class="btnrow" style="margin-top:16px;flex-direction:column;gap:8px">
         <button class="btn primary" style="width:100%" onclick="document.getElementById('kpInvEditorOverlay')?.remove();kpShowProductQR('${escapeHtml(String(newItem.id))}')">🏷️ Generar QR de este producto</button>
-        <button class="btn gold" style="width:100%" onclick="kpOpenInventoryEditor(null,'${escapeHtml(newItem.ubicacionId||'bodega_principal')}')">➕ Agregar otro producto (misma ubicación)</button>
+        <button class="btn" style="width:100%" onclick="document.getElementById('kpInvEditorOverlay')?.remove();kpOpenTransferInventory('${escapeHtml(newItem.ubicacionId||'bodega_principal')}')">🔄 Mover a otra bodega o sucursal</button>         <button class="btn gold" style="width:100%" onclick="kpOpenInventoryEditor(null,'${escapeHtml(newItem.ubicacionId||'bodega_principal')}')">➕ Agregar otro producto (misma ubicación)</button>
         <button class="btn" style="width:100%" onclick="document.getElementById('kpInvEditorOverlay')?.remove()">Cerrar</button>
       </div>
     </div>`;
@@ -9208,12 +9208,13 @@ render = function(){
     const lotes = usaLotes ? KP.Campos.leerLotes() : null;
     const cantidad = usaLotes ? (lotes||[]).reduce((s,l)=>s+Number(l.cantidad||0),0) : parseInt(document.getElementById('kpNewInvCantidad')?.value,10);
     const camposExtra = KP.Campos ? KP.Campos.leerExtras() : {};
-    if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!Number.isInteger(cantidad)||cantidad<0){toast('La cantidad debe ser un número entero igual o mayor que 0.');return;}
-    const ref=db.collection('config').doc('inventario');db.runTransaction(async tx=>{const snap=await tx.get(ref);const items=(snap.exists&&snap.data().items)||[];const existingSkus=new Set(items.map(x=>(x.sku||'').toUpperCase()).filter(Boolean));let savedItem;if(id){const idx=items.findIndex(x=>String(x.id)===String(id));if(idx<0)throw new Error('La variante ya no existe.');const sku=skuInput||items[idx].sku||kpGenerarSku(producto,tamano,existingSkus);const codigoBarras=codigoBarrasInput||items[idx].codigoBarras||sku;items[idx]={...items[idx],categoria:producto,modelo,tamano,colorEn,colorEs,cantidad,ubicacionId,precioOnline,precioTienda,sku,codigoBarras,camposExtra,...(usaLotes?{lotes}:{})};savedItem=items[idx];}else{const duplicate=items.find(x=>(x.ubicacionId||'bodega_principal')===ubicacionId&&normSearch(x.categoria)===normSearch(producto)&&normSearch(x.modelo)===normSearch(modelo)&&normSearch(x.tamano)===normSearch(tamano)&&normSearch(x.colorEn)===normSearch(colorEn)&&normSearch(x.colorEs)===normSearch(colorEs));if(duplicate)throw new Error('Esa variante ya existe en esa ubicación.');const sku=skuInput||kpGenerarSku(producto,tamano,existingSkus);const codigoBarras=codigoBarrasInput||sku;savedItem={id:'inv_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),categoria:producto,modelo,tamano,colorEn,colorEs,ubicacionId,cantidad,vendidos:0,precioOnline,precioTienda,sku,codigoBarras,camposExtra,...(usaLotes?{lotes}:{}),ultimaEntrada:todayStr(),cantidadUltimaEntrada:cantidad};items.push(savedItem);}tx.set(ref,{items},{merge:true});return {savedItem,isEdit:!!id};}).then(({savedItem,isEdit})=>{
+    const pk=v=>[v.categoria,v.modelo,v.tamano,v.colorEn,v.colorEs].map(x=>String(x||'').trim().toLowerCase()).join('|');let applyAll=false;if(id){const old=(window.INVENTARIO||[]).find(x=>String(x.id)===String(id));if(old&&(Number(old.precioOnline||0)!==precioOnline||Number(old.precioTienda||0)!==precioTienda)){const hayOtras=(window.INVENTARIO||[]).some(x=>String(x.id)!==String(id)&&pk(x)===pk(old));if(hayOtras&&window.CURRENT_USER?.esAdmin)applyAll=confirm('Cambiaste el precio de este producto.\n\nAceptar = aplicarlo en TODAS las sucursales.\nCancelar = solo en esta ubicación (las demás conservan su precio).')}}
+if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!Number.isInteger(cantidad)||cantidad<0){toast('La cantidad debe ser un número entero igual o mayor que 0.');return;}
+    const ref=db.collection('config').doc('inventario');db.runTransaction(async tx=>{const snap=await tx.get(ref);const items=(snap.exists&&snap.data().items)||[];const existingSkus=new Set(items.map(x=>(x.sku||'').toUpperCase()).filter(Boolean));let savedItem;if(id){const idx=items.findIndex(x=>String(x.id)===String(id));if(idx<0)throw new Error('La variante ya no existe.');const sku=skuInput||items[idx].sku||kpGenerarSku(producto,tamano,existingSkus);const codigoBarras=codigoBarrasInput||items[idx].codigoBarras||sku;const oldK=pk(items[idx]);items[idx]={...items[idx],categoria:producto,modelo,tamano,colorEn,colorEs,cantidad,ubicacionId,precioOnline,precioTienda,sku,codigoBarras,camposExtra,...(usaLotes?{lotes}:{})};savedItem=items[idx];if(applyAll)items.forEach((x,j)=>{if(j!==idx&&pk(x)===oldK)items[j]={...x,precioOnline,precioTienda}});}else{const duplicate=items.find(x=>(x.ubicacionId||'bodega_principal')===ubicacionId&&normSearch(x.categoria)===normSearch(producto)&&normSearch(x.modelo)===normSearch(modelo)&&normSearch(x.tamano)===normSearch(tamano)&&normSearch(x.colorEn)===normSearch(colorEn)&&normSearch(x.colorEs)===normSearch(colorEs));if(duplicate)throw new Error('Esa variante ya existe en esa ubicación.');const sku=skuInput||kpGenerarSku(producto,tamano,existingSkus);const codigoBarras=codigoBarrasInput||sku;savedItem={id:'inv_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),categoria:producto,modelo,tamano,colorEn,colorEs,ubicacionId,cantidad,vendidos:0,precioOnline,precioTienda,sku,codigoBarras,camposExtra,...(usaLotes?{lotes}:{}),ultimaEntrada:todayStr(),cantidadUltimaEntrada:cantidad};items.push(savedItem);}tx.set(ref,{items},{merge:true});return {savedItem,isEdit:!!id};}).then(({savedItem,isEdit})=>{
       const idx=(INVENTARIO||[]).findIndex(x=>String(x.id)===String(savedItem.id));
       if(idx>=0) INVENTARIO[idx]=savedItem; else INVENTARIO.push(savedItem);
       if(isEdit){ document.getElementById('kpInvEditorOverlay')?.remove(); toast('Producto actualizado.'); }
-      else { kpShowInventorySavedPanel(savedItem); toast('Producto agregado al inventario.'); }
+      else { kpShowInventorySavedPanel(savedItem); toast('Producto agregado al inventario.'); try{if(!window.CURRENT_USER?.esAdmin)window.KPBloc?.announce?.('📦 Producto nuevo: '+[savedItem.categoria,savedItem.modelo,savedItem.tamano,savedItem.colorEn].filter(Boolean).join(' ')+' · '+savedItem.cantidad+' uds en '+ubicacionNombre(savedItem.ubicacionId||'bodega_principal')+' · lo agregó '+(window.CURRENT_USER?.nombre||'un usuario'))}catch(e){} }
       if(document.getElementById('kpInventoryManager')) renderInventoryManager();
     }).catch(e=>toast('No se pudo guardar: '+(e.message||'error')));
   };
@@ -13772,7 +13773,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     document.getElementById('kpTransferOverlay')?.remove();
     const opts=locs.map(u=>`<option value="${esc(u.id)}">${esc(u.nombre)}</option>`).join('');
     const overlay=document.createElement('div');overlay.id='kpTransferOverlay';overlay.className='kp-modal-overlay';
-    overlay.innerHTML=`<div class="kp-modal" style="max-width:680px;width:calc(100% - 24px)"><div class="kp-pro-modal-head"><div><div class="kp-kicker">MOVIMIENTO INTERNO</div><h2>Transferir inventario</h2><p>Mover unidades entre ubicaciones sin borrar productos.</p></div><button type="button" class="kp-pro-close" onclick="document.getElementById('kpTransferOverlay')?.remove()">×</button></div><div class="grid2" style="margin-top:14px"><div><label for="kpTrFrom">Desde</label><select id="kpTrFrom">${opts}</select></div><div><label for="kpTrTo">Hacia</label><select id="kpTrTo"><option value="">Seleccioná destino</option>${opts}</select></div></div><div style="margin-top:12px"><label for="kpTrItem">Producto</label><select id="kpTrItem"><option value="">Seleccioná una variante</option></select></div><div style="margin-top:12px"><label for="kpTrQty">Cantidad</label><input id="kpTrQty" type="number" min="1" step="1" value="1"></div><div class="btnrow" style="justify-content:flex-end;margin-top:16px"><button type="button" class="btn" onclick="document.getElementById('kpTransferOverlay')?.remove()">Cancelar</button><button type="button" class="btn primary" onclick="kpConfirmTransfer()">Confirmar transferencia</button></div></div>`;
+    overlay.innerHTML=`<div class="kp-modal" style="max-width:680px;width:calc(100% - 24px)"><div class="kp-pro-modal-head"><div><div class="kp-kicker">MOVIMIENTO INTERNO</div><h2>Transferir inventario</h2><p>Mover unidades entre ubicaciones sin borrar productos.</p></div><button type="button" class="kp-pro-close" onclick="document.getElementById('kpTransferOverlay')?.remove()">×</button></div><div class="grid2" style="margin-top:14px"><div><label for="kpTrFrom">Desde</label><select id="kpTrFrom">${opts}</select></div><div><label for="kpTrTo">Hacia</label><select id="kpTrTo"><option value="">Seleccioná destino</option>${opts}</select></div></div><div style="margin-top:12px"><label for="kpTrItem">Producto</label><select id="kpTrItem"><option value="">Seleccioná una variante</option></select></div><div style="margin-top:12px"><label for="kpTrQty">Cantidad</label><input id="kpTrQty" type="number" min="1" step="1" value="1"></div><div id="kpTrExtra"></div><button type="button" class="btn" style="margin-top:12px" onclick="kpTrAddRow()">＋ Agregar otro destino</button><p class="small" style="margin:8px 0 0">Puedes repartir las unidades entre varias ubicaciones en una sola transferencia.</p><div class="btnrow" style="justify-content:flex-end;margin-top:16px"><button type="button" class="btn" onclick="document.getElementById('kpTransferOverlay')?.remove()">Cancelar</button><button type="button" class="btn primary" onclick="kpConfirmTransfer()">Confirmar transferencia</button></div></div>`;
     document.body.appendChild(overlay);
     const from=document.getElementById('kpTrFrom'),to=document.getElementById('kpTrTo');
     from.value=String(source);
@@ -13784,24 +13785,29 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     });
     window.kpUpdateTransferProducts();
   };
+  window.kpTrAddRow=function(){const h=document.getElementById('kpTrExtra');if(!h)return;const from=document.getElementById('kpTrFrom')?.value;const w=document.createElement('div');w.className='grid2';w.style.marginTop='12px';w.innerHTML='<div><label>Otro destino</label><select class="kpTrToX"><option value="">Seleccioná destino</option>'+locations().filter(u=>String(u.id)!==String(from)).map(u=>'<option value="'+esc(u.id)+'">'+esc(u.nombre)+'</option>').join('')+'</select></div><div><label>Cantidad</label><input class="kpTrQtyX" type="number" min="1" step="1" value="1"></div>';h.appendChild(w)};
   window.kpConfirmTransfer=function(){
-    const from=document.getElementById('kpTrFrom')?.value,to=document.getElementById('kpTrTo')?.value,id=document.getElementById('kpTrItem')?.value,qty=parseInt(document.getElementById('kpTrQty')?.value,10);
-    if(!id||!from||!to||from===to||!Number.isInteger(qty)||qty<1){toast('Seleccioná dos ubicaciones distintas, producto y cantidad válida.');return;}
-    const dbx=window.db||db,ref=dbx.collection('config').doc('inventario');
+    const from=document.getElementById('kpTrFrom')?.value,id=document.getElementById('kpTrItem')?.value;
+    const rows=[{to:document.getElementById('kpTrTo')?.value,qty:parseInt(document.getElementById('kpTrQty')?.value,10)}];
+    const xs=[...document.querySelectorAll('.kpTrToX')],qs=[...document.querySelectorAll('.kpTrQtyX')];
+    xs.forEach((s,i)=>{if(s.value)rows.push({to:s.value,qty:parseInt(qs[i]?.value,10)})});
+    if(!id||!from||rows.some(r=>!r.to||r.to===from||!Number.isInteger(r.qty)||r.qty<1)){toast('Seleccioná el producto y, en cada destino, una ubicación distinta del origen con cantidad válida.');return;}
+    const total=rows.reduce((s,r)=>s+r.qty,0),dbx=window.db||db,ref=dbx.collection('config').doc('inventario');
     dbx.runTransaction(async tx=>{
       const snap=await tx.get(ref),items=(snap.exists&&Array.isArray(snap.data().items)?snap.data().items:[]).map(x=>({...x,ubicacionId:x.ubicacionId||'bodega_principal'}));
       const si=items.findIndex(i=>String(i.id)===String(id));
       if(si<0||String(items[si].ubicacionId)!==String(from))throw new Error('El producto ya no está en la ubicación de origen. Actualizá la lista e intentá de nuevo.');
-      if(Number(items[si].cantidad||0)<qty)throw new Error('No hay suficiente stock en la ubicación de origen.');
-      const src=items[si];items[si]={...src,cantidad:Number(src.cantidad||0)-qty};
-      const di=items.findIndex(i=>String(i.ubicacionId||'bodega_principal')===String(to)&&norm(i.categoria)===norm(src.categoria)&&norm(i.modelo)===norm(src.modelo)&&norm(i.tamano)===norm(src.tamano)&&norm(i.colorEn)===norm(src.colorEn)&&norm(i.colorEs)===norm(src.colorEs));
-      if(di<0)items.push({...src,id:'inv_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),ubicacionId:to,cantidad:qty,vendidos:0});
-      else items[di]={...items[di],cantidad:Number(items[di].cantidad||0)+qty};
-      tx.set(ref,{items},{merge:true});return items;
-    }).then(items=>{
+      if(Number(items[si].cantidad||0)<total)throw new Error('No hay suficiente stock en el origen para repartir '+total+' unidades.');
+      const src={...items[si]};items[si]={...src,cantidad:Number(src.cantidad||0)-total};
+      rows.forEach(r=>{const di=items.findIndex(i=>String(i.ubicacionId||'bodega_principal')===String(r.to)&&norm(i.categoria)===norm(src.categoria)&&norm(i.modelo)===norm(src.modelo)&&norm(i.tamano)===norm(src.tamano)&&norm(i.colorEn)===norm(src.colorEn)&&norm(i.colorEs)===norm(src.colorEs));
+        if(di<0)items.push({...src,id:'inv_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),ubicacionId:r.to,cantidad:r.qty,vendidos:0});else items[di]={...items[di],cantidad:Number(items[di].cantidad||0)+r.qty}});
+      tx.set(ref,{items},{merge:true});return {items,src};
+    }).then(({items,src})=>{
       window.INVENTARIO=items;document.getElementById('kpTransferOverlay')?.remove();
       if(typeof window.renderInventoryManager==='function')window.renderInventoryManager();
-      toast('Transferencia realizada correctamente.');
+      const nm=x=>(locations().find(u=>String(u.id)===String(x))||{}).nombre||x;
+      try{if(!window.CURRENT_USER?.esAdmin)window.KPBloc?.announce?.('🔄 Transferencia: '+[src.categoria,src.modelo,src.tamano,src.colorEn].filter(Boolean).join(' ')+' · desde '+nm(from)+' hacia '+rows.map(r=>r.qty+' a '+nm(r.to)).join(', ')+' · por '+(window.CURRENT_USER?.nombre||'un usuario'))}catch(e){}
+      toast(rows.length>1?'Transferencia repartida en '+rows.length+' destinos.':'Transferencia realizada correctamente.');
     }).catch(e=>toast('No se pudo transferir: '+saveError(e)));
   };
 })();
@@ -25393,10 +25399,11 @@ if(a==='tab'){tab=id;$('kpb-overlay').dataset.formTab='';draw()}else if(a==='sav
 else if(a==='del'){if(!confirm('¿Borrar esto?'))return;try{await col().doc(id).delete()}catch(er){window.toast?.('No se pudo borrar')}}
 else if(a==='done'){const x=mine.find(m=>m.id===id);try{await col().doc(id).update({done:!x?.done})}catch(er){}}
 else if(a==='read'){try{await col().doc(id).update({leidoPor:window.firebase.firestore.FieldValue.arrayUnion(me())})}catch(er){}}}
+async function announce(texto){if(!window.db)return;try{await col().add({companyId:cid(),ownerKey:'sistema',ownerName:'Inventario',tipo:'anuncio',texto,roles:['admin_general'],sucursal:'todas',createdMillis:Date.now(),leidoPor:[],done:false})}catch(e){console.warn('Bloc',e)}}
 function snapshot(){const td=today();return{pendientes_abiertos:mine.filter(x=>x.tipo==='pendiente'&&!x.done).map(x=>({texto:x.texto,limite:x.vence||null})).slice(0,30),recordatorios_activos:mine.filter(x=>x.tipo==='recordatorio').map(x=>({texto:x.texto,desde:x.fecha,horas:x.horas})).slice(0,20),anuncios_sin_leer:unread().map(a=>({de:a.ownerName,texto:a.texto})).slice(0,10),notas_compartidas_con_mike:mine.filter(x=>x.tipo==='nota'&&x.mike).map(x=>({titulo:x.titulo,texto:String(x.texto).slice(0,400)})).slice(0,10)}}
 function menu(){if(!u())return;for(const nv of document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav,#kpSideNav')){const ini=nv.querySelector('[data-section="inicio"],[data-section="hoy"],[data-kpf-home]');if(!ini)continue;let b=nv.querySelector('[data-kpb]');if(!b){b=document.createElement('button');b.type='button';b.dataset.kpb='1';b.className=ini.className;b.innerHTML='<span class="dico">📝</span>Bloc de notas<span class="kpb-n"></span>';b.onclick=open;ini.after(b)}}}
 setInterval(()=>{try{menu();start();check()}catch(e){}},3000);document.addEventListener('click',e=>{if(e.target.closest('#menuBtn'))setTimeout(menu,120)});
-window.KPBloc={open,close,snapshot,unread:()=>unread().length};
+window.KPBloc={open,close,snapshot,announce,unread:()=>unread().length};
 })();
 </script>
 <script id="kp-finance-module">
