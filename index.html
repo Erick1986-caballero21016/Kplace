@@ -17490,8 +17490,7 @@ function tombHas(id,t,b){var d=tombRd();if(id&&d.ids.indexOf(id)>=0)return true;
 function rd(){var a=[];try{a=JSON.parse(localStorage.getItem(IK)||'[]')}catch(e){}
   return a.filter(function(x){return x.tipo!=='sistema'&&!/Aviso del sistema/.test(x.t||'')}).map(function(x,i){if(!x.id)x.id='o'+(x.ts||0)+'_'+i;if(!x.tipo)x.tipo=/boxful/i.test(x.t||'')?'boxful':'otros';return x})}
 function wr(a){try{localStorage.setItem(IK,JSON.stringify(a.slice(0,80)))}catch(e){}paintBadge();if($('kpNW'))renderList()}
-function unread(){var n=rd().filter(function(x){return !x.r}).length;
-  if('Notification' in window&&Notification.permission==='default')n++;return n}
+function unread(){return rd().filter(function(x){return !x.r}).length}
 function paintBadge(){var n=unread();document.querySelectorAll('.kpn-badge').forEach(function(b){b.textContent=n>9?'9+':n;b.style.display=n?'':'none'})}
 var ERRX=/(rechaz|401|\b[45]\d\d\b|error|no se pudo|fall[oó]|autentic|token|fetch|network|sin conexi|no devolvi|unavailable)/i;
 function grupo(x){
@@ -17633,7 +17632,7 @@ function openNW(){
   var o=document.createElement('div');o.id='kpNW';o.className='kpnw';
   o.innerHTML='<div class="kpnw-head"><button class="kpnw-back" id="kpNWx" aria-label="Cerrar">‹</button><span class="kpnw-logo"></span><h2>Notificaciones</h2></div>'
    +'<div class="kpnw-filters" id="kpNWf"></div><div class="kpnw-list" id="kpNWl"></div>'
-   +'<div class="kpnw-foot"><button class="kpnw-act" id="kpNWr" type="button">Marcar todas como leídas</button><details><summary>Ajustes de avisos</summary>'
+   +'<div class="kpnw-foot"><button class="kpnw-act" id="kpNWr" type="button">Marcar todas como leídas y limpiar</button><details><summary>Ajustes de avisos</summary>'
    +(perm==='default'?'<button class="kpnw-act" id="kpNWa">Activar avisos en este celular</button>':perm==='denied'?'<div class="kpnw-warn">Los avisos están bloqueados. Actívalos en Ajustes del navegador → Notificaciones.</div>':'')
    +TIPOS.map(function(t){return '<label class="kpnw-row2"><span>'+t[1]+'</span><input type="checkbox" data-k="'+t[0]+'"'+(p[t[0]]===false?'':' checked')+'></label>'}).join('')
    +'</details></div>';
@@ -17642,9 +17641,17 @@ function openNW(){
   var ac=$('kpNWa');if(ac)ac.onclick=async function(){try{await kpActivarAvisos()}catch(e){}openNW()};
   o.querySelectorAll('input[data-k]').forEach(function(i){i.onchange=function(){setPref(i.dataset.k,i.checked)}});
   renderList();paintBadge();
-  var rb=$('kpNWr');if(rb)rb.onclick=function(){
-    var all=rd();all.forEach(function(x){x.r=1});
-    wr(all);paintBadge();
+  var rb=$('kpNWr');if(rb)rb.onclick=function(ev){
+    if(ev){ev.preventDefault();ev.stopPropagation()}
+    var all=rd();
+    try{tombAdd(all)}catch(_){}
+    nuevos={};
+    try{localStorage.setItem(IK,'[]')}catch(_){}
+    wr([]);
+    paintBadge();
+    try{document.querySelectorAll('.kpn-badge').forEach(function(b){b.textContent='';b.style.display='none'})}catch(_){}
+    try{var md=document.querySelector('#menuBtn .kp-menu-dot');if(md)md.style.display='none'}catch(_){}
+    try{window.toast&&window.toast('Notificaciones leídas y limpiadas ✅')}catch(_){}
   };
 }
 window.kpOpenNotifs=openNW;window.kpPaintBadge=paintBadge;
@@ -25350,7 +25357,7 @@ const brs=()=>(window.KP?.branches||[]).map(b=>({id:String(b.id),name:b.nombre||
 const col=()=>window.db.collection('kp_bloc');
 const TABS=[['nota','Anotaciones'],['pendiente','Pendientes'],['recordatorio','Recordatorios'],['anuncio','Anuncios']];
 const DUR={unico:['Solo ese día',1],'1s':['1 semana',7],'2s':['2 semanas',14],'1m':['1 mes',30],'3m':['3 meses',90]};
-let mine=[],ann=[],tab='nota',who='',times=1,subs=[];
+let mine=[],ann=[],tab='nota',who='',times=1,subs=[],group='mine',annView='ver',q='';
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const fired=()=>{try{return new Set(JSON.parse(localStorage.getItem('kpb_fired_'+who)||'[]'))}catch(e){return new Set()}};
 const mark=k=>{const s=fired();s.add(k);try{localStorage.setItem('kpb_fired_'+who,JSON.stringify([...s].slice(-400)))}catch(e){}};
@@ -25383,8 +25390,8 @@ const CSS=`#kpb-overlay{position:fixed;inset:0;z-index:100050;background:#0b0d1a
 .kpb-switch{display:flex!important;align-items:center;justify-content:space-between;gap:12px;background:#ffffff0d;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:14px!important;color:#eceef8!important}.kpb-switch input{width:22px!important;height:22px;accent-color:#8b6cf0;flex:none}
 #kpb-back{width:46px;height:46px;padding:0!important;font-size:24px;line-height:1}
 body:has(#kpb-overlay.open) #kpMikeFab,body:has(#kpb-overlay.open) #kpMikeCompact,body:has(#kpb-overlay.open) [id^=kpMike]{display:none!important}`;
-function ui(){if($('kpb-overlay'))return;const s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);const o=document.createElement('div');o.id='kpb-overlay';o.innerHTML='<header><button id="kpb-back" type="button" aria-label="Abrir menú">☰</button><div class="kpb-brand"><span class="kpb-kicker">KPLACE · ORGANIZACIÓN</span><h2>📝 Bloc de notas</h2><span class="kpb-subtitle">Tus ideas, tareas y recordatorios</span></div></header><nav id="kpb-tabs"></nav><div id="kpb-body"></div>';document.body.appendChild(o);
-$('kpb-back').onclick=()=>{close();setTimeout(()=>document.getElementById('menuBtn')?.click(),150)};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}})}
+function ui(){if($('kpb-overlay'))return;const s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);const o=document.createElement('div');o.id='kpb-overlay';o.innerHTML='<section id="kpb-panel" role="dialog" aria-modal="true" aria-label="Bloc de notas"><header><button id="kpb-back" type="button" aria-label="Abrir menú">☰</button><div class="kpb-brand"><span class="kpb-kicker">KPLACE · ORGANIZACIÓN</span><h2>📝 Bloc de notas</h2><span class="kpb-subtitle">Tus ideas, tareas y recordatorios</span></div></header><div class="kpb-shell"><aside id="kpb-groups"></aside><section class="kpb-workspace"><nav id="kpb-tabs"></nav><div id="kpb-body"></div></section></div></section>';document.body.appendChild(o);
+$('kpb-back').onclick=()=>{close();setTimeout(()=>document.getElementById('menuBtn')?.click(),150)};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}});o.addEventListener('input',e=>{if(e.target.id==='kpb-q'){q=e.target.value;fill()}});o.addEventListener('mousedown',e=>{if(e.target===o)close()})}
 function open(){ui();start();$('kpb-overlay').classList.add('open');draw();try{window.closeKPlaceMenu?.()}catch(e){}}
 function close(){$('kpb-overlay')?.classList.remove('open')}
 function drawTimes(){const d=$('kpb-times');if(d)d.innerHTML=Array.from({length:times},(_,i)=>`<input type="time" class="kpb-h" value="${['09:00','14:00','18:00','20:00'][i]}">`).join('')}
@@ -25399,22 +25406,33 @@ if(x.tipo==='nota')return `<div class="kpb-post"><b>${esc(x.titulo||'Sin título
 if(x.tipo==='pendiente')return `<div class="kpb-post ${x.done?'done':''}"><p>${esc(x.texto)}</p><small>${x.vence?'Límite: '+esc(new Date(x.vence).toLocaleString())+(x.notificar?' · con aviso':''):'Sin fecha límite'}</small><div class="kpb-btns" style="margin-top:8px"><button class="kpb-sm" data-a="done" data-id="${esc(x.id)}">${x.done?'Reabrir':'✓ Hecho'}</button>${del}</div></div>`;
 if(x.tipo==='recordatorio')return `<div class="kpb-post"><p>${esc(x.texto)}</p><small>Desde ${esc(x.fecha)} · ${esc((DUR[x.duracion]||DUR.unico)[0])} · a las ${esc((x.horas||[]).join(', '))}</small><div class="kpb-btns" style="margin-top:8px">${del}</div></div>`;
 const nw=x.ownerKey!==me()&&!(x.leidoPor||[]).includes(me());const dest=(x.roles||[]).includes('todos')?'Todos':(x.roles||[]).map(r=>ROLES[r]||r).join(', ');return `<div class="kpb-post"><b>${esc(x.ownerName||'')}</b>${nw?'<span class="kpb-new">Nuevo</span>':''}<p>${esc(x.texto)}</p><small>${esc(when)} · Para: ${esc(dest)} · ${x.sucursal==='todas'?'Todas las sucursales':esc((brs().find(b=>b.id===String(x.sucursal))||{}).name||'Sucursal')}</small><div class="kpb-btns" style="margin-top:8px">${nw?`<button class="kpb-sm" data-a="read" data-id="${esc(x.id)}">Marcar leído</button>`:''}${(x.ownerKey===me()||myRole()==='admin_general')?del:''}</div></div>`}
-function draw(){const o=$('kpb-overlay');if(!o)return;$('kpb-tabs').innerHTML=TABS.map(([k,n])=>`<button data-a="tab" data-id="${k}" class="${k===tab?'on':''}">${n}${k==='anuncio'&&unread().length?' ('+unread().length+')':''}</button>`).join('');
-const keep=['kpb-t','kpb-x','kpb-v','kpb-f'].map(i=>[i,$(i)?.value]);const list=tab==='anuncio'?anns():mine.filter(x=>x.tipo===tab).sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0));
-if(!o.dataset.formTab||o.dataset.formTab!==tab||!$('kpb-x')){$('kpb-body').innerHTML=form()+(list.map(item).join('')||'<div class="kpb-card"><p class="kpb-help">Aún no hay nada aquí.</p></div>');o.dataset.formTab=tab;drawTimes()}else{const keepForm=$('kpb-body').firstElementChild.outerHTML;$('kpb-body').innerHTML=keepForm+(list.map(item).join('')||'<div class="kpb-card"><p class="kpb-help">Aún no hay nada aquí.</p></div>');drawTimes()}
-badge()}
+const GROUPS=[['mine','📝','Mi bloc'],['team','📣','Equipo']];
+const TABS2={mine:[['nota','Anotaciones'],['pendiente','Pendientes'],['recordatorio','Recordatorios']],team:[['anuncio-ver','Anuncios'],['anuncio-nuevo','Publicar anuncio']]};
+const META={nota:['Anotaciones','Apuntes privados','Escribe ideas y apuntes rápidos. Son privados: solo los ves tú y Mike.'],pendiente:['Pendientes','Lo que tienes que hacer','Anota lo que tienes que hacer y márcalo como hecho cuando lo termines.'],recordatorio:['Recordatorios','Avisos que se repiten','Programa avisos que se repiten a las horas que elijas, durante el tiempo que decidas.'],'anuncio-ver':['Anuncios','Avisos de tu equipo','Aquí ves los anuncios dirigidos a ti. Los nuevos aparecen marcados.'],'anuncio-nuevo':['Publicar anuncio','Un aviso para tu equipo','El anuncio les llega como notificación. Elige a quién va dirigido.']};
+const curKey=()=>tab==='anuncio'?'anuncio-'+annView:tab;
+function match(x){const t=q.trim().toLowerCase();if(!t)return true;return [x.titulo,x.texto,x.ownerName].join(' ').toLowerCase().includes(t)}
+function fill(){const st=$('kpb-stats');if(st){const c=[['Anotaciones',mine.filter(x=>x.tipo==='nota').length,'Apuntes privados'],['Pendientes',mine.filter(x=>x.tipo==='pendiente'&&!x.done).length,'Por hacer'],['Recordatorios',mine.filter(x=>x.tipo==='recordatorio').length,'Programados'],['Anuncios sin leer',unread().length,'Del equipo']];st.innerHTML=c.map(([a,b,d])=>`<div class="kpb-stat"><small>${a}</small><strong>${b}</strong><span>${d}</span></div>`).join('')}
+const lb=$('kpb-list');if(!lb)return;const list=(tab==='anuncio'?anns():mine.filter(x=>x.tipo===tab).sort((a,b)=>(b.createdMillis||0)-(a.createdMillis||0))).filter(match);
+lb.innerHTML=(list.map(item).join('')||`<div class="kpb-card"><p class="kpb-help" style="margin:0">${q.trim()?'Nada coincide con tu búsqueda.':'Aún no hay nada aquí.'}</p></div>`)}
+function draw(){const o=$('kpb-overlay');if(!o||!$('kpb-body'))return;const k=curKey(),un=unread().length;
+$('kpb-groups').innerHTML=GROUPS.map(([g,ic,n])=>`<button type="button" data-a="group" data-id="${g}" class="${g===group?'active':''}"><span class="kpb-gi">${ic}</span><span>${n}${g==='team'&&un?' ('+un+')':''}</span></button>`).join('');
+$('kpb-tabs').innerHTML=TABS2[group].map(([id,n])=>`<button type="button" data-a="tab" data-id="${id}" class="${id===k?'on':''}">${n}${id==='anuncio-ver'&&un?' ('+un+')':''}</button>`).join('');
+if(o.dataset.formTab!==k||!$('kpb-stats')){const m=META[k],showForm=k!=='anuncio-ver',showList=k!=='anuncio-nuevo';
+$('kpb-body').innerHTML=`<div class="kpb-titleline"><div><h3>${m[0]}</h3><p class="kpb-sub">${m[1]}</p></div>${showList?`<div class="kpb-toolbar"><input id="kpb-q" type="search" placeholder="Buscar en esta sección…" value="${esc(q)}" autocomplete="off"></div>`:''}</div><div class="kpb-hint">${m[2]}</div><div id="kpb-stats" class="kpb-cards"></div><div class="kpb-grid${showForm&&showList?'':' single'}">${showForm?`<div id="kpb-formwrap">${form()}</div>`:''}${showList?'<div id="kpb-list"></div>':''}</div>`;o.dataset.formTab=k;drawTimes()}
+fill();badge()}
 async function save(){const x=($('kpb-x')?.value||'').trim();if(!x){window.toast?.('Escribe el texto primero');return}const d={companyId:cid(),ownerKey:me(),ownerName:u()?.nombre||'',tipo:tab,texto:x,createdMillis:Date.now(),done:false};
 if(tab==='nota'){d.titulo=($('kpb-t')?.value||'').trim()}
 if(tab==='pendiente'){d.vence=$('kpb-v')?.value||'';d.notificar=!!$('kpb-nf')?.checked&&!!d.vence}
 if(tab==='recordatorio'){d.fecha=$('kpb-f')?.value||today();d.duracion=$('kpb-d')?.value||'unico';d.horas=[...document.querySelectorAll('.kpb-h')].map(i=>i.value).filter(Boolean);if(!d.horas.length){window.toast?.('Elige al menos una hora');return}}
 if(tab==='anuncio'){d.roles=[...document.querySelectorAll('.kpb-chip.on')].map(i=>i.dataset.id);if(!d.roles.length){window.toast?.('Elige para quién es el anuncio');return}d.sucursal=$('kpb-s')?.value||'todas';d.leidoPor=[me()]}
-try{await col().add(d);$('kpb-overlay').dataset.formTab='';window.toast?.('Guardado')}catch(e){console.error(e);window.toast?.('No se pudo guardar: '+(e.message||'error'))}}
+try{await col().add(d);$('kpb-overlay').dataset.formTab='';if(tab==='anuncio'){annView='ver';group='team'}draw();window.toast?.('Guardado')}catch(e){console.error(e);window.toast?.('No se pudo guardar: '+(e.message||'error'))}}
 async function onClick(e){const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
 if(a==='role'){b.classList.toggle('on');if(id==='todos'&&b.classList.contains('on'))document.querySelectorAll('.kpb-chip.on:not([data-id="todos"])').forEach(x=>x.classList.remove('on'));else if(id!=='todos'&&b.classList.contains('on'))document.querySelector('.kpb-chip[data-id="todos"]')?.classList.remove('on');return}
-if(a==='tab'){tab=id;$('kpb-overlay').dataset.formTab='';draw()}else if(a==='save')await save();
+if(a==='group'){group=id;tab=id==='team'?'anuncio':'nota';annView='ver';q='';$('kpb-overlay').dataset.formTab='';draw()}
+else if(a==='tab'){if(id.indexOf('anuncio-')===0){tab='anuncio';annView=id.slice(8);group='team'}else{tab=id;group='mine'}q='';$('kpb-overlay').dataset.formTab='';draw()}else if(a==='save')await save();
 else if(a==='del'){if(!confirm('¿Borrar esto?'))return;try{await col().doc(id).delete()}catch(er){window.toast?.('No se pudo borrar')}}
 else if(a==='done'){const x=mine.find(m=>m.id===id);try{await col().doc(id).update({done:!x?.done})}catch(er){}}
-else if(a==='read'){try{await col().doc(id).update({leidoPor:window.firebase.firestore.FieldValue.arrayUnion(me())})}catch(er){}}}
+else if(a==='read'){const x=ann.find(m=>m.id===id);if(x){x.leidoPor=[...(x.leidoPor||[]),me()];draw()}try{const fb=window.firebase||firebase;await col().doc(id).update({leidoPor:fb.firestore.FieldValue.arrayUnion(me())})}catch(er){console.warn('Bloc leído',er);window.toast?.('No se pudo marcar como leído')}}}
 async function announce(texto){if(!window.db)return;try{await col().add({companyId:cid(),ownerKey:'sistema',ownerName:'Inventario',tipo:'anuncio',texto,roles:['admin_general'],sucursal:'todas',createdMillis:Date.now(),leidoPor:[],done:false})}catch(e){console.warn('Bloc',e)}}
 function snapshot(){return{pendientes_abiertos:mine.filter(x=>x.tipo==='pendiente'&&!x.done).map(x=>({id:x.id,texto:x.texto,limite:x.vence||null})).slice(0,40),recordatorios:mine.filter(x=>x.tipo==='recordatorio').map(x=>({id:x.id,texto:x.texto,desde:x.fecha,horas:x.horas,duracion:x.duracion})).slice(0,30),anotaciones:mine.filter(x=>x.tipo==='nota').map(x=>({id:x.id,titulo:x.titulo,texto:String(x.texto).slice(0,500)})).slice(0,30),anuncios_sin_leer:unread().map(a=>({id:a.id,de:a.ownerName,texto:a.texto})).slice(0,10)}}
 async function mikeTool(name,a){a=a||{};if(!who)start();if(!window.db)return{error:'Bloc de notas no disponible'};
@@ -25758,6 +25776,54 @@ const oldLoad=load;load=async function(){await oldLoad();if(active==='Compras')a
  #kpb-overlay header h2{font-size:20px!important}
  #kpb-body{padding:15px 13px 90px!important}
  #kpb-overlay .kpb-card{padding:17px!important;border-radius:18px!important}
+}
+</style>
+
+<style id="kpb-panel-2026">
+/* KPlace · Bloc de notas con el mismo diseño de Finanzas (barra lateral + pestañas + tarjetas) */
+#kpb-overlay{align-items:center!important;justify-content:center!important;padding:20px!important;background:rgba(9,11,25,.72)!important;backdrop-filter:blur(7px)!important;flex-direction:row!important}
+#kpb-panel{width:min(1200px,100%);height:min(860px,94vh);display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(138deg,#131827 0%,#1d1934 72%,#231b37 100%);border:1px solid #4b4560;color:#f6f5fa;border-radius:22px;box-shadow:0 30px 100px #000a;font:inherit;line-height:1.4}
+#kpb-panel *{box-sizing:border-box}
+#kpb-panel>header{flex:none;display:flex!important;align-items:center!important;gap:15px!important;min-height:106px!important;padding:22px 26px!important;background:linear-gradient(115deg,#211a3c 0%,#17162d 58%,#101525 100%)!important;border-bottom:1px solid #8b6cf044!important}
+#kpb-panel #kpb-back{order:-1;flex:none;width:48px!important;height:48px!important;border-radius:15px!important;background:linear-gradient(145deg,#ffffff18,#ffffff08)!important;border:1px solid #ffffff26!important;color:#f3edff!important;font-size:24px;cursor:pointer}
+#kpb-panel .kpb-shell{display:flex;flex:1;min-height:0}
+#kpb-panel #kpb-groups{width:208px;flex:none;padding:15px 11px;display:flex;flex-direction:column;gap:9px;background:#0b0e1b;border-right:1px solid #ffffff12}
+#kpb-panel #kpb-groups button{min-height:58px;display:flex;align-items:center;gap:10px;padding:13px;text-align:left;font:inherit;font-size:13px;font-weight:700;color:#aaa9bd;background:#ffffff05;border:1px solid transparent;border-radius:15px;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+#kpb-panel #kpb-groups button:hover:not(.active){background:#ffffff0e;color:#fff}
+#kpb-panel #kpb-groups button.active{color:#fff;background:linear-gradient(120deg,#6944aa,#453779);border-color:#a58ae066;box-shadow:0 8px 22px #0004}
+#kpb-panel .kpb-gi{font-size:18px;line-height:1}
+#kpb-panel .kpb-workspace{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
+#kpb-panel #kpb-tabs{flex:none;display:flex;flex-wrap:nowrap;overflow:auto;gap:8px;padding:14px 16px 13px!important;background:#101222!important;border-bottom:1px solid #ffffff12!important;scrollbar-width:none}
+#kpb-panel #kpb-tabs button{white-space:nowrap;background:#1a1b2d!important;border:1px solid #ffffff14!important;color:#b9b8cb!important;padding:11px 16px!important;border-radius:999px!important;font-size:12px!important;font-weight:700!important;cursor:pointer}
+#kpb-panel #kpb-tabs button.on{background:linear-gradient(115deg,#7651bd,#57418e)!important;border-color:#a88be4!important;color:#fff!important;box-shadow:0 5px 15px #0003!important}
+#kpb-panel #kpb-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;max-width:none!important;width:auto!important;margin:0!important;padding:22px 24px 32px!important;background:linear-gradient(180deg,#121426 0%,#151426 100%)}
+#kpb-panel .kpb-titleline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:15px}
+#kpb-panel .kpb-titleline h3{margin:0 0 2px;font-size:22px;font-weight:760;letter-spacing:-.45px}
+#kpb-panel .kpb-sub{margin:0;color:#aaa9c1;font-size:12px}
+#kpb-panel .kpb-toolbar input{min-width:220px;max-width:300px;min-height:48px;color:#fff;background:#0d1424;border:1px solid #42415a;border-radius:13px;padding:10px 14px;font:inherit;font-size:13px;outline:none}
+#kpb-panel .kpb-toolbar input:focus{border-color:#a78bfa;box-shadow:0 0 0 2px #8b5cf633}
+#kpb-panel .kpb-hint{background:#292044;border:1px solid #7254ad55;border-left:4px solid #9871e8;border-radius:15px;padding:14px 16px;color:#d7c9f6;line-height:1.55;font-size:13px;margin-bottom:16px}
+#kpb-panel .kpb-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+#kpb-panel .kpb-stat{min-height:96px;display:flex;flex-direction:column;gap:6px;padding:16px;border:1px solid #ffffff12;background:linear-gradient(145deg,#1a1b30 0%,#131526 100%);border-radius:15px;box-shadow:0 8px 22px #0002}
+#kpb-panel .kpb-stat small{color:#b9b7cd;font-size:11px}
+#kpb-panel .kpb-stat strong{color:#f8f7ff;font-size:22px;font-weight:760;letter-spacing:-.5px}
+#kpb-panel .kpb-stat span{color:#9998b0;font-size:10px}
+#kpb-panel .kpb-grid{display:grid;grid-template-columns:minmax(300px,430px) minmax(0,1fr);gap:18px;align-items:start}
+#kpb-panel .kpb-grid.single{grid-template-columns:minmax(0,760px)}
+#kpb-panel #kpb-formwrap{position:sticky;top:0}
+#kpb-panel #kpb-formwrap .kpb-card{margin-bottom:0!important}
+#kpb-panel .kpb-new{background:#ffb02033;color:#ffd27a}
+body:has(#kpb-overlay.open) #kpMikeFab,body:has(#kpb-overlay.open) #kpMikeCompact,body:has(#kpb-overlay.open) [id^=kpMike]{display:none!important}
+@media(max-width:1000px){#kpb-panel .kpb-grid{grid-template-columns:minmax(0,1fr)}#kpb-panel #kpb-formwrap{position:static}#kpb-panel .kpb-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){
+ #kpb-overlay{padding:0!important}
+ #kpb-panel{width:100%;height:100dvh;max-height:100dvh;border-radius:0;border:0}
+ #kpb-panel>header{min-height:92px!important;padding:calc(env(safe-area-inset-top,0px) + 14px) 15px 14px!important}
+ #kpb-panel .kpb-shell{flex-direction:column}
+ #kpb-panel #kpb-groups{width:100%;flex-direction:row;padding:10px 12px;border-right:0;border-bottom:1px solid #ffffff18}
+ #kpb-panel #kpb-groups button{flex:1;min-height:50px;justify-content:center}
+ #kpb-panel #kpb-body{padding:15px 13px 90px!important}
+ #kpb-panel .kpb-toolbar,#kpb-panel .kpb-toolbar input{width:100%;max-width:none}
 }
 </style>
 
