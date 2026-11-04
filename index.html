@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script id="kp-err-capture">(function(){var E=window.__kpErrs=[];function add(t,m,s){E.push({t:Date.now(),type:t,msg:String(m).slice(0,300),src:s||''});if(E.length>100)E.shift()}
+window.addEventListener('error',function(e){if(e.target&&e.target!==window&&(e.target.src||e.target.href)){add('recurso','No cargó: '+(e.target.src||e.target.href).slice(0,140));return}add('error',e.message||'Error',(e.filename||'').split('/').pop()+':'+e.lineno)},true);
+window.addEventListener('unhandledrejection',function(e){var r=e.reason;add('promesa',(r&&r.message)||r||'Promesa rechazada')});
+var ce=console.error;console.error=function(){try{add('console',[].slice.call(arguments).map(function(x){return x&&x.message?x.message:String(x)}).join(' '))}catch(_){}return ce.apply(console,arguments)}})();</script>
 <!-- KP-FIX-V2-2026-11-01-0300 -->
 <!--
 ╔══════════════════════════════════════════════════════════════════╗
@@ -7089,6 +7093,17 @@ function boxfulToggleTarifas(id){
   if(boxfulTarifasAbiertas.has(id)) boxfulTarifasAbiertas.delete(id); else boxfulTarifasAbiertas.add(id);
   render();
 }
+function boxfulStaleHtml(o){
+  try{
+    var env=o.boxfulShipmentNumber||o.boxfulGuideNumber;
+    if(env&&!o.boxfulCancelled){
+      if(!o.boxfulGuideStale)return '';
+      return '<div class="boxfulQuote" style="border:1px solid #f59e0b"><b>⚠️ Editaste la orden después de crear la guía.</b><div class="small">La guía de Boxful no se actualiza sola. Si cambió la dirección, el municipio o el paquete, cancela la guía y vuelve a cotizar.</div><div class="btnrow" style="margin-top:6px"><button type="button" class="btn sm" onclick="kpGuiaStaleDismiss(\''+o.id+'\')">Entendido</button></div></div>';
+    }
+    if(o.boxfulQuote&&o.boxfulQuoteStale)return '<div class="boxfulQuote" style="border:1px solid #f59e0b"><b>⚠️ La orden cambió después de cotizar.</b><div class="small">Las tarifas de abajo son de los datos anteriores. Toca “Actualizar cotización” y elige la paquetería otra vez.</div></div>';
+  }catch(e){}
+  return '';
+}
 function boxfulQuoteCompactHtml(o){
   const opts=boxfulGetQuoteOptions(o.boxfulQuote);
   const abierto=boxfulTarifasAbiertas.has(String(o.id));
@@ -7099,12 +7114,12 @@ function boxfulQuoteCompactHtml(o){
     resumen=`✓ Cotizada · ${opts.length} paquetería(s) desde ${kpMoneda()} ${min.toFixed(2)}`;
     if(o.boxfulSelectedQuote) resumen+=` · Elegida: ${escapeHtml(boxfulQuoteName(o.boxfulSelectedQuote,0))} ${kpMoneda()} ${boxfulQuotePrice(o.boxfulSelectedQuote).toFixed(2)}`;
   }
-  return `<div class="boxfulQuote"><div class="small"><b>${resumen}</b></div>${opts.length?`<div class="btnrow" style="margin-top:6px"><button type="button" class="btn sm" onclick="boxfulToggleTarifas('${o.id}')">${abierto?'Ocultar tarifas':'Ver tarifas'}</button></div>`:''}</div>${abierto?boxfulQuoteSummaryHtml(o):''}`;
+  return `${abierto?'':boxfulStaleHtml(o)}<div class="boxfulQuote"><div class="small"><b>${resumen}</b></div>${opts.length?`<div class="btnrow" style="margin-top:6px"><button type="button" class="btn sm" onclick="boxfulToggleTarifas('${o.id}')">${abierto?'Ocultar tarifas':'Ver tarifas'}</button></div>`:''}</div>${abierto?boxfulQuoteSummaryHtml(o):''}`;
 }
 function boxfulQuoteSummaryHtml(o){
   const opts=boxfulGetQuoteOptions(o.boxfulQuote);
   if(!opts.length) return `<div class="boxfulQuote"><b>Boxful devolvió la cotización, pero no encontré las opciones de paquetería.</b><pre class="small" style="white-space:pre-wrap;word-break:break-word">${escapeHtml(JSON.stringify(o.boxfulQuote,null,2).slice(0,1800))}</pre></div>`;
-  return `<div class="boxfulQuote"><b>🚚 Elegí la paquetería (ordenada por precio)</b>${opts.map((x,i)=>({x,i,price:boxfulQuotePrice(x)})).sort((a,b)=>a.price-b.price).map(({x,i,price})=>{
+  return `${boxfulStaleHtml(o)}<div class="boxfulQuote"><b>🚚 Elegí la paquetería (ordenada por precio)</b>${opts.map((x,i)=>({x,i,price:boxfulQuotePrice(x)})).sort((a,b)=>a.price-b.price).map(({x,i,price})=>{
     const selected=String(boxfulQuoteCourierId(o.boxfulSelectedQuote||{}))===String(boxfulQuoteCourierId(x)) && boxfulQuoteCourierId(x);
     const service=x.serviceName||x.service||x.deliveryTime||x.estimatedDelivery||x.eta||'';
     return `<div class="boxfulQuoteOption"><div><b>${escapeHtml(boxfulQuoteName(x,i))}</b><div class="small">${escapeHtml(service)}</div></div><div style="text-align:right"><b>${kpMoneda()} ${price.toFixed(2)}</b><br><button class="btn ${selected?'green':''} sm" onclick="boxfulSelectQuote('${o.id}',${i})">${selected?'✓ Seleccionada':'Elegir'}</button></div></div>`;
@@ -7158,7 +7173,7 @@ async function boxfulQuoteOrder(id){
     }
     if(!data)throw new Error(lastErr||'No se pudo cotizar el envío.'+(lastErrs.length?' Detalle: '+lastErrs.join(' | '):''));
     const opts=boxfulGetQuoteOptions(data);if(!opts.length)throw new Error('Boxful respondió, pero no devolvió paqueterías para esta ruta.');
-    await db.collection('orders').doc(id).update({boxfulQuote:data,boxfulQuoteAt:new Date().toISOString(),boxfulRecolectionAddressId:c.recolectionAddressId,boxfulCustomerCityId:dest.cityId,boxfulCustomerStateId:dest.stateId,boxfulRecolectionCityId:dest.recolectionCityId,boxfulRecolectionStateId:dest.recolectionStateId||'',boxfulSelectedQuote:null});
+    await db.collection('orders').doc(id).update({boxfulQuote:data,boxfulQuoteAt:new Date().toISOString(),boxfulRecolectionAddressId:c.recolectionAddressId,boxfulCustomerCityId:dest.cityId,boxfulCustomerStateId:dest.stateId,boxfulRecolectionCityId:dest.recolectionCityId,boxfulRecolectionStateId:dest.recolectionStateId||'',boxfulSelectedQuote:null,boxfulQuoteStale:false});
     if(!window.__kpQuoteQuiet){toast(`Cotización lista · ${opts.length} paquetería(s) disponibles`);render();}
     return true;
   }catch(e){console.error(e);
@@ -17316,6 +17331,14 @@ function cardify(c){
   const t=document.createElement('button');t.type='button';t.className='kpx-toggle';
   t.innerHTML='<span class="a">Ver detalles</span><span class="b">Ocultar detalles</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   kids[last].after(t);
+  try{
+    const oid=(c.innerHTML.match(/editOrder\('([^']+)'\)/)||[])[1];
+    if(oid&&!c.querySelector(':scope > .kpx-quick')){
+      const q=document.createElement('div');q.className='kpx-quick';q.style.cssText='display:flex;gap:8px;margin:10px 0 0';
+      q.innerHTML='<button type="button" class="btn sm" onclick="editOrder(\''+oid+'\')">✏️ Editar orden</button>';
+      t.before(q);
+    }
+  }catch(e){}
   const restore=key&&OPEN.has(key)&&!(activeTab==='boxful'&&window.__kpCollapseNationalAfterSelection);
   kpxSetCardExpanded(c,!!restore);
   t.onclick=e=>{
@@ -26043,5 +26066,328 @@ setTimeout(sync,900);
 }
 </style>
 
+
+<script id="kp-guia-edit-fix">
+(function(){
+'use strict';
+if(window.__kpGuiaEditFix)return;window.__kpGuiaEditFix=1;
+/* Al editar una orden que ya tiene cotización o guía de Boxful:
+   - si cambian datos que afectan el envío, la cotización se marca desactualizada y se pide cotizar de nuevo;
+   - si ya existe la guía, se avisa que la guía no se actualiza sola. */
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function find(id){return (window.ORDERS||[]).find(function(x){return String(x.id)===String(id)})}
+function sig(o){
+  if(!o)return '';
+  var p=(o.productos||[]).map(function(x){return [x.categoria,x.modelo,x.colorEn,x.cantidad,x.precio,x.inventarioId].join('~')}).join('|');
+  return [o.departamento,o.municipio,o.direccion,o.numero,o.codigoArea,o.cliente,o.totalPedido,o.metodoPago,o.tipoEntrega,o.programadaTipo,p].map(function(v){return String(v==null?'':v)}).join('¦');
+}
+window.kpGuiaStaleDismiss=async function(id){
+  try{await db.collection('orders').doc(String(id)).update({boxfulGuideStale:false});var o=find(id);if(o)o.boxfulGuideStale=false;render()}catch(e){console.error(e)}
+};
+var orig=window.saveOrder;
+if(typeof orig!=='function')return;
+window.saveOrder=async function(){
+  var id=window.editingOrderId,before=id?find(id):null;
+  var bs=before?sig(before):null;
+  var hadQuote=!!(before&&before.boxfulQuote);
+  var hadGuide=!!(before&&(before.boxfulShipmentNumber||before.boxfulGuideNumber)&&!before.boxfulCancelled);
+  var r=await orig.apply(this,arguments);
+  if(!id||bs==null||(!hadQuote&&!hadGuide))return r;
+  try{
+    for(var i=0;i<12;i++){
+      await sleep(400);
+      var now=find(id);
+      if(now&&sig(now)!==bs){
+        var upd=hadGuide?{boxfulGuideStale:true}:{boxfulQuoteStale:true,boxfulSelectedQuote:null,boxfulSelectedCourierId:null,boxfulSelectedQuotePrice:null};
+        await db.collection('orders').doc(String(id)).update(upd);
+        Object.assign(now,upd);
+        try{render()}catch(_){}
+        break;
+      }
+    }
+  }catch(e){console.warn('Edición de guía',e)}
+  return r;
+};
+})();
+</script>
+<script id="kp-diagnostico">
+(function(){
+'use strict';
+if(window.KPDiag)return;
+var LS='kp_diag_last',ERR=window.__kpErrs||(window.__kpErrs=[]);
+var R=[],running=false,prog='',filter='res',done=false,t0=0,dur=0,lastRun=null;
+try{lastRun=JSON.parse(localStorage.getItem(LS)||'null')}catch(e){}
+if(lastRun&&lastRun.R){R=lastRun.R;done=true;dur=lastRun.dur||0}
+function $(id){return document.getElementById(id)}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function isAdmin(){var c=window.CURRENT_USER;return !!(c&&c.esAdmin)}
+function typeOf(path){try{return (0,eval)('typeof '+path)}catch(e){return 'undefined'}}
+function withTimeout(p,ms,label){return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej(new Error((label||'Operación')+' tardó más de '+Math.round(ms/1000)+' s'))},ms)})])}
+function add(cat,name,st,detail,fix){R.push({cat:cat,name:name,st:st,detail:detail||'',fix:fix||''});draw()}
+function labelOf(b){var t=[].slice.call(b.childNodes).filter(function(n){return n.nodeType===3}).map(function(n){return n.textContent}).join('').replace(/\s+/g,' ').trim();return t||b.textContent.replace(/\s+/g,' ').trim()}
+
+/* ---------- navegación ---------- */
+function navRoot(){
+  var d=[].slice.call(document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top)')).find(function(n){return n.querySelector('[data-section],[data-kf-nav]')});
+  return d||document.getElementById('kpSideNav');
+}
+function navItems(){
+  var nav=navRoot();if(!nav)return [];
+  return [].slice.call(nav.querySelectorAll('button')).filter(function(b){return getComputedStyle(b).display!=='none'&&!b.dataset.kpd&&labelOf(b)}).map(function(b){return {label:labelOf(b),sec:b.dataset.section||'',kf:b.dataset.kfNav||''}});
+}
+function findBtn(label){var nav=navRoot();if(!nav)return null;return [].slice.call(nav.querySelectorAll('button')).find(function(b){return labelOf(b)===label})||null}
+function stateKey(){return [String(window.activeTab),document.querySelector('#kpb-overlay.open')?'bloc':'',document.querySelector('#kpf-overlay.kpf-open')?'fin':''].join('|')}
+function closeOverlays(){try{if(document.querySelector('#kpb-overlay.open'))window.KPBloc&&KPBloc.close()}catch(e){}try{if(document.querySelector('#kpf-overlay.kpf-open'))window.KPBusinessModulesV2&&KPBusinessModulesV2.close()}catch(e){}}
+function restore(orig){
+  closeOverlays();
+  try{if(orig.indexOf('kplace_')===0&&typeof window.kpFlowOpen==='function')window.kpFlowOpen(orig.slice(7));else if(typeof window.setTab==='function')window.setTab(orig)}catch(e){}
+}
+
+/* ---------- botones con acción rota ---------- */
+var NET=/boxful|failed to fetch|network|conexi[oó]n|timeout|offline|unavailable/i;
+var SKIPROOT=/^(if|for|while|function|return|typeof|this|event|document|alert|confirm|prompt|setTimeout|setInterval|JSON|Math|Number|String|Array|Object|parseInt|parseFloat|Date|navigator|history|location|console|encodeURIComponent|decodeURIComponent|el|e|btn|s|arguments|new|void|else)$/;
+function scanOnclick(acc,where){
+  document.querySelectorAll('[onclick]').forEach(function(el){
+    if(el.closest('#kpd-overlay'))return;
+    var code=(el.getAttribute('onclick')||'').replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g,"''");
+    var re=/(?:^|[^\w$.])([A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)*)\s*\(/g,m;
+    while((m=re.exec(code))){
+      var path=m[1].replace(/\?\./g,'.'),root=path.split('.')[0];
+      if(SKIPROOT.test(root))continue;
+      if(typeOf(path)!=='function'){
+        var txt=(el.textContent||el.getAttribute('aria-label')||el.title||'(sin texto)').replace(/\s+/g,' ').trim().slice(0,40);
+        var o=acc[path]||(acc[path]={n:0,txt:{},where:{}});o.n++;o.txt[txt]=1;if(where)o.where[where]=1;
+      }
+    }
+  });
+}
+
+/* ---------- pruebas ---------- */
+async function testSystem(){
+  var c=window.CURRENT_USER;
+  add('Sistema','Sesión iniciada',c?'ok':'fail',c?('Usuario: '+(c.nombre||c.usuario||'—')):'No hay usuario activo.',c?'':'Inicia sesión de nuevo.');
+  add('Sistema','Internet',navigator.onLine?'ok':'fail',navigator.onLine?'Conectado.':'Sin conexión a internet.',navigator.onLine?'':'Revisa el WiFi o los datos.');
+  var fbok=typeof window.firebase!=='undefined'&&typeof window.db!=='undefined';
+  if(!fbok)add('Sistema','Base de datos (Firebase)','fail','Firebase no está cargado.','Recarga la página.');
+  else{
+    var t=Date.now();
+    try{await withTimeout(db.collection('config').doc('inventario').get(),6000,'La base de datos');var ms=Date.now()-t;add('Sistema','Base de datos (Firebase)',ms>3000?'warn':'ok','Respondió en '+ms+' ms.',ms>3000?'La conexión está lenta.':'')}
+    catch(e){add('Sistema','Base de datos (Firebase)','fail',e.message||String(e),'Revisa tu internet o los permisos de Firestore.')}
+  }
+  try{localStorage.setItem('__kpd','1');var ok=localStorage.getItem('__kpd')==='1';localStorage.removeItem('__kpd');add('Sistema','Almacenamiento del navegador',ok?'ok':'fail',ok?'Funciona.':'No guarda datos.','Sal del modo incógnito o libera espacio.')}
+  catch(e){add('Sistema','Almacenamiento del navegador','fail','No se puede guardar: '+e.message,'Sal del modo incógnito o libera espacio.')}
+  var libs=[['jspdf','PDF de cotizaciones',!!window.jspdf],['XLSX','Excel (importar/exportar)',typeof window.XLSX!=='undefined'],['Firestore','Firestore',!!(window.firebase&&firebase.firestore)]];
+  var miss=libs.filter(function(l){return !l[2]}).map(function(l){return l[1]});
+  add('Sistema','Librerías externas',miss.length?'warn':'ok',miss.length?('No cargaron: '+miss.join(', ')):'Todas cargaron.',miss.length?'Revisa tu internet y recarga; sin ellas esa función no trabaja.':'');
+  if('Notification' in window){var p=Notification.permission;add('Sistema','Avisos del navegador',p==='granted'?'ok':'warn',p==='granted'?'Permitidos.':(p==='denied'?'Bloqueados en este navegador.':'Aún no se han permitido.'),p==='granted'?'':'Permite las notificaciones para recibir avisos de órdenes y chat.')}
+}
+async function testData(){
+  var defs=[['Órdenes cargadas','ORDERS'],['Usuarios / equipo','VENDEDORES'],['Inventario','INVENTARIO']];
+  defs.forEach(function(d){var a=window[d[1]];var n=Array.isArray(a)?a.length:-1;
+    add('Datos',d[0],n>0?'ok':(n===0?'warn':'fail'),n>0?(n+' registros.'):(n===0?'Lista vacía (puede ser normal si aún no hay datos).':'No existe la lista '+d[1]+'.'),n>0?'':(n<0?'Recarga la página.':''));});
+  var br=window.KP&&Array.isArray(KP.branches)?KP.branches.length:0;
+  add('Datos','Sucursales',br?'ok':'warn',br?(br+' sucursal(es).'):'No hay sucursales cargadas.','');
+}
+async function testFunctions(){
+  var names=['setTab','render','editOrder','saveOrder','verOrden','closeSheet','toast','enviarARepartidor','marcarEstadoNacional','boxfulQuoteOrder','boxfulSelectQuote','boxfulCreateShipment','cancelarGuia','kpFlowOpen','kpInboxAdd','closeKPlaceMenu'];
+  var miss=names.filter(function(n){return typeOf(n)!=='function'});
+  add('Funciones','Funciones principales',miss.length?'fail':'ok',miss.length?('Faltan: '+miss.join(', ')):(names.length+' funciones clave presentes.'),miss.length?'Esos botones no van a responder. Avisa para corregirlo.':'');
+  var mods=[['KPBloc','Bloc de notas'],['KPBusinessModulesV2','Finanzas y compras']];
+  var mm=mods.filter(function(m){return typeof window[m[0]]==='undefined'}).map(function(m){return m[1]});
+  add('Funciones','Módulos (Bloc, Finanzas)',mm.length?'fail':'ok',mm.length?('No cargaron: '+mm.join(', ')):'Cargados.',mm.length?'Recarga la página.':'');
+}
+async function testBoxful(){
+  if(typeof window.boxfulEnsureFreshToken!=='function'){add('Boxful','Conexión con Boxful','warn','No está disponible en esta versión.');return}
+  try{var r=await withTimeout(Promise.resolve(window.boxfulEnsureFreshToken()),6000,'Boxful');add('Boxful','Conexión con Boxful',r===false?'warn':'ok',r===false?'Boxful respondió que no está conectado.':'Conectado.',r===false?'Entra a Envíos y reconecta Boxful.':'')}
+  catch(e){add('Boxful','Conexión con Boxful','warn',e.message||String(e),'Revisa la conexión y las credenciales de Boxful en Configuración.')}
+}
+async function testMenuStability(){
+  var targets=[document.getElementById('kpSideNav'),navRoot()].filter(Boolean),n=0;
+  var mo=new MutationObserver(function(ms){n+=ms.length});
+  targets.forEach(function(t){mo.observe(t,{childList:true})});
+  await sleep(2000);mo.disconnect();
+  add('Menú y botones','Menú estable (sin parpadeo)',n>12?'fail':(n>4?'warn':'ok'),n>4?('El menú se reconstruyó '+n+' veces en 2 s.'):'El menú está quieto.',n>4?'Por eso los botones parpadean y a veces no responden al primer clic.':'');
+}
+async function testNav(){
+  var items=navItems();
+  if(!items.length){add('Menú y botones','Botones del menú','fail','No encontré el menú.','Recarga la página.');return}
+  var orig=String(window.activeTab||'inicio'),broken={};
+  closeOverlays();
+  try{window.setTab('inicio')}catch(e){}
+  await sleep(500);
+  var order=items.filter(function(i){return i.sec!=='inicio'}).concat(items.filter(function(i){return i.sec==='inicio'}));
+  var good=0;
+  for(var k=0;k<order.length;k++){
+    var it=order[k];prog='Probando botón «'+it.label+'» ('+(k+1)+'/'+order.length+')';draw();
+    var el=findBtn(it.label);
+    if(!el){add('Menú y botones',it.label,'warn','No se encontró el botón.');continue}
+    var before=stateKey(),e0=ERR.length,unstable=false;
+    el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));
+    await sleep(140);
+    if(!el.isConnected){unstable=true;el=findBtn(it.label)||el}
+    el.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,cancelable:true}));
+    var t=Date.now();el.click();
+    var changed=false;
+    while(Date.now()-t<2600){await sleep(60);if(stateKey()!==before){changed=true;break}}
+    var ms=Date.now()-t;
+    await sleep(650);
+    var errs=ERR.slice(e0).filter(function(x){return x.type!=='recurso'});
+    var v=$('view'),blank=!document.querySelector('#kpb-overlay.open,#kpf-overlay.kpf-open')&&(!v||v.textContent.replace(/\s+/g,'').length<12);
+    scanOnclick(broken,it.label);
+    var st='ok',detail='Abrió en '+ms+' ms.',fix='';
+    if(!changed){st='fail';detail='Lo toqué y no pasó nada.';fix='El botón no abre su pantalla. Avisa para corregirlo.'}
+    else if(unstable){st='fail';detail='El botón se reemplazó mientras lo tocaba.';fix='Por eso a veces hay que tocarlo varias veces.'}
+    else if(errs.length){
+      var netOnly=errs.every(function(x){return NET.test(x.msg)});
+      if(netOnly){st='warn';detail='Abrió, pero hay un problema de conexión: '+errs[0].msg;fix='Revisa la conexión (internet o Boxful).'}
+      else{st='fail';detail='Abrió pero dio error: '+errs[0].msg;fix='Hay un error de programa en esta pantalla.'}
+    }
+    else if(ms>1200){st='warn';detail='Abrió, pero tardó '+(ms/1000).toFixed(1)+' s.';fix='Respuesta lenta.'}
+    else if(blank){st='warn';detail='Abrió pero la pantalla se ve vacía.';fix='Puede ser normal si no hay datos todavía.'}
+    if(st==='ok')good++;
+    add('Menú y botones',it.label,st,detail,fix);
+    closeOverlays();
+  }
+  restore(orig);await sleep(600);
+  var keys=Object.keys(broken);
+  if(!keys.length)add('Botones con acción','Botones con función rota','ok','Revisé los botones de '+order.length+' pantallas: todos llaman funciones que existen.');
+  else keys.forEach(function(k){var o=broken[k];add('Botones con acción','Función inexistente: '+k+'()','fail','Hay '+o.n+' botón(es) que la llaman: '+Object.keys(o.txt).slice(0,4).join(' · ')+'. Pantalla: '+Object.keys(o.where).slice(0,3).join(', ')+'.','Esos botones no hacen nada al tocarlos. Avisa para corregirlos.')});
+}
+function testErrors(){
+  var real=ERR.filter(function(x){return x.type!=='recurso'}),res=ERR.filter(function(x){return x.type==='recurso'});
+  var g={};real.forEach(function(x){var k=x.msg.slice(0,110);g[k]=(g[k]||{n:0,src:x.src});g[k].n++});
+  var keys=Object.keys(g);
+  if(!keys.length)add('Errores','Errores del programa','ok','No se registró ningún error desde que abriste la app.');
+  else add('Errores','Errores del programa',keys.filter(function(k){return !NET.test(k)}).length>3?'fail':'warn',keys.slice(0,6).map(function(k){return '• '+k+(g[k].n>1?' (×'+g[k].n+')':'')+(g[k].src?' ['+g[k].src+']':'')}).join('\n'),'Si algo no funciona, el primero de la lista suele ser la causa.');
+  if(res.length)add('Errores','Recursos que no cargaron','warn',res.slice(0,5).map(function(x){return '• '+x.msg}).join('\n'),'Imágenes o archivos que no abrieron; puede ser el internet.');
+}
+async function runAll(){
+  if(running)return;running=true;done=false;R=[];t0=Date.now();filter='res';prog='Iniciando…';draw();
+  try{
+    prog='Revisando el sistema…';await testSystem();
+    prog='Revisando los datos…';await testData();
+    prog='Revisando funciones…';await testFunctions();
+    prog='Probando Boxful…';await testBoxful();
+    prog='Revisando el menú…';await testMenuStability();
+    await testNav();
+    testErrors();
+  }catch(e){add('Errores','La prueba se detuvo','fail',e.message||String(e),'')}
+  dur=Date.now()-t0;running=false;done=true;prog='';
+  try{localStorage.setItem(LS,JSON.stringify({R:R,dur:dur,at:Date.now()}))}catch(e){}
+  lastRun={at:Date.now()};draw();
+}
+
+/* ---------- informe ---------- */
+function stats(){var s={ok:0,warn:0,fail:0};R.forEach(function(r){s[r.st]++});var n=R.length||1,score=Math.round(((s.ok+s.warn*.5)/n)*100);return {s:s,score:score,n:R.length}}
+function verdict(sc){if(sc.n===0)return ['Sin probar','Pulsa “Ejecutar prueba completa”.','#a9a8bd'];if(sc.s.fail===0&&sc.s.warn===0)return ['Todo bien','Todo lo probado funcionó a la primera.','#4ade80'];if(sc.s.fail===0)return ['Funciona con avisos','Nada roto, pero hay cosas para revisar.','#fbbf24'];return ['Hay cosas rotas',sc.s.fail+' prueba(s) fallaron. Revisa “Fallos y avisos”.','#f87171']}
+function textReport(){var sc=stats(),v=verdict(sc),L=['DIAGNÓSTICO KPLACE · '+new Date().toLocaleString('es-HN'),'Estado: '+v[0]+' ('+sc.score+'%) · ✅ '+sc.s.ok+' · ⚠️ '+sc.s.warn+' · ❌ '+sc.s.fail,''];
+  var ic={ok:'✅',warn:'⚠️',fail:'❌'};R.forEach(function(r){L.push(ic[r.st]+' ['+r.cat+'] '+r.name+(r.detail?' — '+r.detail.replace(/\n/g,' '):'')+(r.fix&&r.st!=='ok'?' → '+r.fix:''))});return L.join('\n')}
+function item(r){var ic={ok:'✅',warn:'⚠️',fail:'❌'}[r.st];return '<div class="kpd-it '+r.st+'"><span class="kpd-ic">'+ic+'</span><div><b>'+esc(r.name)+'</b><small>'+esc(r.cat)+'</small><p>'+esc(r.detail).replace(/\n/g,'<br>')+'</p>'+(r.fix&&r.st!=='ok'?'<em>'+esc(r.fix)+'</em>':'')+'</div></div>'}
+function draw(){
+  var o=$('kpd-overlay');if(!o||!o.classList.contains('open'))return;
+  var sc=stats(),v=verdict(sc);
+  var tabs=[['res','Resumen'],['bad','Fallos y avisos ('+(sc.s.fail+sc.s.warn)+')'],['all','Todo el detalle ('+sc.n+')']];
+  $('kpd-tabs').innerHTML=tabs.map(function(t){return '<button type="button" data-kpd-t="'+t[0]+'" class="'+(t[0]===filter?'on':'')+'">'+t[1]+'</button>'}).join('');
+  var body='';
+  if(filter==='res'){
+    var cats={};R.forEach(function(r){(cats[r.cat]=cats[r.cat]||{ok:0,warn:0,fail:0})[r.st]++});
+    body='<div class="kpd-hero" style="--c:'+v[2]+'"><div class="kpd-ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" class="bg"/><circle cx="18" cy="18" r="15.5" class="fg" stroke-dasharray="'+(sc.n?sc.score*0.974:0)+' 100"/></svg><b>'+(sc.n?sc.score+'%':'—')+'</b></div><div><h3>'+v[0]+'</h3><p>'+v[1]+'</p>'+(lastRun&&lastRun.at&&!running?'<small>Última prueba: '+new Date(lastRun.at).toLocaleString('es-HN')+(dur?' · '+Math.round(dur/1000)+' s':'')+'</small>':'')+'</div></div>'
+    +'<div class="kpd-cards"><div class="kpd-card ok"><small>Funcionan</small><strong>'+sc.s.ok+'</strong></div><div class="kpd-card warn"><small>Avisos</small><strong>'+sc.s.warn+'</strong></div><div class="kpd-card fail"><small>Fallos</small><strong>'+sc.s.fail+'</strong></div><div class="kpd-card"><small>Pruebas</small><strong>'+sc.n+'</strong></div></div>'
+    +(Object.keys(cats).length?'<h4>Por área</h4><div class="kpd-areas">'+Object.keys(cats).map(function(k){var c=cats[k];return '<div class="kpd-area"><span>'+esc(k)+'</span><span>✅ '+c.ok+(c.warn?' · ⚠️ '+c.warn:'')+(c.fail?' · ❌ '+c.fail:'')+'</span></div>'}).join('')+'</div>':'')
+    +(sc.s.fail?'<h4>Lo primero que hay que arreglar</h4>'+R.filter(function(r){return r.st==='fail'}).slice(0,4).map(item).join(''):'');
+  }else{
+    var list=filter==='bad'?R.filter(function(r){return r.st!=='ok'}):R;
+    body=list.length?list.map(item).join(''):'<div class="kpd-empty">'+(filter==='bad'?'No hay fallos ni avisos 🎉':'Aún no hay resultados.')+'</div>';
+  }
+  $('kpd-body').innerHTML=body;
+  var st=$('kpd-status');if(st)st.textContent=running?prog:'';
+  var rb=$('kpd-run');if(rb){rb.disabled=running;rb.textContent=running?'Probando…':(done?'▶ Repetir prueba':'▶ Ejecutar prueba completa')}
+  var cb=$('kpd-copy');if(cb)cb.disabled=!R.length;
+}
+function ui(){
+  if($('kpd-overlay'))return;
+  var o=document.createElement('div');o.id='kpd-overlay';
+  o.innerHTML='<section id="kpd-panel" role="dialog" aria-modal="true" aria-label="Diagnóstico"><header><div class="kpd-brand"><span class="kpd-eyebrow">KPLACE · SISTEMA</span><h2>🩺 Diagnóstico de la app</h2><span class="kpd-sub">Prueba los botones y revisa que todo funcione</span></div><button type="button" id="kpd-x" aria-label="Cerrar">✕</button></header><div class="kpd-actions"><button type="button" id="kpd-run" class="kpd-primary">▶ Ejecutar prueba completa</button><button type="button" id="kpd-copy" disabled>📋 Copiar informe</button><span id="kpd-status"></span></div><nav id="kpd-tabs"></nav><div id="kpd-body"></div></section>';
+  document.body.appendChild(o);
+  o.addEventListener('click',function(e){
+    if(e.target===o&&!running){close();return}
+    var b=e.target.closest('button');if(!b)return;
+    if(b.id==='kpd-x'){if(!running)close();return}
+    if(b.id==='kpd-run'){runAll();return}
+    if(b.id==='kpd-copy'){var t=textReport();(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='✅ Copiado'},function(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');b.textContent='✅ Copiado'}catch(x){}a.remove()});setTimeout(function(){b.textContent='📋 Copiar informe'},1800);return}
+    if(b.dataset.kpdT){filter=b.dataset.kpdT;draw()}
+  });
+}
+function open(){if(!isAdmin()){try{window.toast&&toast('Solo el administrador puede abrir el diagnóstico')}catch(e){}return}ui();$('kpd-overlay').classList.add('open');try{window.closeKPlaceMenu&&closeKPlaceMenu()}catch(e){}draw()}
+function close(){var o=$('kpd-overlay');if(o)o.classList.remove('open')}
+function menu(){
+  if(!isAdmin())return;
+  document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top),#kpSideNav').forEach(function(nv){
+    var first=nv.querySelector('button[data-section],button[data-kf-nav]');if(!first)return;
+    var ex=nv.querySelector('[data-kpd]');
+    if(ex){if(nv.lastElementChild!==ex)nv.appendChild(ex);return}
+    var b=document.createElement('button');b.type='button';b.dataset.kpd='1';
+    b.className=first.className.replace(/\b(active|on|selected|current|is-active|open)\b/g,'').replace(/\s+/g,' ').trim();
+    b.innerHTML='<span class="'+(nv.id==='kpSideNav'?'ico':'dico')+'">🩺</span>Diagnóstico';
+    b.onclick=function(ev){ev.preventDefault();open()};nv.appendChild(b);
+  });
+}
+setInterval(menu,3000);setTimeout(menu,1500);
+document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#menuBtn')){setTimeout(menu,150);setTimeout(menu,500)}},true);
+document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.altKey&&String(e.key).toLowerCase()==='d'){e.preventDefault();open()}});
+window.KPDiag={open:open,close:close,run:runAll,results:function(){return R.slice()},report:textReport};
+})();
+
+</script>
+<style id="kp-diagnostico-css">
+#kpd-overlay{position:fixed;inset:0;z-index:100070;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(9,11,25,.72);backdrop-filter:blur(7px)}
+#kpd-overlay.open{display:flex}
+#kpd-panel{width:min(1000px,100%);height:min(820px,94vh);display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(138deg,#131827 0%,#1d1934 72%,#231b37 100%);border:1px solid #4b4560;color:#f6f5fa;border-radius:22px;box-shadow:0 30px 100px #000a;line-height:1.4;font:inherit}
+#kpd-panel *{box-sizing:border-box}
+#kpd-panel>header{flex:none;display:flex;align-items:center;justify-content:space-between;gap:15px;min-height:100px;padding:20px 26px;background:linear-gradient(115deg,#211a3c 0%,#17162d 58%,#101525 100%);border-bottom:1px solid #8b6cf044}
+#kpd-panel .kpd-brand{display:flex;flex-direction:column;gap:3px}
+#kpd-panel .kpd-eyebrow{font-size:10px;letter-spacing:2px;font-weight:850;color:#c4a7ff}
+#kpd-panel h2{margin:4px 0 0;font-size:clamp(20px,3vw,26px);font-weight:780;letter-spacing:-.5px;color:#fff}
+#kpd-panel .kpd-sub{font-size:12px;color:#b8aecf}
+#kpd-x{flex:none;width:44px;height:44px;border-radius:14px;background:#ffffff12;border:1px solid #ffffff26;color:#f3edff;font-size:18px;cursor:pointer}
+#kpd-panel .kpd-actions{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:14px 22px;background:#0b0e1b;border-bottom:1px solid #ffffff12}
+#kpd-panel .kpd-actions button{min-height:44px;padding:10px 16px;border-radius:13px;font:inherit;font-size:13px;font-weight:750;color:#e9e4f7;background:#1a1b2d;border:1px solid #ffffff1c;cursor:pointer}
+#kpd-panel .kpd-actions button:disabled{opacity:.5;cursor:default}
+#kpd-panel .kpd-actions .kpd-primary{color:#fff;background:linear-gradient(120deg,#7651bd,#57418e);border-color:#a88be4}
+#kpd-status{font-size:12px;color:#c4a7ff;min-width:0}
+#kpd-tabs{flex:none;display:flex;gap:8px;overflow:auto;padding:12px 16px;background:#101222;border-bottom:1px solid #ffffff12;scrollbar-width:none}
+#kpd-tabs button{white-space:nowrap;background:#1a1b2d;border:1px solid #ffffff14;color:#b9b8cb;padding:10px 15px;border-radius:999px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+#kpd-tabs button.on{background:linear-gradient(115deg,#7651bd,#57418e);border-color:#a88be4;color:#fff}
+#kpd-body{flex:1;min-height:0;overflow-y:auto;padding:20px 22px 28px;background:linear-gradient(180deg,#121426 0%,#151426 100%)}
+#kpd-panel h4{margin:22px 0 10px;font-size:13px;letter-spacing:.4px;color:#c9c3de}
+#kpd-panel .kpd-hero{display:flex;align-items:center;gap:20px;padding:20px;border:1px solid #ffffff14;border-radius:18px;background:linear-gradient(145deg,#1a1b30,#131526);border-left:5px solid var(--c)}
+#kpd-panel .kpd-hero h3{margin:0 0 4px;font-size:22px;color:var(--c)}
+#kpd-panel .kpd-hero p{margin:0;color:#cfcbe0;font-size:13px}
+#kpd-panel .kpd-hero small{display:block;margin-top:6px;color:#9998b0;font-size:11px}
+#kpd-panel .kpd-ring{position:relative;width:88px;height:88px;flex:none}
+#kpd-panel .kpd-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+#kpd-panel .kpd-ring circle{fill:none;stroke-width:3.4}
+#kpd-panel .kpd-ring .bg{stroke:#ffffff14}
+#kpd-panel .kpd-ring .fg{stroke:var(--c);stroke-linecap:round}
+#kpd-panel .kpd-ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px}
+#kpd-panel .kpd-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+#kpd-panel .kpd-card{padding:14px;border:1px solid #ffffff12;border-radius:15px;background:linear-gradient(145deg,#1a1b30,#131526)}
+#kpd-panel .kpd-card small{display:block;color:#b9b7cd;font-size:11px}
+#kpd-panel .kpd-card strong{font-size:24px;font-weight:780}
+#kpd-panel .kpd-card.ok strong{color:#4ade80}#kpd-panel .kpd-card.warn strong{color:#fbbf24}#kpd-panel .kpd-card.fail strong{color:#f87171}
+#kpd-panel .kpd-areas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#kpd-panel .kpd-area{display:flex;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:12px;background:#ffffff08;font-size:12.5px}
+#kpd-panel .kpd-it{display:flex;gap:12px;padding:13px 14px;margin-bottom:8px;border-radius:14px;background:#ffffff07;border:1px solid #ffffff10}
+#kpd-panel .kpd-it.fail{border-color:#f8717166;background:#f8717112}#kpd-panel .kpd-it.warn{border-color:#fbbf2455;background:#fbbf2410}
+#kpd-panel .kpd-ic{flex:none;font-size:18px;line-height:1.3}
+#kpd-panel .kpd-it b{font-size:14px}
+#kpd-panel .kpd-it small{margin-left:8px;color:#9998b0;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase}
+#kpd-panel .kpd-it p{margin:3px 0 0;color:#cfcbe0;font-size:12.5px;word-break:break-word}
+#kpd-panel .kpd-it em{display:block;margin-top:5px;color:#fcd34d;font-size:12px;font-style:normal}
+#kpd-panel .kpd-empty{padding:40px 10px;text-align:center;color:#a9a8bd}
+@media(max-width:700px){#kpd-overlay{padding:0}#kpd-panel{height:100dvh;max-height:100dvh;border-radius:0;border:0}#kpd-panel .kpd-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#kpd-panel .kpd-areas{grid-template-columns:1fr}#kpd-panel .kpd-hero{flex-direction:column;text-align:center}}
+
+</style>
 </body>
 </html>
