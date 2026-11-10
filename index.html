@@ -10810,7 +10810,7 @@ KP.openEnterpriseOrder=async function(o={}){
    </div>
    <div id="f_impuestoInfo" class="small" style="margin-top:6px;color:#8b95a7;"></div>
  </div>` : ''}
- <label style="margin-top:10px;display:block;">Estado de pago</label><select id="f_estadoPago"><option value="pendiente" ${(!o.estadoPago||o.estadoPago==='pendiente')?'selected':''}>Pendiente</option><option value="pagado" ${o.estadoPago==='pagado'?'selected':''}>Pagado</option></select>
+ <div id="kpEstadoPagoWrap" style="display:${o.metodoPago==='mitad'?'none':'block'}"><label style="margin-top:10px;display:block;">Estado de pago</label><select id="f_estadoPago"><option value="pendiente" ${(!o.estadoPago||o.estadoPago==='pendiente')?'selected':''}>Pendiente</option><option value="pagado" ${o.estadoPago==='pagado'?'selected':''}>Pagado</option></select></div>
  <div id="kpMitadBox" style="display:${o.metodoPago==='mitad'?'block':'none'};margin-top:12px">
   <div class="kp-section-title" style="font-size:13px">Detalle del pago dividido</div>
   <div class="grid2"><div><label>Monto 1</label><input type="number" id="f_montoMitad1" inputmode="decimal" step="0.01" placeholder="${(typeof kpMoneda==='function')?kpMoneda():'L.'}" min="0" value="${o.montoMitad1!=null?o.montoMitad1:''}" oninput="actualizarRestanteMitad()"></div><div><label>Método 1</label><select id="f_metodoMitad1" onchange="kpBancoRefresh()"><option value="efectivo" ${(!o.metodoPagoMitad1||o.metodoPagoMitad1==='efectivo')?'selected':''}>Efectivo</option><option value="transferencia" ${o.metodoPagoMitad1==='transferencia'?'selected':''}>Transferencia</option><option value="link de pago" ${o.metodoPagoMitad1==='link de pago'?'selected':''}>Link de pago</option><option value="pos" ${o.metodoPagoMitad1==='pos'?'selected':''}>POS</option></select></div></div>
@@ -10824,7 +10824,7 @@ KP.openEnterpriseOrder=async function(o={}){
  <div class="sheet-footer"><button class="btn" onclick="closeSheet()">Cancelar</button><button class="btn primary" onclick="saveOrder()">Guardar orden</button></div>`;
  sh.querySelectorAll('#kpOrderType .pill').forEach(p=>p.onclick=()=>{sh.querySelectorAll('#kpOrderType .pill').forEach(x=>x.classList.remove('sel'));p.classList.add('sel');KP.refreshPointPickers(p.dataset.v);});
  sh.querySelectorAll('#f_tipoEntrega .pill').forEach(p=>p.onclick=()=>{sh.querySelectorAll('#f_tipoEntrega .pill').forEach(x=>x.classList.remove('sel'));p.classList.add('sel');}); document.getElementById('kpOrderBranch')?.addEventListener('change',e=>{KP.setBranchTheme(e.target.value);KP.refreshPointPickers(document.querySelector('#kpOrderType .pill.sel')?.dataset.v||'normal');}); KP.setBranchTheme(o.sucursalId||userBranch(CURRENT_USER));
- document.getElementById('f_metodoPago')?.addEventListener('change',e=>{const box=document.getElementById('kpMitadBox');if(box)box.style.display=e.target.value==='mitad'?'block':'none';actualizarRestanteMitad();recalcularTotalDesdeProductos();});
+ document.getElementById('f_metodoPago')?.addEventListener('change',e=>{const box=document.getElementById('kpMitadBox');if(box)box.style.display=e.target.value==='mitad'?'block':'none';const ew=document.getElementById('kpEstadoPagoWrap');if(ew)ew.style.display=e.target.value==='mitad'?'none':'block';actualizarRestanteMitad();recalcularTotalDesdeProductos();});
  kpBancoRefresh();
  document.getElementById('sheetBg')?.classList.add('show');sh.classList.add('show');window._renderProdList=()=>{document.getElementById('prodList').innerHTML=draftProducts.map((p,i)=>typeof productRowHtml==='function'?productRowHtml(p,i):'').join('');};KP.refreshPointPickers(document.querySelector('#kpOrderType .pill.sel')?.dataset.v||'normal');
  }catch(e){ console.error('Error al armar el formulario de orden',e); toast('No se pudo mostrar el formulario de orden: '+(e?.message||'error desconocido')); }
@@ -10880,26 +10880,13 @@ KP.extraerDatosOrden=function(){
     if((m=l.match(etiquetas.total))){ totalTxt=m[2].trim(); usada[i]=true; return; }
   });
   if(bloqueActual) bloquesProducto.push(bloqueActual);
-  const huboEtiquetas=nombre||numero||direccionLineas.length||bloquesProducto.length||metodoTxt||totalTxt;
-  if(!huboEtiquetas){
-    // Sin etiquetas explícitas: heurística sobre texto libre (mensaje normal de WhatsApp).
-    const telRegexGlobal=/(?:\+?504[\s-]?)?(\d{4}[\s-]?\d{4})/g;
-    const lineasTelefono=[];
-    lineasOriginal.forEach((l,i)=>{
-      const matches=[...l.matchAll(telRegexGlobal)].map(m=>m[1].replace(/[\s-]/g,''));
-      if(matches.length){ lineasTelefono.push(i); matches.forEach(num=>{ if(!numero) numero=num; else if(!numero2 && num!==numero) numero2=num; }); }
-    });
-    const palabrasDireccion=/calle|colonia|col\.|barrio|bloque|block|casa|res\.|residencial|frente|contiguo|atrás|cerca de|avenida|ave\.|sector|aldea|referencia|entre calles|portón|casa color/i;
-    let lineaNombre=-1;
-    lineasOriginal.forEach((l,i)=>{
-      if(nombre) return; if(lineasTelefono.includes(i)) return; if(palabrasDireccion.test(l)) return;
-      const numDigitos=(l.match(/\d/g)||[]).length;
-      if(l.split(' ').length<=5 && numDigitos<3){ nombre=l; lineaNombre=i; }
-    });
-    const usadas2=new Set([...lineasTelefono, lineaNombre].filter(i=>i>=0));
-    direccionLineas=lineasOriginal.filter((l,i)=>!usadas2.has(i));
-    lineasOriginal.forEach((l,i)=>{ if(usadas2.has(i)) usada[i]=true; });
-  }
+  // Pasada de texto libre sobre las líneas SIN etiqueta (funciona aunque el mensaje mezcle líneas con y sin etiqueta).
+  const libre=window.kpParseClienteLibre(lineasOriginal.map((l,i)=>usada[i]?'':l),{tieneNombre:!!nombre,tieneDireccion:direccionLineas.length>0});
+  libre.usadas.forEach(i=>{usada[i]=true;});
+  if(!nombre&&libre.nombre)nombre=libre.nombre;
+  libre.numeros.forEach(num=>{ if(num===numero||num===numero2)return; if(!numero)numero=num; else if(!numero2)numero2=num; });
+  if(!direccionLineas.length&&libre.direccion)direccionLineas=[libre.direccion];
+  if(!metodoTxt&&libre.metodoTxt)metodoTxt=libre.metodoTxt;
   const direccion=direccionLineas.join('\n');
   if(nombre && document.getElementById('f_cliente')) document.getElementById('f_cliente').value=nombre;
   if(numero && document.getElementById('f_numero')) document.getElementById('f_numero').value=numero;
@@ -12751,13 +12738,20 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     L.push('');L.push('------------------------');L.push('');
     L.push('*Pago*');
     L.push('Total: *'+money(o.totalPedido!=null?o.totalPedido:(typeof totalOrden==='function'?totalOrden(o):0))+'*');
+    var __pend=false;
     if(o.metodoPago==='mitad'){
-      L.push('Dividido:');L.push(money(o.montoMitad1)+' ('+(o.metodoPagoMitad1||'')+(o.bancoMitad1?' - '+o.bancoMitad1:'')+')');L.push(money(o.montoMitad2)+' ('+(o.metodoPagoMitad2||'')+(o.bancoMitad2?' - '+o.bancoMitad2:'')+')');
+      L.push('Dividido:');
+      [[o.metodoPagoMitad1,o.montoMitad1,o.bancoMitad1,o.estadoMitad1],[o.metodoPagoMitad2,o.montoMitad2,o.bancoMitad2,o.estadoMitad2]].forEach(function(x){
+        if(!(Number(x[1])>0))return;
+        var mm=String(x[0]||'pago'),st=x[3]||(o.estadoPago==='pagado'?'pagado':(mm==='efectivo'?'pendiente':'pagado'));
+        if(st!=='pagado')__pend=true;
+        L.push(mm.charAt(0).toUpperCase()+mm.slice(1)+' '+money(x[1])+(x[2]?' ('+x[2]+')':'')+': '+(st==='pagado'?'Pagado':'Pendiente'));
+      });
     }else{
       var m=String(o.metodoPago||'-');L.push('Método: '+m.charAt(0).toUpperCase()+m.slice(1)+(o.banco?' - '+o.banco:''));
     }
     var cobrar=typeof montoEfectivoACobrar==='function'?Number(montoEfectivoACobrar(o)||0):0;
-    if(o.estadoPago==='pagado'){L.push('Estado: *PAGADO*');}
+    if(o.metodoPago==='mitad'?!__pend:o.estadoPago==='pagado'){L.push('Estado: *PAGADO*');}
     else{L.push('Estado: *PENDIENTE DE PAGO*');if(cobrar>0)L.push('Cobrar al entregar: *'+money(cobrar)+'*');}
     var __n0=L.length;
     var comp=comprobantesDe(o);
@@ -12918,13 +12912,20 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     L.push('');L.push('------------------------');L.push('');
     L.push('*Pago*');
     L.push('Total: *'+money(o.totalPedido!=null?o.totalPedido:(typeof totalOrden==='function'?totalOrden(o):0))+'*');
+    var __pend=false;
     if(o.metodoPago==='mitad'){
-      L.push('Dividido:');L.push(money(o.montoMitad1)+' ('+(o.metodoPagoMitad1||'')+(o.bancoMitad1?' - '+o.bancoMitad1:'')+')');L.push(money(o.montoMitad2)+' ('+(o.metodoPagoMitad2||'')+(o.bancoMitad2?' - '+o.bancoMitad2:'')+')');
+      L.push('Dividido:');
+      [[o.metodoPagoMitad1,o.montoMitad1,o.bancoMitad1,o.estadoMitad1],[o.metodoPagoMitad2,o.montoMitad2,o.bancoMitad2,o.estadoMitad2]].forEach(function(x){
+        if(!(Number(x[1])>0))return;
+        var mm=String(x[0]||'pago'),st=x[3]||(o.estadoPago==='pagado'?'pagado':(mm==='efectivo'?'pendiente':'pagado'));
+        if(st!=='pagado')__pend=true;
+        L.push(mm.charAt(0).toUpperCase()+mm.slice(1)+' '+money(x[1])+(x[2]?' ('+x[2]+')':'')+': '+(st==='pagado'?'Pagado':'Pendiente'));
+      });
     }else{
       var m=String(o.metodoPago||'-');L.push('Método: '+m.charAt(0).toUpperCase()+m.slice(1)+(o.banco?' - '+o.banco:''));
     }
     var cobrar=typeof montoEfectivoACobrar==='function'?Number(montoEfectivoACobrar(o)||0):0;
-    if(o.estadoPago==='pagado'){L.push('Estado: *PAGADO*');}
+    if(o.metodoPago==='mitad'?!__pend:o.estadoPago==='pagado'){L.push('Estado: *PAGADO*');}
     else{L.push('Estado: *PENDIENTE DE PAGO*');if(cobrar>0)L.push('Cobrar al entregar: *'+money(cobrar)+'*');}
     var __n0=L.length;
     var comp=comprobantesDe(o);
@@ -17331,14 +17332,6 @@ function cardify(c){
   const t=document.createElement('button');t.type='button';t.className='kpx-toggle';
   t.innerHTML='<span class="a">Ver detalles</span><span class="b">Ocultar detalles</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   kids[last].after(t);
-  try{
-    const oid=(c.innerHTML.match(/editOrder\('([^']+)'\)/)||[])[1];
-    if(oid&&!c.querySelector(':scope > .kpx-quick')){
-      const q=document.createElement('div');q.className='kpx-quick';q.style.cssText='display:flex;gap:8px;margin:10px 0 0';
-      q.innerHTML='<button type="button" class="btn sm" onclick="editOrder(\''+oid+'\')">✏️ Editar orden</button>';
-      t.before(q);
-    }
-  }catch(e){}
   const restore=key&&OPEN.has(key)&&!(activeTab==='boxful'&&window.__kpCollapseNationalAfterSelection);
   kpxSetCardExpanded(c,!!restore);
   t.onclick=e=>{
@@ -18030,7 +18023,7 @@ window.__kpFmtWA=fmt;
 window.kpBancoFalta=function(id){
   var s=document.getElementById(id);if(!s)return false;
   var w=document.getElementById(id+'Wrap');if(w&&w.style.display==='none')return false;
-  var ep=document.getElementById('f_estadoPago');if(!ep||ep.value!=='pagado')return false;  /* pendiente: el banco es opcional */
+  var ep=document.getElementById(id==='f_bancoMitad1'?'f_estadoMitad1':id==='f_bancoMitad2'?'f_estadoMitad2':'f_estadoPago');if(!ep||ep.value!=='pagado')return false;  /* pendiente: el banco es opcional */
   var o=document.getElementById(id+'Otro'),falta=false,el=s;
   if(s.value==='')falta=true;
   else if(s.value==='OTRA'&&o&&!o.value.trim()){falta=true;el=o}
@@ -19707,6 +19700,90 @@ new MutationObserver(()=>{if(addBtn.t)return;addBtn.t=setTimeout(()=>{addBtn.t=0
 setTimeout(addBtn,800);
 })();
 </script>
+<script id="kp-parse-cliente-js">
+/* Lector local de mensajes de clientes (sin red). Entiende líneas con y sin etiqueta mezcladas:
+   nombre, teléfonos (4-4, 4-2-2, con +504), forma de pago y dirección. */
+window.kpParseClienteLibre=function(lines,ctx){
+  ctx=ctx||{};
+  var out={nombre:'',numeros:[],direccion:'',metodoTxt:'',usadas:[]};
+  var n=function(x){return String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');};
+  var L=(lines||[]).map(function(l){return String(l||'').trim();});
+  var RUIDO=/^((hola+|buen[oa]s?|dias|tardes|noches|gracias|muchas|por favor|pf|ok|listo|saludos|datos|mis|los|de|envio|entrega)[\s.,:!-]*)+$/;
+  var ADDR=/\b(calle|colonia|col|barrio|bo|bloque|block|casa|res|residencial|resid|urbanizacion|urb|frente|contiguo|contigua|atras|detras|cerca|cercas|avenida|ave|av|sector|aldea|caserio|zona|referencia|entre|porton|apartamento|apto|edificio|local|plaza|mall|gasolinera|hospital|escuela|colegio|iglesia|parque|mercado|taller|tienda|farmacia|cuadra|cuadras|metros|mts|km|kilometro|carretera|bulevar|boulevard|salida|rotonda|redondel|puente|esquina|pulperia|supermercado|pasaje|lote|manzana|mz|pasando|diagonal|junto|enfrente|al lado|departamento|municipio)\b/;
+  var PHONE=/(^|\D)(?:\+?\s*\(?504\)?[\s.-]*)?(\d(?:[\s.-]?\d){7})(?!\d)/g;
+  var LABEL_TEL=/\b(tel[eé]fono|tel|cel(?:ular)?|whatsapp|wasap|wsp|n[uú]mero|contacto)\b\s*[:\-]?/gi;
+  var LABEL_DIR=/^\s*(direcci[oó]n(?:\s+de\s+(?:entrega|env[ií]o))?|entrega|enviar\s+a|env[ií]o\s+a|ubicaci[oó]n|dir)\s*[:\-]?\s+/i;
+  var LABEL_NOM=/^\s*(?:a\s+nombre\s+de|nombre(?:\s+completo)?|cliente)\s*[:\-]?\s+(.+)$/i;
+  var KW=/\b(?:pago\s+(?:con|por|en|mediante|de)\s+)?(efectivo|transferencia|dep[oó]sito|tarjeta(?:\s+de\s+(?:cr[eé]dito|d[eé]bito))?|link\s+de\s+pago)\b/gi;
+  var usadas={};
+  var nombreIdx=-1, dirParts=[];
+  var rest=[];
+  // 1) teléfonos, pago y ruido, línea por línea
+  L.forEach(function(orig,i){
+    if(!orig)return;
+    var line=orig, nl=n(line);
+    if(RUIDO.test(nl)){usadas[i]=1;return;}
+    // teléfonos
+    var hadPhone=false;
+    line=line.replace(PHONE,function(m,pre,dig){
+      var d=String(dig).replace(/\D/g,'');
+      if(d.length!==8||!/^[2-9]/.test(d))return m;
+      hadPhone=true; if(out.numeros.indexOf(d)<0)out.numeros.push(d); return pre+' ';
+    });
+    if(hadPhone){line=line.replace(LABEL_TEL,' ').replace(/[\s,;:|\/-]+$/,'').replace(/^[\s,;:|\/-]+/,'').replace(/\s{2,}/g,' ').trim();}
+    if(hadPhone&&!/[a-zA-ZáéíóúñÁÉÍÓÚÑ]/.test(line)){usadas[i]=1;return;}
+    nl=n(line);
+    // forma de pago
+    var w=nl.split(/\s+/).filter(Boolean).length;
+    var kw=/\b(efectivo|transferencia|transfer|deposito|tarjeta|credito|debito|link|pos)\b/.test(nl);
+    var frase=/\b(pago|paga|pagar|pagare|pagara|cancelo|cancela|cancelar|abono)\b/.test(nl);
+    var alRecibir=/\b(recibir|recibo|contra ?entrega|a la entrega|al entregar)\b/.test(nl);
+    var esPago=false;
+    if(/^(forma de pago|metodo de pago|pago|paga|pagan|pagare|pagar|pagara|cancelo|cancela|cancelare|se cancela|le cancelo|ya pag|pagado)\b/.test(nl))esPago=true;
+    else if(w<=4&&(/^(efectivo|transferencia|transfer|deposito|tarjeta|credito|debito|link|pos|contra)\b/.test(nl)||alRecibir))esPago=true;
+    else if(frase&&(kw||alRecibir))esPago=true;
+    if(esPago&&w>14)esPago=false;
+    if(esPago){
+      var m=/\b(tarjeta|credito|debito|pos)\b/.test(nl)?'tarjeta':/\blink\b/.test(nl)?'link de pago':/\b(transferencia|transfer|deposito)\b/.test(nl)?'transferencia':'efectivo';
+      if(!out.metodoTxt)out.metodoTxt=m+(/\b(ya (pag|transfer|deposit|cancel)|pagad[oa])/.test(nl)?' pagado':'');
+      usadas[i]=1;return;
+    }
+    if(kw&&w<=6){ // "Daniel Sierra transferencia": quita solo la palabra de pago
+      var mm=nl.match(/\b(efectivo|transferencia|deposito|tarjeta|credito|debito|link)\b/);
+      if(mm&&!out.metodoTxt)out.metodoTxt=/tarjeta|credito|debito/.test(mm[1])?'tarjeta':mm[1]==='link'?'link de pago':/transfer|deposito/.test(mm[1])?'transferencia':'efectivo';
+      line=line.replace(KW,' ').replace(/\s{2,}/g,' ').trim();
+      if(!/[a-zA-ZáéíóúñÁÉÍÓÚÑ]/.test(line)){usadas[i]=1;return;}
+    }
+    rest.push({i:i,t:line});
+  });
+  // 2) nombre
+  var NOMBRE=/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]*$/;
+  if(!ctx.tieneNombre){
+    for(var k=0;k<rest.length&&nombreIdx<0;k++){ // con etiqueta "nombre ..." sin dos puntos
+      var lm=rest[k].t.match(LABEL_NOM);
+      if(lm&&lm[1].trim()){out.nombre=lm[1].trim();nombreIdx=k;}
+    }
+    for(var k2=0;k2<rest.length&&nombreIdx<0;k2++){
+      var t=rest[k2].t.replace(/[,.;]+$/,'').trim(), words=t.split(/\s+/).filter(Boolean);
+      if(words.length<2||words.length>6)continue;
+      if(!NOMBRE.test(t)||ADDR.test(n(t))||LABEL_DIR.test(t))continue;
+      out.nombre=t;nombreIdx=k2;
+    }
+  }
+  if(nombreIdx>=0)usadas[rest[nombreIdx].i]=1;
+  // 3) dirección: lo que queda
+  if(!ctx.tieneDireccion){
+    rest.forEach(function(r,k){
+      if(k===nombreIdx)return;
+      var t=r.t.replace(LABEL_DIR,'').replace(/^[\s,;:-]+|[\s,;:-]+$/g,'').trim();
+      if(t&&/[a-zA-Z0-9]/.test(t))dirParts.push(t);
+    });
+    out.direccion=dirParts.join('\n');
+  }
+  out.usadas=Object.keys(usadas).map(Number);
+  return out;
+};
+</script>
 <!-- ════════════════════════════════════════════════════════════
      BLOQUE 74/91 · CÓDIGO (JavaScript) · id=kp-wa-paste-js · 8KB
      PARTE 10 · ÓRDENES, ENVÍOS NACIONALES Y GUÍAS BOXFUL
@@ -19764,15 +19841,22 @@ Devuelve SOLO un objeto JSON con estos campos (usa "" si el dato no aparece; NO 
 - "total": monto total en números si se menciona; si no, "".
 - "productos": lista de {"producto","modelo","tamano","color"} solo si se mencionan; si no, [].
 
+REGLAS IMPORTANTES:
+- Si el nombre y la dirección vienen mezclados en una sola línea, sepáralos: el nombre es la persona (normalmente 2 a 4 palabras) y todo lo demás es la dirección. Ejemplo: "Barrio las flores en taller carlitos miriam suyapa funez Bonilla tocoa colon 9976-46-40" => cliente "Miriam Suyapa Funez Bonilla", numero "99764640", direccion "Barrio las flores en taller carlitos, Tocoa, Colón".
+- El teléfono, la forma de pago y frases como "le cancelo el envío y el pago al recibir" o "pago con tarjeta" NUNCA van en la dirección ni en el nombre. "Pago al recibir" o "contra entrega" es "efectivo". Tarjeta de crédito o débito es "tarjeta".
+- Frases como "Dirección de entrega" o "Dirección:" son solo etiquetas: no las incluyas en el valor.
+- Un número de 8 dígitos puede venir como 9976-46-40, 9976 4640 o +504 9976-4640: normalízalo a 8 dígitos seguidos.
+- Si solo hay nombre y forma de pago, deja la dirección y el teléfono en "".
+
 Texto:
 ${texto}`;
   const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),20000);
   try{
     let model='gemini-3.8-flash';try{model=GEMINI_MODEL||model;}catch(e){}
-    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{
-      method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,
-      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0,maxOutputTokens:2048,thinkingConfig:{thinkingBudget:0}}})
-    });
+    const body=JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0,maxOutputTokens:2048,thinkingConfig:{thinkingBudget:0}}});
+    const call=m=>fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,body});
+    let r=await call(model);
+    if(!r.ok&&(r.status===404||r.status===400)&&model!=='gemini-2.5-flash')r=await call('gemini-2.5-flash');
     if(!r.ok)throw new Error('Gemini '+r.status);
     const data=await r.json(),txt=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text;
     if(!txt)throw new Error('Gemini sin contenido');
@@ -19843,11 +19927,11 @@ function wrap(obj,key){
         if(btn){btn.disabled=true;btn.textContent='🪄 Leyendo con Gemini…';}
         ai=await gemini(source,key);
         aiCompleto=coreAiComplete(ai);
-        if(aiCompleto)el.value=aEtiquetas(ai);
-        else{
-          el.value=source;
-          if(typeof toast==='function')toast('Gemini encontró datos parciales; completaré lo que falte con la extracción normal.');
-        }
+        const et=aEtiquetas(ai);
+        if(et){
+          el.value=et;
+          if(!aiCompleto&&typeof toast==='function')toast('Gemini encontró datos parciales; completo lo que falte con el lector normal.');
+        }else{el.value=source;}
       }
     }catch(e){
       console.warn('Gemini falló, se usa el lector normal',e);
@@ -19855,6 +19939,22 @@ function wrap(obj,key){
       el.value=source;
     }finally{if(btn){btn.disabled=false;btn.textContent=label;}}
     const result=await f.apply(self,args);
+    try{
+      const loc=window.kpParseClienteLibre(source.split('\n'),{});
+      const put=(id,v,max)=>{const e=document.getElementById(id);if(e&&v&&!String(e.value||'').trim())e.value=max?String(v).slice(0,max):v;};
+      put('f_cliente',loc.nombre);put('f_numero',loc.numeros[0]);
+      if(loc.numeros[1]&&!(document.getElementById('f_numero2')||{}).value){try{if(typeof mostrarNumero2==='function')mostrarNumero2();}catch(e){}put('f_numero2',loc.numeros[1]);}
+      put('f_direccion',loc.direccion,200);
+      const sm=document.getElementById('f_metodoPago');
+      if(sm&&sm.value!=='mitad'&&loc.metodoTxt&&!(ai&&String(ai.metodoPago||'').trim())){
+        const t=normTxt(loc.metodoTxt);
+        sm.value=t.includes('efectivo')?'efectivo':(t.includes('link')?'link de pago':(t.includes('pos')||t.includes('tarjeta')?'pos':'transferencia'));
+        sm.dispatchEvent(new Event('change'));
+        const se=document.getElementById('f_estadoPago');if(se)se.value=t.includes('pagad')?'pagado':'pendiente';
+      }
+      try{if(window.KP&&typeof KP.checkFrecuenteOrden==='function')KP.checkFrecuenteOrden();}catch(e){}
+      try{if(window.KP&&typeof KP.dirCount==='function')KP.dirCount();}catch(e){}
+    }catch(e){console.warn('lector local',e);}
     if(ai&&!aiCompleto)applyMissingAiCore(ai);
     if(ai&&!aiCompleto){
       const missing=[];
@@ -21068,7 +21168,7 @@ function mikeComisiones(a){
 }
 
 async function runTool(name,a){
- a=a||{};if(String(name).startsWith('bloc_'))return window.KPBloc&&KPBloc.mikeTool?KPBloc.mikeTool(name,a):{error:'El Bloc de notas no está disponible.'};
+ a=a||{};if(String(name).startsWith('app_'))return window.KPDoctor?KPDoctor.mikeTool(name,a):{error:'El reparador no está disponible.'};if(String(name).startsWith('bloc_'))return window.KPBloc&&KPBloc.mikeTool?KPBloc.mikeTool(name,a):{error:'El Bloc de notas no está disponible.'};
  if(name==='resumen_pedidos')return stats();
  if(name==='analizar_ordenes')return mikeAnalizar(a);
  if(name==='calcular_matematica')return mikeCalculo(a);
@@ -21526,6 +21626,7 @@ function sysPrompt(live){
  return 'Eres Mike, compañero de trabajo de KPlace (gestión de órdenes, inventario y envíos en Honduras) y además un asistente general muy capaz: respondes CUALQUIER pregunta (cultura, distancias, clima, cálculos, consejos, redacción) con la calidad de un buen chat general, sin decir que eso no es de KPlace. Hablas español natural de Honduras, cercano y directo, como una persona real, sin sonar a manual. ENTENDER BIEN: entiendes jerga hondureña, errores de ortografía, abreviaturas y audio mal transcrito (tegus = Tegucigalpa, lps = lempiras, la orden de Carlos, el de ayer); usas el contexto de lo que ya dijeron (ese, esa orden, cámbialo); si algo es ambiguo eliges la lectura más probable y la dices en media frase; solo preguntas cuando equivocarte podría crear o cambiar algo mal; nunca contestes solo no entendí: di qué crees que quisieron decir. '+
  (live?'Esta es una conversación por VOZ en tiempo real: responde hablando, en 1 a 3 frases, sin listas ni símbolos, deja que te interrumpan y no leas más de 3 pedidos seguidos. En preguntas que no son de KPlace puedes extenderte hasta unas 5 frases. Si no se entendió el audio, pide que lo repitan en vez de adivinar. ':'Respuestas cortas (1 a 4 frases) en temas de KPlace; en preguntas generales o de otros temas respóndelas completas (lo que haga falta, con datos concretos). Usa **negrita** y guiones solo si ayudan. ')+
  'Usuario: '+(u.nombre||'sin identificar')+' ('+rol+'). Hoy es '+hoy()+'. Recuerdos personales de este usuario (NO los compartas con otros): '+JSON.stringify(mikeRemembered.slice(-MIKE_MEM_LIMIT))+'. Cifras al momento: '+JSON.stringify(Object.assign({},stats(),{bloc_de_notas:(window.KPBloc&&KPBloc.snapshot?KPBloc.snapshot():null)}))+'. Si preguntan por pendientes, recordatorios, anuncios o notas, usa bloc_de_notas. Puedes leer, crear, editar y borrar anotaciones, pendientes, recordatorios y anuncios con las herramientas bloc_*; borra solo si te lo piden. '+
+ 'MODO REPARADOR (cuando el usuario cuenta un problema con la propia app: un botón no responde, la pantalla se traba, sale un error o un código KP-xxx, algo no abre, no se guarda, etc.): 1) llama app_estado_pantalla y app_errores_recientes para ver qué pasó; si hace falta usa app_diagnosticar (completo:true solo si te lo piden); 2) aplica la reparación adecuada con app_reparar; las que cambian datos o recargan la app las explicas primero y pides confirmación, y solo después llamas con confirmar:true; 3) explica en palabras simples qué encontraste y qué hiciste; NUNCA digas que quedó arreglado si la herramienta no lo confirmó, y si el problema persiste pídele que lo pruebe; 4) si no logras arreglarlo, llama app_reportar_problema y dile el código para que se lo pase al programador. '+
  'REGLAS (los datos de KPlace siempre deben salir de las herramientas; en cualquier otro tema responde libre y completo): 1) Para datos de pedidos o inventario usa SIEMPRE las herramientas (o las cifras de arriba); nunca inventes pedidos, stock, precios ni guías. Si preguntan qué productos lleva una orden o el borrador actual, consulta detalle_pedido o quitar_producto_orden para obtener la lista real; enumera los productos antes de quitar uno. Si el usuario pide agregar producto a una orden YA GUARDADA, usa agregar_producto_orden indicando primero el cliente/id/referencia; sigue la selección guiada del inventario paso a paso hasta que se confirme que quedó guardado. No uses crear_orden para eso. Solo quita el producto que identifique claramente el usuario; si hay coincidencias ambiguas, pregunta cuál. 2) Si piden crear o cotizar una guía: busca el pedido (buscar_pedidos), si hay duda pregunta cuál, y usa preparar_guia con el id exacto. Esa herramienta solo muestra una tarjeta: la guía la crea el usuario tocando el botón. Nunca digas que ya se creó. 3) CREAR ORDEN: cuando el usuario pida crear una orden, reúne nombre, teléfono y dirección (más producto, forma de pago y total si los da; envío en Tegucigalpa por defecto, y si es nacional pide departamento y municipio). Llama crear_orden en cuanto tengas nombre, teléfono y dirección: el formulario se abre y se va llenando a la vista del usuario y el chat se achica. Si responde creada:false con una lista faltan, la orden NO se guardó: NO vuelvas a llamar crear_orden hasta que el usuario responda; pregunta solo lo que falta (plataforma, producto, forma de pago, total, banco, departamento y municipio) y cuando responda vuelve a llamar crear_orden solo con los datos nuevos (los anteriores se recuerdan). Si no dijo la forma de pago, pregúntala. Pago dividido (mitad, mixto, parte y parte): usa metodo_pago mitad con metodo_1 y metodo_2 (y monto_1/monto_2 si los dice; si dice mitad y mitad, son la mitad del total; banco_1/banco_2 si alguna parte es transferencia). Si creada:true, confírmalo en una frase. NO uses ni menciones el cuadro de pegar/extraer datos del formulario: tú llenas los campos directo, SOLO los que están vacíos, y nunca reescribes lo que el usuario ya llenó o corrigió a mano salvo que él te lo pida (entonces crear_orden con reemplazar=true). Si el formulario ya está abierto, se reutiliza tal cual. PRODUCTO (flujo guiado): si piden agregar o falta el producto, usa elegir_producto SIN pedir que lo escriban: primero la CATEGORÍA, luego los MODELOS, luego los COLORES y por último los TAMAÑOS. En cada paso muestra la lista_texto numerada tal cual la devuelve la herramienta (un paso por mensaje) y espera. Cuando el usuario diga "el primero", "el 2", "ese" o el nombre, llama elegir_producto con numero (o texto). Un solo resultado se salta solo. Al completar, el producto queda en la orden; pregunta si lleva otro. Cuando ya esté todo, llama crear_orden para guardar la orden. 4) Preguntas sobre cómo usar la app: responde con pasos concretos según este manual: '+MANUAL+' Si algo no está en el manual, dilo sin inventar. 5) No muestres claves ni datos de otros vendedores. 6) Haz una sola pregunta a la vez. 7) EDITAR ÓRDENES GUARDADAS: puedes cambiar cualquier orden existente, antigua o reciente, con editar_orden (una) o editar_ordenes (varias en la misma petición). Primero buscar_pedidos si el nombre es ambiguo y usar referencias exactas. Para aplicar el MISMO cambio a varios pedidos, editar_ordenes con seleccion y cambios; para cambios DISTINTOS, ediciones con pedido y cambios; para todos los pedidos de hoy/ayer/etc., filtro y cambios. Permite corregir cliente, teléfono, dirección, vendedor, fecha, entrega, productos, pago, notas y total. IMPORTANTE: ambas herramientas muestran una TARJETA que la persona confirma tocando Guardar cambios: nunca digas que están guardados hasta que confirme. Para transferencias solicita banco, en pago dividido los métodos, montos y bancos. No inventes destinatarios ni actualices guías Boxful ya creadas; cambiar productos no ajusta stock automáticamente. No uses crear_orden cuando están editando pedidos guardados. 8) VENTAS: para historial, totales o lo que vendió cada vendedor usa resumen_ventas. 9) SIN PAGAR: buscar_pedidos con estado sin_pagar (devuelve cantidad y monto_total). 10) RETRASO: cada pedido trae dias_retraso; el repartidor asignado viene en el campo repartidor (null si no se ha enviado). 11) PREGUNTAS GENERALES: también puedes responder cosas que no son de KPlace (distancias, clima, cultura general); para clima, distancias o datos que cambian usa buscar_en_internet, asumiendo Honduras si no dicen lugar. 12) INVENTARIO: puedes ver etiquetas (etiquetas_inventario o buscar_inventario) pero nunca hables de códigos QR. 13) ENTREGAS: puedes cambiar el estado con cambiar_estado_entrega: entregado y pendiente se hacen directo; para no_entregado pide el motivo y para qué día se reprograma (así lo hace KPlace). Confirma en una frase. 14) Preguntas que no son de KPlace: contéstalas bien; para fútbol, baloncesto, partidos de HOY, resultados, clasificaciones, deportes, clima, distancias, precios o noticias utiliza buscar_en_internet. Si la búsqueda EN VIVO falla no inventes marcadores ni fechas: aclara que no pudiste verificar el resultado. 15) CONSULTAS Y CÁLCULOS: usa analizar_ordenes para contar cuántas órdenes no tienen plataforma, por mes, sucursal, vendedor o sumar varias órdenes. Si piden sin plataforma este mes usa periodo mes y plataforma sin_plataforma. Si piden ventas por cada plataforma usa agrupar_por plataforma. Usa calcular_matematica para cualquier cálculo aritmético complejo, no improvises resultados. Usa calcular_comisiones cuando indiquen reglas (4%, envíos, 10% después de descuentos, etc): respeta cada condición y el ORDEN, comisión final siempre con base restante. No inventes descuentos ni tarifas. Las cuentas deben coincidir con los datos reales. 16) MEMORIA PERSONAL: recuerda conversaciones recientes de este usuario en su navegador, NO mezcles conversaciones de cuentas. Si pide recordar una preferencia para el futuro usa recordar_para_mi; si pregunta qué recuerdas usa ver_mis_recuerdos; si solicita borrar lo recordado usa olvidar_mis_recuerdos. La memoria no se sincroniza entre distintos dispositivos. Nunca reveles datos privados de otros usuarios. 17) Plataformas vacías no son WhatsApp ni Instagram aunque el canal técnico diga KPlace; para contarlas usa analizar_ordenes con sin_plataforma.';
 }
 
@@ -21953,7 +22054,9 @@ dock.addEventListener('click',()=>{docked=false;if(!fpos||nearTarget(fpos))fpos=
 addEventListener('resize',layoutFab);
 restoreFab();
 visibility();setInterval(visibility,300);
-window.KPMike={stats,buscar:toolBuscar,runTool,open,minimize};
+window.KPMike={stats,buscar:toolBuscar,runTool,open,minimize,
+ ask:function(t){open();input.value=String(t||'');sendNow()},
+ addTools:function(d){(d||[]).forEach(function(x){if(!TOOLS[0].functionDeclarations.some(function(y){return y.name===x.name}))TOOLS[0].functionDeclarations.push(x)})}};
 })();
 </script>
 
@@ -26124,7 +26227,8 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return
 function isAdmin(){var c=window.CURRENT_USER;return !!(c&&c.esAdmin)}
 function typeOf(path){try{return (0,eval)('typeof '+path)}catch(e){return 'undefined'}}
 function withTimeout(p,ms,label){return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej(new Error((label||'Operación')+' tardó más de '+Math.round(ms/1000)+' s'))},ms)})])}
-function add(cat,name,st,detail,fix){R.push({cat:cat,name:name,st:st,detail:detail||'',fix:fix||''});draw()}
+var quiet=false;
+function add(cat,name,st,detail,fix){R.push({cat:cat,name:name,st:st,detail:detail||'',fix:fix||''});if(!quiet)draw()}
 function labelOf(b){var t=[].slice.call(b.childNodes).filter(function(n){return n.nodeType===3}).map(function(n){return n.textContent}).join('').replace(/\s+/g,' ').trim();return t||b.textContent.replace(/\s+/g,' ').trim()}
 
 /* ---------- navegación ---------- */
@@ -26263,7 +26367,7 @@ function testErrors(){
   if(res.length)add('Errores','Recursos que no cargaron','warn',res.slice(0,5).map(function(x){return '• '+x.msg}).join('\n'),'Imágenes o archivos que no abrieron; puede ser el internet.');
 }
 async function runAll(){
-  if(running)return;running=true;done=false;R=[];t0=Date.now();filter='res';prog='Iniciando…';draw();
+  if(running)return R.slice();running=true;window.__kpDiagRunning=true;done=false;R=[];t0=Date.now();filter='res';prog='Iniciando…';draw();
   try{
     prog='Revisando el sistema…';await testSystem();
     prog='Revisando los datos…';await testData();
@@ -26273,11 +26377,20 @@ async function runAll(){
     await testNav();
     testErrors();
   }catch(e){add('Errores','La prueba se detuvo','fail',e.message||String(e),'')}
-  dur=Date.now()-t0;running=false;done=true;prog='';
+  dur=Date.now()-t0;running=false;window.__kpDiagRunning=false;done=true;prog='';
   try{localStorage.setItem(LS,JSON.stringify({R:R,dur:dur,at:Date.now()}))}catch(e){}
   lastRun={at:Date.now()};draw();
 }
 
+/* ---------- reparaciones ---------- */
+var FIXES=[
+ ['refresh','🔄 Redibujar la pantalla','Vuelve a dibujar la pantalla actual. Sirve si algo se ve cortado, vacío o desactualizado.',async function(){render();return 'Listo, pantalla redibujada.'}],
+ ['menu','🧭 Reparar el menú','Vuelve a revisar el menú y los botones laterales.',async function(){menu();document.querySelectorAll('#kpgSide').forEach(function(x){});return 'Menú revisado.'}],
+ ['inbox','🔔 Limpiar avisos ya leídos','Quita de la campana los avisos que ya marcaste como leídos.',async function(){var a=[];try{a=JSON.parse(localStorage.getItem('kp_inbox')||'[]')}catch(e){}var keep=a.filter(function(x){return !x.r});localStorage.setItem('kp_inbox',JSON.stringify(keep));return (a.length-keep.length)+' aviso(s) quitados.'}],
+ ['notif','📣 Activar avisos del navegador','Pide permiso para recibir notificaciones de órdenes y chat.',async function(){if(!('Notification' in window))return 'Este navegador no soporta avisos.';var r=await Notification.requestPermission();return r==='granted'?'Avisos activados.':(r==='denied'?'Están bloqueados: actívalos en los ajustes del sitio.':'No se respondió el permiso.')}],
+ ['boxful','🚚 Reconectar Boxful','Vuelve a pedir el acceso a Boxful para cotizar y crear guías.',async function(){if(typeof window.boxfulEnsureFreshToken!=='function')return 'No disponible en esta versión.';var r=await withTimeout(Promise.resolve(window.boxfulEnsureFreshToken()),8000,'Boxful');return r===false?'Boxful respondió que no está conectado: revisa las credenciales.':'Boxful conectado.'}],
+ ['cache','♻️ Actualizar la app (borrar caché)','Si la app se queda con una versión vieja o rara, esto la recarga limpia. Tu sesión y tus datos se conservan.',async function(){var n=0;try{if(navigator.serviceWorker){var rs=await navigator.serviceWorker.getRegistrations();for(var i=0;i<rs.length;i++){await rs[i].unregister();n++}}if(window.caches){var ks=await caches.keys();for(var j=0;j<ks.length;j++){await caches.delete(ks[j]);n++}}}catch(e){}setTimeout(function(){location.reload()},900);return 'Recargando… ('+n+' elementos limpiados)'}]
+];
 /* ---------- informe ---------- */
 function stats(){var s={ok:0,warn:0,fail:0};R.forEach(function(r){s[r.st]++});var n=R.length||1,score=Math.round(((s.ok+s.warn*.5)/n)*100);return {s:s,score:score,n:R.length}}
 function verdict(sc){if(sc.n===0)return ['Sin probar','Pulsa “Ejecutar prueba completa”.','#a9a8bd'];if(sc.s.fail===0&&sc.s.warn===0)return ['Todo bien','Todo lo probado funcionó a la primera.','#4ade80'];if(sc.s.fail===0)return ['Funciona con avisos','Nada roto, pero hay cosas para revisar.','#fbbf24'];return ['Hay cosas rotas',sc.s.fail+' prueba(s) fallaron. Revisa “Fallos y avisos”.','#f87171']}
@@ -26287,7 +26400,7 @@ function item(r){var ic={ok:'✅',warn:'⚠️',fail:'❌'}[r.st];return '<div c
 function draw(){
   var o=$('kpd-overlay');if(!o||!o.classList.contains('open'))return;
   var sc=stats(),v=verdict(sc);
-  var tabs=[['res','Resumen'],['bad','Fallos y avisos ('+(sc.s.fail+sc.s.warn)+')'],['all','Todo el detalle ('+sc.n+')']];
+  var tabs=[['res','Resumen'],['bad','Fallos y avisos ('+(sc.s.fail+sc.s.warn)+')'],['all','Todo el detalle ('+sc.n+')'],['fix','🔧 Reparar']];
   $('kpd-tabs').innerHTML=tabs.map(function(t){return '<button type="button" data-kpd-t="'+t[0]+'" class="'+(t[0]===filter?'on':'')+'">'+t[1]+'</button>'}).join('');
   var body='';
   if(filter==='res'){
@@ -26296,6 +26409,11 @@ function draw(){
     +'<div class="kpd-cards"><div class="kpd-card ok"><small>Funcionan</small><strong>'+sc.s.ok+'</strong></div><div class="kpd-card warn"><small>Avisos</small><strong>'+sc.s.warn+'</strong></div><div class="kpd-card fail"><small>Fallos</small><strong>'+sc.s.fail+'</strong></div><div class="kpd-card"><small>Pruebas</small><strong>'+sc.n+'</strong></div></div>'
     +(Object.keys(cats).length?'<h4>Por área</h4><div class="kpd-areas">'+Object.keys(cats).map(function(k){var c=cats[k];return '<div class="kpd-area"><span>'+esc(k)+'</span><span>✅ '+c.ok+(c.warn?' · ⚠️ '+c.warn:'')+(c.fail?' · ❌ '+c.fail:'')+'</span></div>'}).join('')+'</div>':'')
     +(sc.s.fail?'<h4>Lo primero que hay que arreglar</h4>'+R.filter(function(r){return r.st==='fail'}).slice(0,4).map(item).join(''):'');
+  }else if(filter==='fix'){
+    var rps=(window.KPDoctor?KPDoctor.reports():[]).slice(-6).reverse();
+    body='<div class="kpd-ask"><b>🤖 Cuéntale el problema a Mike</b><p>Escribe qué te pasa. Mike revisa la app, intenta arreglarlo y, si no puede, te da un código para pasarlo al programador.</p><textarea id="kpd-help" rows="3" placeholder="Ej: el botón de Caja no abre / salió el código KP-E417 / no puedo editar una orden de envío"></textarea><button type="button" data-kpd-ask="1" class="kpd-primary">Pedir ayuda a Mike</button></div>'
+    +'<div class="kpd-hint">Herramientas para arreglar problemas comunes. Ninguna borra órdenes, clientes ni inventario.</div>'+FIXES.map(function(f){return '<div class="kpd-fix"><div><b>'+f[1]+'</b><p>'+f[2]+'</p><em id="kpd-fx-'+f[0]+'"></em></div><button type="button" data-kpd-fix="'+f[0]+'">Aplicar</button></div>'}).join('')
+    +'<h4>Reportes guardados</h4>'+(rps.length?rps.map(function(r,i){return '<div class="kpd-fix"><div><b>'+esc(r.codigo)+'</b> <small style="color:#9998b0">'+esc(r.fecha)+'</small><p>'+esc((r.descripcion||'').slice(0,140))+'</p></div><button type="button" data-kpd-rcopy="'+(window.KPDoctor.reports().length-1-i)+'">📋 Copiar</button></div>'}).join(''):'<div class="kpd-empty">Aquí aparecen los problemas que el sistema detecta solo o que Mike reporta.</div>');
   }else{
     var list=filter==='bad'?R.filter(function(r){return r.st!=='ok'}):R;
     body=list.length?list.map(item).join(''):'<div class="kpd-empty">'+(filter==='bad'?'No hay fallos ni avisos 🎉':'Aún no hay resultados.')+'</div>';
@@ -26316,7 +26434,11 @@ function ui(){
     if(b.id==='kpd-x'){if(!running)close();return}
     if(b.id==='kpd-run'){runAll();return}
     if(b.id==='kpd-copy'){var t=textReport();(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='✅ Copiado'},function(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');b.textContent='✅ Copiado'}catch(x){}a.remove()});setTimeout(function(){b.textContent='📋 Copiar informe'},1800);return}
-    if(b.dataset.kpdT){filter=b.dataset.kpdT;draw()}
+    if(b.dataset.kpdT){filter=b.dataset.kpdT;draw();return}
+    if(b.dataset.kpdAsk){var ta=$('kpd-help'),tx=(ta&&ta.value||'').trim();if(!tx){if(ta)ta.focus();return}close();if(window.KPMike&&KPMike.ask)KPMike.ask('Problema con la app: '+tx);return}
+    if(b.dataset.kpdRcopy!=null){var rr=window.KPDoctor.reports()[+b.dataset.kpdRcopy];if(rr)window.KPDoctor.copy(window.KPDoctor.reportText(rr)).then(function(ok){b.textContent=ok?'✅ Copiado':'No se pudo'});return}
+    if(b.dataset.kpdFix){var f=FIXES.find(function(x){return x[0]===b.dataset.kpdFix});if(!f)return;var out=$('kpd-fx-'+f[0]);b.disabled=true;if(out)out.textContent='Aplicando…';
+      f[3]().then(function(m){if(out)out.textContent='✅ '+m},function(e){if(out)out.textContent='❌ '+(e&&e.message||e)}).then(function(){b.disabled=false})}
   });
 }
 function open(){if(!isAdmin()){try{window.toast&&toast('Solo el administrador puede abrir el diagnóstico')}catch(e){}return}ui();$('kpd-overlay').classList.add('open');try{window.closeKPlaceMenu&&closeKPlaceMenu()}catch(e){}draw()}
@@ -26336,7 +26458,11 @@ function menu(){
 setInterval(menu,3000);setTimeout(menu,1500);
 document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#menuBtn')){setTimeout(menu,150);setTimeout(menu,500)}},true);
 document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.altKey&&String(e.key).toLowerCase()==='d'){e.preventDefault();open()}});
-window.KPDiag={open:open,close:close,run:runAll,results:function(){return R.slice()},report:textReport};
+async function collect(fns){var saved=R;R=[];quiet=true;var out=[];try{for(var i=0;i<fns.length;i++)await fns[i]();testErrors()}finally{quiet=false;out=R;R=saved}return out}
+window.KPDiag={open:open,close:close,run:runAll,results:function(){return R.slice()},report:textReport,
+  quick:function(){return collect([testSystem,testData,testFunctions,testMenuStability])},
+  runForTool:async function(){await runAll();return R.slice()},
+  fixMenu:function(){menu()}};
 })();
 
 </script>
@@ -26386,7 +26512,226 @@ window.KPDiag={open:open,close:close,run:runAll,results:function(){return R.slic
 #kpd-panel .kpd-it p{margin:3px 0 0;color:#cfcbe0;font-size:12.5px;word-break:break-word}
 #kpd-panel .kpd-it em{display:block;margin-top:5px;color:#fcd34d;font-size:12px;font-style:normal}
 #kpd-panel .kpd-empty{padding:40px 10px;text-align:center;color:#a9a8bd}
+.kpd-hint{padding:12px 14px;margin-bottom:12px;border-radius:14px;background:#292044;border:1px solid #7254ad55;border-left:4px solid #9871e8;color:#d7c9f6;font-size:13px}
+#kpd-panel .kpd-fix{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;margin-bottom:9px;border-radius:14px;background:#ffffff07;border:1px solid #ffffff10}
+#kpd-panel .kpd-fix b{font-size:14px}#kpd-panel .kpd-fix p{margin:3px 0 0;color:#cfcbe0;font-size:12.5px}#kpd-panel .kpd-fix em{display:block;margin-top:5px;font-style:normal;color:#86efac;font-size:12.5px}
+#kpd-panel .kpd-fix button{flex:none;min-height:44px;padding:10px 16px;border-radius:13px;font:inherit;font-size:13px;font-weight:750;color:#fff;background:linear-gradient(120deg,#7651bd,#57418e);border:1px solid #a88be4;cursor:pointer}
+#kpd-panel .kpd-fix button:disabled{opacity:.5}
+@media(max-width:700px){#kpd-panel .kpd-fix{flex-direction:column;align-items:stretch}}
+#kpd-panel .kpd-ask{padding:16px;margin-bottom:14px;border-radius:16px;background:linear-gradient(145deg,#211a3c,#141626);border:1px solid #8b6cf066}#kpd-panel .kpd-ask p{margin:4px 0 10px;color:#cfcbe0;font-size:12.5px}#kpd-panel .kpd-ask textarea{width:100%;padding:12px;border-radius:12px;background:#0d1424;color:#fff;border:1px solid #42415b;font:inherit;font-size:14px;resize:vertical;outline:none;margin-bottom:10px}#kpd-panel .kpd-ask textarea:focus{border-color:#a78bfa}
 @media(max-width:700px){#kpd-overlay{padding:0}#kpd-panel{height:100dvh;max-height:100dvh;border-radius:0;border:0}#kpd-panel .kpd-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#kpd-panel .kpd-areas{grid-template-columns:1fr}#kpd-panel .kpd-hero{flex-direction:column;text-align:center}}
+
+</style>
+<script id="kp-zoom-photo">
+(function(){
+if(typeof window.kpZoomProfilePhoto==='function')return;
+/* Ver foto de perfil en grande (faltaba esta función: los botones "Ver foto de perfil" no hacían nada) */
+window.kpZoomProfilePhoto=function(src,name){
+  try{
+    if(!src)return;
+    var old=document.getElementById('kpZoomProfile');if(old)old.remove();
+    var o=document.createElement('div');o.id='kpZoomProfile';
+    o.setAttribute('role','dialog');o.setAttribute('aria-label','Foto de perfil');
+    o.innerHTML='<div class="kpzp-box"><button type="button" class="kpzp-x" aria-label="Cerrar">✕</button><img alt=""><div class="kpzp-name"></div></div>';
+    o.querySelector('img').src=String(src);
+    o.querySelector('.kpzp-name').textContent=name||'';
+    function close(){o.remove();document.removeEventListener('keydown',esc,true)}
+    function esc(e){if(e.key==='Escape')close()}
+    o.addEventListener('click',function(e){if(e.target===o||e.target.classList.contains('kpzp-x'))close()});
+    document.addEventListener('keydown',esc,true);
+    document.body.appendChild(o);
+  }catch(e){console.error('kpZoomProfilePhoto',e)}
+};
+})();
+</script>
+<style id="kp-zoom-photo-css">
+#kpZoomProfile{position:fixed;inset:0;z-index:100080;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,7,15,.86);backdrop-filter:blur(6px)}
+#kpZoomProfile .kpzp-box{position:relative;max-width:min(92vw,560px);max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:10px}
+#kpZoomProfile img{max-width:100%;max-height:78vh;border-radius:20px;object-fit:contain;box-shadow:0 20px 70px #000a;background:#111}
+#kpZoomProfile .kpzp-name{color:#fff;font-weight:700;font-size:15px;text-align:center}
+#kpZoomProfile .kpzp-x{position:absolute;top:-6px;right:-6px;width:42px;height:42px;border-radius:50%;border:1px solid #ffffff44;background:#1a1b2dee;color:#fff;font-size:18px;cursor:pointer;z-index:1}
+</style>
+<script id="kp-doctor">
+(function(){
+'use strict';
+if(window.KPDoctor)return;
+var ERR=window.__kpErrs||(window.__kpErrs=[]);
+var RLS='kp_problem_reports',lastShown={},lastAny=0,healed={};
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function U(){return window.CURRENT_USER||null}
+function isAdmin(){var u=U();return !!(u&&u.esAdmin)}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function tmo(p,ms,l){return Promise.race([p,new Promise(function(_,j){setTimeout(function(){j(new Error((l||'Operación')+' tardó demasiado'))},ms)})])}
+/* ---------- códigos de error ---------- */
+function norm(m){return String(m).replace(/\d+/g,'#').replace(/(['"`])(?:\\.|(?!\1).)*\1/g,'"…"').slice(0,120)}
+function hash(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))>>>0;return h}
+function codeOf(e){var L={promesa:'P',console:'C',error:'E',recurso:'R'}[e.type]||'E';return 'KP-'+L+(hash(norm(e.msg))%900+100)}
+var KINDS=[
+ {id:'nulo',re:/Cannot read propert(?:y|ies) of (?:null|undefined)|null is not an object|undefined is not an object|is null|is undefined/i,plain:'Una pantalla quiso usar un dato que todavía no había cargado.',heal:'redibujar'},
+ {id:'funcion',re:/is not a function|is not defined|not defined/i,plain:'Un botón llama a una función que no existe o no cargó.',heal:null},
+ {id:'red',re:/Failed to fetch|NetworkError|network|offline|ERR_INTERNET|Load failed/i,plain:'Se cortó la conexión con el servidor.',heal:null},
+ {id:'permiso',re:/Missing or insufficient permissions|permission-denied|PERMISSION_DENIED/i,plain:'Firebase negó el permiso (reglas de seguridad de la base de datos).',heal:null},
+ {id:'boxful',re:/boxful/i,plain:'No se pudo hablar con Boxful.',heal:'boxful'},
+ {id:'espacio',re:/quota|QuotaExceeded|storage/i,plain:'El navegador se quedó sin espacio para guardar datos.',heal:'espacio'},
+ {id:'otro',re:/./,plain:'Error inesperado del programa.',heal:null}
+];
+function kindOf(msg){return KINDS.find(function(k){return k.re.test(String(msg))})}
+function ignorable(e){
+  if(!e||e.type==='recurso')return true;
+  var m=String(e.msg||'');
+  if(/ResizeObserver|Script error\.?$|chrome-extension|extension:|AbortError|The user aborted|play\(\) request|NotAllowedError/i.test(m+' '+(e.src||'')))return true;
+  if(/^Operación tardó|\[kpg\]/.test(m))return true;
+  return false;
+}
+/* ---------- contexto y reportes ---------- */
+function visibleOverlays(){var o=[];[['kpb-overlay','.open'],['kpf-overlay','.kpf-open'],['kpd-overlay','.open']].forEach(function(p){if(document.querySelector('#'+p[0]+p[1]))o.push(p[0])});if(document.querySelector('.sheet.show'))o.push('hoja de edición');if(document.querySelector('#kpMenuDrawer.open'))o.push('menú');return o}
+function ctx(){
+  var u=U()||{};
+  return {fecha:new Date().toISOString(),usuario:u.nombre||u.usuario||'—',rol:u.esAdmin?'admin':(u.esRepartidor?'repartidor':(u.esEncargadoEnvios?'encargado':'vendedor')),pantalla:String(window.activeTab),abierto:visibleOverlays(),enLinea:navigator.onLine,pantallaPx:innerWidth+'x'+innerHeight,navegador:navigator.userAgent.slice(0,110),ordenes:(window.ORDERS||[]).length,errores:ERR.filter(function(e){return !ignorable(e)}).slice(-8).map(function(e){return {codigo:codeOf(e),tipo:e.type,msg:e.msg,en:e.src}})};
+}
+function reports(){try{return JSON.parse(localStorage.getItem(RLS)||'[]')}catch(e){return[]}}
+function saveReport(r){var a=reports();a.push(r);while(a.length>30)a.shift();try{localStorage.setItem(RLS,JSON.stringify(a))}catch(e){}
+  try{if(window.db&&r.nube!==false)db.collection('kp_problem_reports').add(Object.assign({},r,{creado:Date.now()})).catch(function(){})}catch(e){}}
+function reportText(r){var c=r.contexto||{};return ['REPORTE KPLACE · '+r.codigo,'Fecha: '+r.fecha,'Qué pasó: '+(r.descripcion||'(sin descripción)'),'Usuario: '+c.usuario+' ('+c.rol+') · Pantalla: '+c.pantalla+' · Abierto: '+((c.abierto||[]).join(', ')||'nada'),'Dispositivo: '+c.pantallaPx+' · '+(c.enLinea?'en línea':'SIN internet')+' · '+c.navegador,'Errores recientes:'].concat((c.errores||[]).map(function(e){return ' - '+e.codigo+' ['+e.tipo+'] '+e.msg+(e.en?' ('+e.en+')':'')})).join('\n')}
+function copy(t){return (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(function(){return true},function(){try{var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();var ok=document.execCommand('copy');a.remove();return ok}catch(e){return false}})}
+function makeReport(desc,codigo){var c=ctx();var e=c.errores[c.errores.length-1];return {codigo:codigo||(e?e.codigo:'KP-M'+(hash(String(desc||Date.now()))%900+100)),fecha:new Date().toLocaleString('es-HN'),descripcion:desc||'',contexto:c}}
+/* ---------- reparaciones ---------- */
+function findOrder(q){q=String(q||'').trim();if(!q)return null;var os=window.ORDERS||[];var l=q.toLowerCase();return os.find(function(o){return String(o.id)===q})||os.find(function(o){return String(o.id).slice(-5)===q})||(function(){var m=os.filter(function(o){return String(o.cliente||'').toLowerCase().indexOf(l)>=0});return m.length===1?m[0]:null})()}
+function unblock(){
+  var done=[];
+  try{if(typeof window.closeSheet==='function'&&document.querySelector('.sheet.show')){closeSheet();done.push('hoja de edición cerrada')}}catch(e){}
+  try{if(document.querySelector('#kpb-overlay.open')&&window.KPBloc){KPBloc.close();done.push('Bloc de notas cerrado')}}catch(e){}
+  try{if(document.querySelector('#kpf-overlay.kpf-open')&&window.KPBusinessModulesV2){KPBusinessModulesV2.close();done.push('Finanzas cerrado')}}catch(e){}
+  try{if(typeof window.closeKPlaceMenu==='function'){closeKPlaceMenu()}}catch(e){}
+  document.querySelectorAll('.kpZoomOv,#kpZoomProfile').forEach(function(e){e.remove();done.push('foto ampliada cerrada')});
+  var known=/^(kpb-overlay|kpf-overlay|kpd-overlay|kpMikePanel|kpMikeFab|kpgSide|kpgHead|kpDoctorBar|kpMenuDrawer|app|view|kpMikeLive)$/;
+  [].slice.call(document.body.children).concat([].slice.call((document.getElementById('app')||{children:[]}).children)).forEach(function(e){
+    try{
+      if(!e||known.test(e.id||'')||e.tagName==='SCRIPT'||e.tagName==='STYLE')return;
+      var cs=getComputedStyle(e);if(cs.position!=='fixed'||cs.display==='none'||cs.visibility==='hidden')return;
+      var r=e.getBoundingClientRect();if(r.width<innerWidth*.9||r.height<innerHeight*.9)return;
+      if(/menu-overlay|backdrop|kp-menu/i.test(String(e.className))||cs.pointerEvents==='none')return;
+      var topEl=document.elementFromPoint(innerWidth/2,innerHeight/2);if(!topEl||!e.contains(topEl))return;
+      if(e.querySelector('input,textarea,select,button,a'))return;
+      e.style.display='none';done.push('capa invisible que bloqueaba los clics ('+(e.className||e.tagName)+')');
+    }catch(x){}
+  });
+  document.body.style.overflow='';document.documentElement.style.overflow='';document.body.style.pointerEvents='';
+  return done.length?'Listo: '+done.join('; ')+'.':'No encontré nada que estuviera bloqueando la pantalla.';
+}
+var FIX={
+  redibujar:async function(){render();return 'Pantalla redibujada.'},
+  menu:async function(){window.KPDiag&&KPDiag.fixMenu&&KPDiag.fixMenu();return 'Menú revisado.'},
+  desbloquear_pantalla:async function(){return unblock()},
+  avisos_leidos:async function(){var a=[];try{a=JSON.parse(localStorage.getItem('kp_inbox')||'[]')}catch(e){}var k=a.filter(function(x){return !x.r});localStorage.setItem('kp_inbox',JSON.stringify(k));return (a.length-k.length)+' aviso(s) leídos quitados.'},
+  permiso_avisos:async function(){if(!('Notification' in window))return 'Este navegador no soporta avisos.';var r=await Notification.requestPermission();return r==='granted'?'Avisos activados.':(r==='denied'?'Están bloqueados: se activan en los ajustes del sitio.':'No se respondió el permiso.')},
+  reconectar_boxful:async function(){if(typeof window.boxfulEnsureFreshToken!=='function')return 'Boxful no está disponible en esta versión.';var r=await tmo(Promise.resolve(window.boxfulEnsureFreshToken()),9000,'Boxful');return r===false?'Boxful no está conectado: hay que revisar las credenciales.':'Boxful conectado.'},
+  resincronizar_orden:async function(a){var o=findOrder(a.pedido);if(!o)return 'No encontré esa orden.';var snap=await tmo(db.collection('orders').doc(String(o.id)).get(),8000,'La base de datos');if(!snap.exists)return 'Esa orden ya no existe en la base de datos.';Object.assign(o,snap.data());try{render()}catch(e){}return 'Orden de '+(o.cliente||'cliente')+' sincronizada con la base de datos.'},
+  quitar_cotizacion_vencida:async function(a){
+    var o=findOrder(a.pedido);if(!o)return 'No encontré esa orden.';
+    if(o.boxfulShipmentNumber||o.boxfulGuideNumber)return 'Esa orden ya tiene guía ('+(o.boxfulShipmentNumber||o.boxfulGuideNumber)+'); no se puede quitar la cotización sin cancelar la guía.';
+    var upd={boxfulQuote:null,boxfulSelectedQuote:null,boxfulSelectedCourierId:null,boxfulSelectedQuotePrice:null,boxfulQuoteStale:false};
+    await tmo(db.collection('orders').doc(String(o.id)).update(upd),8000,'La base de datos');Object.assign(o,upd);try{render()}catch(e){}
+    return 'Cotización vieja quitada de la orden de '+(o.cliente||'cliente')+'. Se puede cotizar de nuevo.';
+  },
+  actualizar_app:async function(){var n=0;try{if(navigator.serviceWorker){var rs=await navigator.serviceWorker.getRegistrations();for(var i=0;i<rs.length;i++){await rs[i].unregister();n++}}if(window.caches){var ks=await caches.keys();for(var j=0;j<ks.length;j++){await caches.delete(ks[j]);n++}}}catch(e){}setTimeout(function(){location.reload()},900);return 'Recargando la app limpia ('+n+' cachés quitadas).'}
+};
+var DATA_FIX={quitar_cotizacion_vencida:1,actualizar_app:1};
+async function heal(kind){
+  var now=Date.now(),k=kind&&kind.heal;if(!k)return null;
+  if(healed[k]&&now-healed[k]<60000)return null;healed[k]=now;
+  try{
+    if(k==='redibujar'){await FIX.redibujar();return 'Redibujé la pantalla.'}
+    if(k==='boxful'){var m=await FIX.reconectar_boxful();return m}
+    if(k==='espacio'){try{localStorage.removeItem('kp_diag_last')}catch(e){}return 'Liberé espacio guardado.'}
+  }catch(e){return 'Intenté repararlo pero falló: '+(e.message||e)}
+  return null;
+}
+/* ---------- aviso automático ---------- */
+function bar(){
+  var b=$('kpDoctorBar');if(b)return b;
+  b=document.createElement('div');b.id='kpDoctorBar';b.setAttribute('role','alert');document.body.appendChild(b);
+  b.addEventListener('click',function(e){
+    var x=e.target.closest('button');if(!x)return;var a=x.dataset.a,cod=b.dataset.code;
+    if(a==='x'){b.classList.remove('show');return}
+    if(a==='mike'){b.classList.remove('show');var t='Me salió el código '+cod+' en la app'+(b.dataset.msg?' ("'+b.dataset.msg+'")':'')+'. Revísalo y arréglalo si puedes; si no, dime qué hacer.';if(window.KPMike&&KPMike.ask)KPMike.ask(t);return}
+    if(a==='copy'){var r=makeReport('',cod);copy(reportText(r)).then(function(ok){x.textContent=ok?'✅ Copiado':'No se pudo copiar';setTimeout(function(){x.textContent='📋 Copiar reporte'},1800)})}
+  });
+  return b;
+}
+async function onError(e){
+  if(ignorable(e)||!U()||window.__kpDiagRunning)return;
+  var code=codeOf(e),now=Date.now();
+  if(lastShown[code]&&now-lastShown[code]<600000)return;
+  if(now-lastAny<8000)return;
+  lastShown[code]=now;lastAny=now;
+  var kind=kindOf(e.msg),fixed=await heal(kind);
+  var r=makeReport('Error automático: '+e.msg,code);saveReport(r);
+  var b=bar();b.dataset.code=code;b.dataset.msg=String(e.msg).slice(0,80);
+  b.innerHTML='<div class="kpdb-t"><b>🩺 Algo falló</b><span class="kpdb-code">'+esc(code)+'</span><button type="button" data-a="x" aria-label="Cerrar">✕</button></div><p>'+esc(kind.plain)+'</p>'+(fixed?'<p class="kpdb-ok">✅ '+esc(fixed)+'</p>':'')+'<div class="kpdb-b">'+(isAdmin()?'<button type="button" data-a="mike" class="kpdb-p">🤖 Pedir ayuda a Mike</button>':'')+'<button type="button" data-a="copy">📋 Copiar reporte</button></div>';
+  b.classList.add('show');clearTimeout(b._t);b._t=setTimeout(function(){if(!b.matches(':hover'))b.classList.remove('show')},16000);
+}
+window.addEventListener('error',function(ev){if(ev.target&&ev.target!==window)return;onError({type:'error',msg:ev.message||'Error',src:(ev.filename||'').split('/').pop()+':'+ev.lineno})});
+window.addEventListener('unhandledrejection',function(ev){var r=ev.reason;onError({type:'promesa',msg:(r&&r.message)||String(r||'Promesa rechazada')})});
+/* ---------- herramientas de Mike ---------- */
+async function mikeTool(name,a){
+  a=a||{};
+  try{
+    if(name==='app_estado_pantalla'){
+      var btns=[].slice.call(document.querySelectorAll('#view button, .sheet.show button')).filter(function(b){return b.offsetParent!==null}).slice(0,30).map(function(b){return b.textContent.replace(/\s+/g,' ').trim().slice(0,30)});
+      return Object.assign(ctx(),{botones_visibles:btns,nota:'Si abierto incluye algo que el usuario no ve, puede estar bloqueando la pantalla.'});
+    }
+    if(name==='app_errores_recientes'){
+      var list=ERR.filter(function(e){return !ignorable(e)}).slice(-(a.cantidad||10)).map(function(e){var k=kindOf(e.msg);return {codigo:codeOf(e),tipo:e.type,mensaje:e.msg,donde:e.src||'',hace_seg:Math.round((Date.now()-e.t)/1000),significa:k.plain}});
+      if(a.codigo)list=list.filter(function(x){return x.codigo===String(a.codigo).toUpperCase()});
+      return {errores:list,total:list.length,nota:list.length?'':'No hay errores registrados desde que se abrió la app.'};
+    }
+    if(name==='app_diagnosticar'){
+      if(!window.KPDiag||!KPDiag.quick)return {error:'El diagnóstico no está disponible.'};
+      var res=a.completo?await KPDiag.runForTool():await KPDiag.quick();
+      var bad=res.filter(function(r){return r.st!=='ok'});
+      return {total:res.length,ok:res.length-bad.length,problemas:bad.map(function(r){return {area:r.cat,prueba:r.name,estado:r.st==='fail'?'FALLA':'aviso',detalle:r.detail,sugerencia:r.fix}}),completo:!!a.completo};
+    }
+    if(name==='app_reparar'){
+      var f=FIX[a.accion];if(!f)return {ok:false,error:'Acción desconocida.',acciones:Object.keys(FIX)};
+      if(DATA_FIX[a.accion]&&!isAdmin())return {ok:false,error:'Solo el administrador puede hacer esa reparación.'};
+      if(DATA_FIX[a.accion]&&!a.confirmar)return {ok:false,pendiente_confirmacion:true,nota:'Explícale al usuario qué vas a hacer y pídele que confirme; luego repite la llamada con confirmar:true.'};
+      var m=await f(a);return {ok:true,resultado:m};
+    }
+    if(name==='app_reportar_problema'){
+      var r=makeReport(a.descripcion||'');saveReport(r);var ok=await copy(reportText(r));
+      return {ok:true,codigo:r.codigo,copiado_al_portapapeles:!!ok,nota:'Dile el código al usuario y que pegue el reporte (ya copiado) al programador.'};
+    }
+    return {error:'Herramienta desconocida: '+name};
+  }catch(e){return {ok:false,error:String(e&&e.message||e)}}
+}
+var DECLS=[
+ {name:'app_estado_pantalla',description:'MODO REPARADOR: muestra en qué pantalla está el usuario, qué hojas u overlays tiene abiertos, qué botones ve, su rol y los últimos errores. Úsala primero cuando diga que algo de la app no funciona.',parameters:{type:'OBJECT',properties:{}}},
+ {name:'app_errores_recientes',description:'MODO REPARADOR: lista los errores del programa con su código KP-xxx y qué significan. Con codigo explica uno en particular.',parameters:{type:'OBJECT',properties:{codigo:{type:'STRING',description:'Ej. KP-E417'},cantidad:{type:'NUMBER'}}}},
+ {name:'app_diagnosticar',description:'MODO REPARADOR: corre las pruebas de salud de la app (sistema, datos, funciones, menú). Con completo:true además prueba todos los botones del menú (tarda ~20 s y navega por las pantallas); úsalo solo si el usuario lo pide.',parameters:{type:'OBJECT',properties:{completo:{type:'BOOLEAN'}}}},
+ {name:'app_reparar',description:'MODO REPARADOR: aplica una reparación segura. Acciones: redibujar (pantalla cortada o vacía), menu, desbloquear_pantalla (no deja tocar nada / hoja o capa trabada), avisos_leidos, permiso_avisos, reconectar_boxful, resincronizar_orden (pedido: id, referencia o cliente; trae la orden de nuevo de la base de datos), quitar_cotizacion_vencida (pedido; solo si no tiene guía; cambia datos: requiere confirmar:true tras preguntar), actualizar_app (recarga limpia; requiere confirmar:true tras preguntar).',parameters:{type:'OBJECT',properties:{accion:{type:'STRING',enum:Object.keys(FIX)},pedido:{type:'STRING'},confirmar:{type:'BOOLEAN'}},required:['accion']}},
+ {name:'app_reportar_problema',description:'MODO REPARADOR: si no pudiste arreglar el problema, guarda un reporte completo con código y lo copia para pasarlo al programador. Devuelve el código que debes decirle al usuario.',parameters:{type:'OBJECT',properties:{descripcion:{type:'STRING',description:'Qué dijo el usuario que pasa'}},required:['descripcion']}}
+];
+(function reg(n){if(window.KPMike&&KPMike.addTools){KPMike.addTools(DECLS)}else if(n<20)setTimeout(function(){reg(n+1)},500)})(0);
+window.KPDoctor={mikeTool:mikeTool,declarations:DECLS,fixes:FIX,heal:heal,report:function(d){var r=makeReport(d||'');saveReport(r);return r},reports:reports,reportText:reportText,copy:copy,codeOf:codeOf,unblock:unblock};
+})();
+
+</script>
+<style id="kp-doctor-css">
+#kpDoctorBar{position:fixed;left:50%;bottom:18px;transform:translate(-50%,30px);width:min(440px,calc(100vw - 24px));z-index:100085;padding:14px 16px;border-radius:18px;background:linear-gradient(145deg,#211a3c,#141626);border:1px solid #8b6cf0aa;color:#f6f5fa;box-shadow:0 18px 60px #000b;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;font:inherit;line-height:1.4}
+#kpDoctorBar.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#kpDoctorBar *{box-sizing:border-box}
+#kpDoctorBar .kpdb-t{display:flex;align-items:center;gap:10px}
+#kpDoctorBar .kpdb-t b{font-size:15px}
+#kpDoctorBar .kpdb-code{margin-left:auto;padding:3px 9px;border-radius:999px;background:#7651bd44;border:1px solid #a88be488;font-size:12px;font-weight:800;letter-spacing:.5px;color:#e4d7ff}
+#kpDoctorBar .kpdb-t button{width:30px;height:30px;border-radius:9px;border:1px solid #ffffff22;background:#ffffff10;color:#fff;cursor:pointer}
+#kpDoctorBar p{margin:6px 0 0;font-size:13px;color:#d6d1e8}
+#kpDoctorBar .kpdb-ok{color:#86efac}
+#kpDoctorBar .kpdb-b{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+#kpDoctorBar .kpdb-b button{min-height:40px;padding:8px 13px;border-radius:12px;border:1px solid #ffffff22;background:#1a1b2d;color:#f3edff;font:inherit;font-size:12.5px;font-weight:750;cursor:pointer}
+#kpDoctorBar .kpdb-b .kpdb-p{background:linear-gradient(120deg,#7651bd,#57418e);border-color:#a88be4;color:#fff}
+@media(min-width:1000px){body.kpg-on #kpDoctorBar{left:calc(50% + 104px)}}
 
 </style>
 </body>
