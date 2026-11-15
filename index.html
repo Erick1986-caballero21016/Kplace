@@ -24059,13 +24059,24 @@ const nativeRender=window.render;window.render=function(){
 };
 const nativeToggle=window.toggleMenu;window.toggleMenu=function(){let r=typeof nativeToggle==='function'?nativeToggle.apply(this,arguments):undefined;setTimeout(injectNavigation,30);return r};
 function highlightNav(){
- // Evitar que Inicio permanezca resaltado al abrir módulos nuevos.
+ /* Una sola opción marcada, la de la pantalla en la que estás: Finanzas/Bloc si están abiertos, si no la pestaña activa.
+    Los nombres de pestaña (activeTab) no siempre coinciden con el de la opción del menú, por eso se traducen. */
+ const ovFin=!!document.querySelector('#kpf-overlay.kpf-open'),ovBloc=!!document.querySelector('#kpb-overlay.open');
+ const SEC={hoy:'ordenes',principal:'chat',boxful:'envios',rastreosNacionales:'rastreos',repartidor:'repartidores',adminOrdersInventory:'inventario',admin:'usuarios',adminEnviosDevoluciones:'devoluciones'};
  for(const nav of [document.getElementById('kpSideNav'),...document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav')]){
   if(!nav)continue;
   const selected=K.page?('kplace_'+K.page):String(window.activeTab||'');
+  const section=SEC[selected]||selected;
   nav.querySelectorAll('button').forEach(b=>{
    const flow=b.dataset.kfNav,legacy=b.dataset.section;
-   if(flow||legacy)b.classList.toggle('active',flow?selected==='kplace_'+flow:!K.page&&selected===legacy);
+   const esFin=b.hasAttribute('data-kpf-drawer')||b.hasAttribute('data-kpf')||legacy==='finanzas',esBloc=b.hasAttribute('data-kpb');
+   let on;
+   if(ovFin||ovBloc)on=ovFin?esFin:esBloc;
+   else if(esFin||esBloc)on=false;
+   else if(flow)on=selected==='kplace_'+flow;
+   else if(legacy)on=!K.page&&legacy===section;
+   else return;
+   if(b.classList.contains('active')!==on)b.classList.toggle('active',on);
   });
  }
 }
@@ -26947,30 +26958,22 @@ window.KPDoctor={mikeTool:mikeTool,declarations:DECLS,fixes:FIX,heal:heal,report
     }catch(e){}
   },4000);
 })();
-/* (b) Menú lateral: mientras estás en Finanzas o en el Bloc de notas, esa opción queda seleccionada
-   (antes se quedaba marcada la última sección donde estuviste). Al salir, vuelve la sección real. */
+/* (b) Menú lateral: cuando Finanzas o el Bloc se abren/cierran, o se abre el menú, se vuelve a calcular la opción marcada
+   (la lógica está en highlightNav). Solo vigila la clase de esas dos pantallas: no recorre toda la página. */
 (function(){
-  var timer=null;
-  function mark(el,on){if(!el)return;var has=el.classList.contains('active');if(on&&!has)el.classList.add('active');else if(!on&&has)el.classList.remove('active');}
-  function sync(){
-    var fin=!!document.querySelector('#kpf-overlay.kpf-open'),bloc=!!document.querySelector('#kpb-overlay.open');
-    var special=document.querySelectorAll('#kpMenuDrawer [data-kpf-drawer],#kpSideNav [data-kpf],#kpMenuDrawer [data-kpb],#kpSideNav [data-kpb]');
-    if(!fin&&!bloc){
-      var tuvo=false;special.forEach(function(b){if(b.classList.contains('active')){tuvo=true;b.classList.remove('active');}});
-      if(tuvo){try{if(typeof updateKPlaceNav==='function')updateKPlaceNav();}catch(e){}}
-      return;
-    }
-    document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav button,#kpMenuDrawer [data-section],#kpSideNav button').forEach(function(b){mark(b,false);});
-    special.forEach(function(b){
-      var esFin=b.hasAttribute('data-kpf-drawer')||b.hasAttribute('data-kpf');
-      mark(b,esFin?fin:(bloc&&!fin));
-    });
+  var vistos={};
+  function refrescar(){try{if(typeof updateKPlaceNav==='function')updateKPlaceNav();}catch(e){}}
+  function vigilar(id){
+    var el=document.getElementById(id);if(!el||vistos[id]===el)return;vistos[id]=el;
+    new MutationObserver(function(){setTimeout(refrescar,30);}).observe(el,{attributes:true,attributeFilter:['class']});
   }
-  function later(){if(timer)return;timer=setTimeout(function(){timer=null;try{sync();}catch(e){}},60);}
-  new MutationObserver(later).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-  document.addEventListener('click',function(){setTimeout(sync,150);},true);
+  function buscar(){vigilar('kpf-overlay');vigilar('kpb-overlay');}
+  new MutationObserver(buscar).observe(document.body,{childList:true});
+  buscar();
+  document.addEventListener('click',function(e){
+    if(e.target.closest&&e.target.closest('#menuBtn')){setTimeout(refrescar,160);setTimeout(refrescar,500);}
+  },true);
 })();
-
 /* (c) Con el menú abierto sobre Bloc/Finanzas, elegir otra opción cierra esa pantalla y abre la elegida. */
 document.addEventListener('click',function(ev){
   try{
