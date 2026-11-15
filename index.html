@@ -23382,6 +23382,7 @@ K.open=function(page,orderId){
  if(page==='settings'&&!admin()){notice('Solo el Administrador general puede acceder aquí.');return}
  if(page==='documents'&&!receiptsUser()){notice('No tenés acceso para crear recibos.');return}
  if(page==='cash'&&!cashOperator()&&!cashReader()&&!driver()&&!seller()){notice('No tenés acceso a Caja.');return}
+ try{window.kpCloseOverlays&&kpCloseOverlays()}catch(e){}
  clearListeners();K.page=page;window.activeTab='kplace_'+page;K.selection.clear();K.order=orderId||(reopeningSamePage?K.order:null);if(!reopeningSamePage)K.pick=null;K.branch=(admin()||window.CURRENT_USER?.kpRol==='contador_general')?(K.branch||ownBranch()):ownBranch();K.cashDate=K.cashDate||today();if(page==='documents')K.receiptDate=K.receiptDate||str(window.selectedDate||today());
  if(page==='packing'){listen('packing_incidents',a=>K.incidents=a)}
  if(page==='cash'){listen('cash_movements',a=>K.cashRows=a);listen('cash_settlements',a=>K.settlements=a);listen('cash_closures',a=>K.closures=a)}
@@ -24049,7 +24050,7 @@ document.addEventListener('input',e=>{
 function flushDocForm(){if(!K.doc||K.page!=='documents')return;document.querySelectorAll('#kpFlowRoot [data-doc-item]').forEach(t=>{let i=Number(t.dataset.docItem),k=t.dataset.key;if(K.doc.items[i])K.doc.items[i][k]=k==='name'?t.value:amt(t.value)});document.querySelectorAll('#kpFlowRoot [data-doc-pay]').forEach(t=>{let i=Number(t.dataset.docPay),k=t.dataset.key;if(K.doc.payments[i])K.doc.payments[i][k]=k==='paid'?t.checked:k==='amount'?amt(t.value):t.value});document.querySelectorAll('#kpFlowRoot [data-doc-charge]').forEach(t=>{const i=Number(t.dataset.docCharge),k=t.dataset.key,c=normalizeReceiptCharges(K.doc)[i];if(c)c[k]=k==='value'?amt(t.value):t.value});const map={kfDocCurrency:'currency',kfDocClient:'client',kfDocBiz:'businessName',kfDocBizPhone:'businessPhone',kfDocWhatsapp:'businessWhatsapp',kfDocInstagram:'businessInstagram',kfDocHours:'businessHours',kfDocPhone:'phone',kfDocClientId:'clientId',kfDocAddress:'businessAddress',kfDocPlatform:'platform',kfDocDiscount:'discount',kfDocShipping:'shipping',kfDocOther:'other',kfDocOtherLabel:'otherLabel',kfDocTax:'taxPct',kfDocNotes:'notes'};Object.entries(map).forEach(([id,k])=>{let t=$(id);if(t)K.doc[k]=['discount','shipping','other','taxPct'].includes(k)?amt(t.value):t.value});if($('kfDocTaxIncluded'))K.doc.taxIncluded=$('kfDocTaxIncluded').checked}
 const rawCommand=command;command=async function(cmd){if(/^doc(Save|PDF|Share)$/.test(cmd))flushDocForm();return rawCommand(cmd)};
 /* Cambio de rutas sin afectar menús existentes */
-const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|settings)$/.test(id)){K.open(id.slice(7));return}if(K.page&&!window.__kpUserNav&&Date.now()<(K.guardUntil||0))return;K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
+const nativeSetTab=window.setTab;window.setTab=function(id){if(/^kplace_(packing|cash|documents|settings)$/.test(id)){K.open(id.slice(7));return}if(K.page&&!window.__kpUserNav&&Date.now()<(K.guardUntil||0))return;try{window.kpCloseOverlays&&kpCloseOverlays()}catch(e){}K.leave();return typeof nativeSetTab==='function'?nativeSetTab.apply(this,arguments):undefined};
 document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#kpSideNav,#kpMenuDrawer,#tabs,.kp-bottom-nav,.kp-top-actions')){window.__kpUserNav=true;setTimeout(function(){window.__kpUserNav=false},500)}},true);
 const nativeRender=window.render;window.render=function(){
  if(K.page&&String(window.activeTab)!=='kplace_'+K.page&&!window.__kpUserNav&&Date.now()<(K.guardUntil||0))window.activeTab='kplace_'+K.page;
@@ -24060,13 +24061,14 @@ const nativeRender=window.render;window.render=function(){
 const nativeToggle=window.toggleMenu;window.toggleMenu=function(){let r=typeof nativeToggle==='function'?nativeToggle.apply(this,arguments):undefined;setTimeout(injectNavigation,30);return r};
 function highlightNav(){
  /* Una sola opción marcada, la de la pantalla en la que estás: Finanzas/Bloc si están abiertos, si no la pestaña activa.
-    Los nombres de pestaña (activeTab) no siempre coinciden con el de la opción del menú, por eso se traducen. */
+    En este menú cada opción usa el mismo nombre que su pestaña (activeTab). */
  const ovFin=!!document.querySelector('#kpf-overlay.kpf-open'),ovBloc=!!document.querySelector('#kpb-overlay.open');
- const SEC={hoy:'ordenes',principal:'chat',boxful:'envios',rastreosNacionales:'rastreos',repartidor:'repartidores',adminOrdersInventory:'inventario',admin:'usuarios',adminEnviosDevoluciones:'devoluciones'};
- for(const nav of [document.getElementById('kpSideNav'),...document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav')]){
+  for(const nav of [document.getElementById('kpSideNav'),...document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav')]){
   if(!nav)continue;
-  const selected=K.page?('kplace_'+K.page):String(window.activeTab||'');
-  const section=SEC[selected]||selected;
+  /* K.page puede quedar con el valor de Caja/Empaque aunque ya estés en otra pestaña (se navega sin pasar por K.leave): solo vale si activeTab sigue siendo esa pantalla. */
+  const inFlow=!!K.page&&String(window.activeTab||'')==='kplace_'+K.page;
+  const selected=inFlow?('kplace_'+K.page):String(window.activeTab||'');
+  const section=selected;
   nav.querySelectorAll('button').forEach(b=>{
    const flow=b.dataset.kfNav,legacy=b.dataset.section;
    const esFin=b.hasAttribute('data-kpf-drawer')||b.hasAttribute('data-kpf')||legacy==='finanzas',esBloc=b.hasAttribute('data-kpb');
@@ -24074,7 +24076,7 @@ function highlightNav(){
    if(ovFin||ovBloc)on=ovFin?esFin:esBloc;
    else if(esFin||esBloc)on=false;
    else if(flow)on=selected==='kplace_'+flow;
-   else if(legacy)on=!K.page&&legacy===section;
+   else if(legacy)on=!inFlow&&legacy===section;
    else return;
    if(b.classList.contains('active')!==on)b.classList.toggle('active',on);
   });
@@ -25654,7 +25656,7 @@ const CSS=`#kpb-overlay{position:fixed;inset:0;z-index:100050;background:#0b0d1a
 body:has(#kpb-overlay.open) #kpMikeFab,body:has(#kpb-overlay.open) #kpMikeCompact,body:has(#kpb-overlay.open) [id^=kpMike]{display:none!important}`;
 function ui(){if($('kpb-overlay'))return;const s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);const o=document.createElement('div');o.id='kpb-overlay';o.innerHTML='<section id="kpb-panel" role="dialog" aria-modal="true" aria-label="Bloc de notas"><header><button id="kpb-back" type="button" aria-label="Abrir menú">☰</button><div class="kpb-brand"><span class="kpb-kicker">KPLACE · ORGANIZACIÓN</span><h2>📝 Bloc de notas</h2><span class="kpb-subtitle">Tus ideas, tareas y recordatorios</span></div></header><div class="kpb-shell"><aside id="kpb-groups"></aside><section class="kpb-workspace"><nav id="kpb-tabs"></nav><div id="kpb-body"></div></section></div></section>';document.body.appendChild(o);
 $('kpb-back').onclick=()=>{document.getElementById('menuBtn')?.click()};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}});o.addEventListener('input',e=>{if(e.target.id==='kpb-q'){q=e.target.value;fill()}});o.addEventListener('mousedown',e=>{if(e.target===o)close()});o.addEventListener('click',e=>{if(!e.target.closest('.kpb-dd'))document.querySelectorAll('.kpb-dd.open').forEach(x=>x.classList.remove('open'))},true)}
-function open(){ui();start();$('kpb-overlay').classList.add('open');draw();try{window.closeKPlaceMenu?.()}catch(e){}}
+function open(){try{window.kpCloseOverlays&&kpCloseOverlays('bloc')}catch(e){}ui();start();$('kpb-overlay').classList.add('open');draw();try{window.closeKPlaceMenu?.()}catch(e){}}
 function close(){$('kpb-overlay')?.classList.remove('open')}
 function ddText(){const t=$('kpb-dd-txt');if(!t)return;const on=[...document.querySelectorAll('.kpb-chip.on')].map(i=>i.textContent.trim());t.textContent=on.length?on.join(', '):'Elige para quién'}
 function drawTimes(){const d=$('kpb-times');if(d)d.innerHTML=Array.from({length:times},(_,i)=>`<input type="time" class="kpb-h" value="${['09:00','14:00','18:00','20:00'][i]}">`).join('')}
@@ -25804,7 +25806,7 @@ const options=(items,placeholder)=>`<option value="">${safe(placeholder||'Selecc
 function icon(id){const paths={finanzas:'M3 3v18h18 M7 16l4-5 4 3 4-8',compras:'M3 7h18l-2 13H5L3 7zm5 0V4h8v3',gestion:'M4 5h16M4 12h16M4 19h16'};return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[id]||paths.finanzas}"/></svg>`}
 function markup(){let e=$('kpf-overlay');if(e)return e;e=document.createElement('div');e.id='kpf-overlay';e.innerHTML=`<section id="kpf-panel" role="dialog" aria-modal="true" aria-label="Administración comercial"><header><div><span class="kpf-eyebrow">KPLACE · ADMINISTRACIÓN</span><h2>Finanzas y compras</h2></div><button type="button" class="kpf-iconbtn" id="kpf-close" aria-label="Abrir menú">☰</button></header><div class="kpf-content-shell"><aside id="kpf-groups" class="kpf-groups"></aside><section class="kpf-workspace"><div class="kpf-tabs" id="kpf-tabs"></div><div class="kpf-body"><div class="kpf-titleline"><div><h3 id="kpf-title"></h3><span class="kpf-subtitle" id="kpf-count"></span></div><div class="kpf-toolbar"><input id="kpf-search" type="search" placeholder="Buscar en esta sección…" aria-label="Buscar registros"><button type="button" id="kpf-print" class="kpf-quiet" title="Abre una versión limpia para imprimir o guardar como PDF">Imprimir</button><button type="button" id="kpf-refresh" class="kpf-quiet" title="Vuelve a leer los datos más recientes">Actualizar</button><button type="button" id="kpf-export" class="kpf-quiet" title="Descarga esta tabla para abrirla en Excel">Exportar CSV</button></div></div><p class="kpf-hint" id="kpf-hint"></p><details class="kpf-help"><summary>¿Para qué sirven los botones?</summary><ul><li><b>Finanzas / Compras / Gestión comercial</b> (arriba): cambian de grupo. Los botones redondos de abajo cambian de sección dentro del grupo.</li><li><b>Buscar</b>: filtra los registros de la sección que estás viendo.</li><li><b>Imprimir</b>: abre una versión limpia para imprimir o guardar como PDF.</li><li><b>Actualizar</b>: vuelve a leer los datos más recientes.</li><li><b>Exportar CSV</b>: descarga la tabla para abrirla en Excel.</li><li><b>☰</b> (arriba a la izquierda): abre el menú lateral.</li></ul></details><div id="kpf-status" role="status" aria-live="polite"></div><div id="kpf-main"></div></div></section></div></section>`;document.body.appendChild(e);$('kpf-close').onclick=()=>{document.getElementById('menuBtn')?.click()};$('kpf-refresh').onclick=()=>load();$('kpf-export').onclick=exportCSV;$('kpf-print').onclick=printSection;$('kpf-search').addEventListener('input',ev=>{filterText=ev.target.value.trim().toLocaleLowerCase('es');draw()});e.addEventListener('click',event=>{if(event.target===e)close()});return e}
 function msg(text,bad=false){const e=$('kpf-status');if(e){e.textContent=text||'';e.classList.toggle('error',bad)}}
-function open(g){if(!finRole()){window.toast?.('Tu rol no tiene acceso a Finanzas y Compras.');return;}group=groups[g]&&groups[g].some(allowed)?g:Object.keys(groups).find(k=>groups[k].some(allowed));if(!group){window.toast?.('Tu rol no tiene secciones disponibles.');return;}active=groups[group].find(allowed);companyAtOpen=company();markup().classList.add('kpf-open');drawNavigation();load()}
+function open(g){try{window.kpCloseOverlays&&kpCloseOverlays('fin')}catch(e){}if(!finRole()){window.toast?.('Tu rol no tiene acceso a Finanzas y Compras.');return;}group=groups[g]&&groups[g].some(allowed)?g:Object.keys(groups).find(k=>groups[k].some(allowed));if(!group){window.toast?.('Tu rol no tiene secciones disponibles.');return;}active=groups[group].find(allowed);companyAtOpen=company();markup().classList.add('kpf-open');drawNavigation();load()}
 function close(){const e=$('kpf-overlay');if(e)e.classList.remove('kpf-open');version++;companyAtOpen='';}
 function drawNavigation(){const nav=$('kpf-groups');if(!nav)return;nav.innerHTML=Object.keys(groups).filter(k=>groups[k].some(allowed)).map(k=>`<button type="button" class="${k===group?'active':''}" data-group="${safe(k)}">${icon(k)}<span>${{finanzas:'Finanzas',compras:'Compras',gestion:'Gestión comercial'}[k]}</span></button>`).join('');nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{group=b.dataset.group;active=groups[group].find(allowed);editingId='';drawNavigation();load()});const tabs=$('kpf-tabs');tabs.innerHTML=groups[group].filter(allowed).map(v=>`<button type="button" class="${v===active?'active':''}" data-section="${safe(v)}">${safe(v)}</button>`).join('');tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{active=b.dataset.section;editingId='';drawNavigation();load()});$('kpf-title').textContent=active;const ey=document.querySelector('#kpf-panel .kpf-eyebrow');if(ey)ey.textContent='KPLACE · '+(RN[finRole()]||'').toUpperCase()+(wide()?'':' · SU SUCURSAL');}
 async function load(){const v=++version;data=[];draw();try{guard();msg('Cargando registros…');if(!fields[active]&&!['Recepción de mercadería','Historial de actividad','Ganancias reales','Flujo de efectivo','Resumen financiero','Reabastecimiento','Flujo operativo de entregas'].includes(active))throw Error('Sección desconocida');const sn=await Promise.all(resolveCollections(active).map(a=>col(a).limit(500).get()));if(v!==version)return;data=sn.map((s,i)=>({section:resolveCollections(active)[i],rows:s.docs.map(d=>({id:d.id,...d.data()}))}));msg(sn.some(x=>x.docs.length>=500)?'Vista limitada a 500 registros por categoría; los totales pueden estar incompletos.':'',sn.some(x=>x.docs.length>=500));draw()}catch(err){if(v!==version)return;msg(err.message||String(err),true);draw()}}
@@ -26974,16 +26976,20 @@ window.KPDoctor={mikeTool:mikeTool,declarations:DECLS,fixes:FIX,heal:heal,report
     if(e.target.closest&&e.target.closest('#menuBtn')){setTimeout(refrescar,160);setTimeout(refrescar,500);}
   },true);
 })();
-/* (c) Con el menú abierto sobre Bloc/Finanzas, elegir otra opción cierra esa pantalla y abre la elegida. */
-document.addEventListener('click',function(ev){
-  try{
-    var it=ev.target.closest&&ev.target.closest('#kpMenuDrawer .kp-drawer-nav button,#kpMenuDrawer [data-section],#kpMenuDrawer [data-kf-nav],#kpSideNav button');
-    if(!it)return;
-    var esFin=it.hasAttribute('data-kpf-drawer')||it.hasAttribute('data-kpf'),esBloc=it.hasAttribute('data-kpb');
-    if(document.querySelector('#kpb-overlay.open')&&!esBloc&&window.KPBloc)KPBloc.close();
-    if(document.querySelector('#kpf-overlay.kpf-open')&&!esFin&&window.KPBusinessModulesV2)KPBusinessModulesV2.close();
-  }catch(e){}
-},true);
+/* (c) Cierra el Bloc de notas / Finanzas. Lo llaman las rutas de navegación (setTab, K.open, abrir Bloc/Finanzas),
+   porque los clics del menú los atienden otros listeners que detienen el evento antes de llegar aquí. */
+window.kpCloseOverlays=function(keep){
+  try{if(keep!=='bloc'&&document.querySelector('#kpb-overlay.open')&&window.KPBloc)KPBloc.close();}catch(e){}
+  try{if(keep!=='fin'&&document.querySelector('#kpf-overlay.kpf-open')&&window.KPBusinessModulesV2)KPBusinessModulesV2.close();}catch(e){}
+};
+/* Las opciones del menú y las pestañas navegan con window.kpSafeSetTab (no pasa por setTab): también cierra aquí. */
+(function(){
+  var f=window.kpSafeSetTab;
+  if(typeof f==='function'&&!f.__kpOv){
+    var g=function(){try{window.kpCloseOverlays();}catch(e){}return f.apply(this,arguments);};
+    g.__kpOv=1;window.kpSafeSetTab=g;
+  }
+})();
 </script>
 <style id="kp-batch3-css">
 /* Órdenes canceladas: rojo en cualquier tarjeta (Tegucigalpa, nacional, rastreos). */
