@@ -3675,7 +3675,7 @@ function countRetrasosPendientes(){
   if(!CURRENT_USER || CURRENT_USER.esAdmin || CURRENT_USER.esEncargadoEnvios || CURRENT_USER.esRepartidor) return 0;
   const seenKey = `eunoia_retrasos_vistos_${CURRENT_USER.nombre}`;
   const seen = JSON.parse(localStorage.getItem(seenKey)||'[]');
-  return ORDERS.filter(o=>o.retrasado && !(typeof kpNoRecibido==='function'&&kpNoRecibido(o)) && o.vendedor===CURRENT_USER.nombre && !seen.includes(o.id)).length;
+  return ORDERS.filter(o=>o.retrasado && !(typeof kpNoRecibido==='function'&&kpNoRecibido(o)) && !kpEsCancelada(o) && o.vendedor===CURRENT_USER.nombre && !seen.includes(o.id)).length;
 }
 function setTab(id){
   // Alias del menú: estas entradas deben abrir su sección real.
@@ -4197,6 +4197,9 @@ function sumaProductosArr(productos){
   return (productos||[]).reduce((s,p)=>s+(parseFloat(p.precio)||0)*(parseInt(p.cantidad)||1),0);
 }
 function kpNoRecibido(o){return !!(o&&(o.kpDevolucion?.tipo==='no_recibido'||o.kpDevolucionNoRecibida===true));}
+/* Orden cancelada: marcada a mano (Cancelar orden) o con la guía de envío cancelada. */
+function kpCancelManual(o){return !!(o&&(o.cancelada===true||o.cancelado===true||o.anulado===true||o.estadoEntrega==='cancelada'));}
+function kpEsCancelada(o){return !!(o&&(kpCancelManual(o)||o.boxfulCancelled===true));}
 /* Devolución nacional: solo contabilizar dinero cobrado y NO reembolsado.
    En registros antiguos se usa exclusivamente el estado de pago confirmado;
    jamás suponer cobro por marcar una entrega como realizada. */
@@ -4273,6 +4276,7 @@ function orderCard(o){
   else if(_dev) statusClass='no-entregado devolucion-kp';
   else if(o.tipoOrden==='cambio') statusClass='pendiente-entrega kp-tone-blue';
   else if(o.entregado===false||_bx==='bad') statusClass='no-entregado';
+  if(kpEsCancelada(o)) statusClass='no-entregado kp-cancelada';
   const pagoLabel = o.metodoPago==='mitad'
     ? `${kpMoneda()} ${(o.montoMitad1||0).toFixed(0)} ${o.metodoPagoMitad1||''}${o.bancoMitad1?' ('+o.bancoMitad1+')':''} + ${kpMoneda()} ${(o.montoMitad2||0).toFixed(0)} ${o.metodoPagoMitad2||''}${o.bancoMitad2?' ('+o.bancoMitad2+')':''}${o.estadoPago==='pagado'?' · pagado':' · pendiente'}`
     : `${o.metodoPago}${o.estadoPago==='pagado'?' pagado':' pendiente'}${o.banco?' · '+o.banco:''}`;
@@ -4307,7 +4311,8 @@ function orderCard(o){
       ${o.entregado!==true && o.entregado!==false && !_bx ? (o.enviadoRepartidor ? '<span class="chip pendiente">🚚 En camino</span>' : '<span class="chip pendiente">🕓 Pendiente</span>') : ''}
       ${esNacional ? (o.estadoNacional==='empacado' ? '<span class="chip empacado">✔ Empacado</span>' : o.estadoNacional==='no_disponible' ? '<span class="chip" style="background:#fdecea;color:var(--red);">⚠️ Producto no disponible</span>' : '<span class="chip pendiente-empacar">🕓 Pendiente</span>') : ''}
       ${esNacional && (o.boxfulShipmentNumber||o.boxfulGuideNumber||(o.boxfulShipment||{}).shipmentNumber||(o.boxfulShipment||{}).guideNumber||(o.boxfulShipment||{}).trackingNumber) ? `<span class="chip boxful st-${_bxk}" title="Mismo estado que aparece en el link de rastreo">📦 ${escapeHtml(boxfulStatusText(o))}</span>` : ''}
-       ${o.retrasado?`<span class="chip" style="background:#fdecea;color:var(--red);">⏱ Retrasado${o.retrasoConfirmado?' · ya se le habló':''}</span>`:''}
+       ${kpEsCancelada(o)?'<span class="chip kp-cancel-chip">❌ Cancelada</span>':''}
+       ${(o.retrasado&&!kpNoRecibido(o)&&!kpEsCancelada(o))?`<span class="chip" style="background:#fdecea;color:var(--red);">⏱ Retrasado${o.retrasoConfirmado?' · ya se le habló':''}</span>`:''}
       ${o.tipoEntrega==='roatan'?`<span class="chip kpRoatanTag ${o.envioClientePaga?'cobra':'paga'}">Tipo de orden Roatán: ${o.envioClientePaga?'Cliente Pagará el Envío al recibir':'Envío Pagado'}</span>`:''}
     </div>
     ${(o.comprobantes&&o.comprobantes.length)?`<div class="small" style="margin-top:6px;">Comprobante(s) de pago (${o.comprobantes.length}):</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${o.comprobantes.map(u=>`<img class="imgthumb" src="${u}" onclick="verFoto('${u.replace(/'/g,"\\'")}')">`).join('')}</div>`:''}
@@ -4424,6 +4429,8 @@ function orderActions(o){
       ${o.metodoPago==='mitad' ? botonesComprobanteMitad(o) : `<button class="btn sm" onclick="gestionarComprobantes('${o.id}','comprobantes','Comprobante de pago')">📎 Comprobantes (${(o.comprobantes||[]).length})</button>`}
       ${o.tipoEntrega==='roatan' ? `<button class="btn sm" onclick="subirComprobante('${o.id}','guiaUrl')">📄 Foto de guía (Roatán)</button>` : ''}
       ${((o.metodoPago!=='efectivo' || o.metodoPago==='mitad') && o.estadoPago!=='pagado') ? `<button class="btn green sm" onclick="marcarPagoConfirmado('${o.id}')">✔ Ya pagó (transferencia/link)</button>` : ''}
+      ${(o.entregado!==true&&!kpEsCancelada(o)) ? `<button class="btn sm" style="border-color:#b24a5c;color:#ffb4bd" onclick="cancelarOrden('${o.id}')">🚫 Cancelar orden</button>`:''}
+      ${(kpCancelManual(o)&&o.boxfulCancelled!==true) ? `<button class="btn sm" onclick="reactivarOrden('${o.id}')">♻️ Reactivar orden</button>`:''}
       ${o.entregado!==true ? `<button class="btn red sm" onclick="eliminarOrden('${o.id}')">🗑️</button>`:''}
     </div>`;
     if((CURRENT_USER.esAdmin || CURRENT_USER.esEncargadoEnvios) && !esNacional){
@@ -4985,8 +4992,8 @@ function renderRetrasos(){
   const view = document.getElementById('view');
   const esSupervisor = CURRENT_USER.esAdmin || CURRENT_USER.esEncargadoEnvios;
   let list = esSupervisor
-    ? ORDERS.filter(o=>o.retrasado && !(typeof kpNoRecibido==='function'&&kpNoRecibido(o)) && orderMatchesSearch(o))
-    : ORDERS.filter(o=>o.retrasado && !(typeof kpNoRecibido==='function'&&kpNoRecibido(o)) && o.vendedor===CURRENT_USER.nombre && orderMatchesSearch(o));
+    ? ORDERS.filter(o=>o.retrasado && !(typeof kpNoRecibido==='function'&&kpNoRecibido(o)) && !kpEsCancelada(o) && orderMatchesSearch(o))
+    : ORDERS.filter(o=>o.retrasado && !(typeof kpNoRecibido==='function'&&kpNoRecibido(o)) && !kpEsCancelada(o) && o.vendedor===CURRENT_USER.nombre && orderMatchesSearch(o));
   if(!esSupervisor){
     const seenKey = `eunoia_retrasos_vistos_${CURRENT_USER.nombre}`;
     const seen = JSON.parse(localStorage.getItem(seenKey)||'[]');
@@ -5057,6 +5064,36 @@ function eliminarOrden(id){
   });
 }
 
+function cancelarOrden(id){
+  const o=ORDERS.find(x=>String(x.id)===String(id));if(!o)return;
+  askKPlace({
+    title:'Cancelar orden',
+    message:'La orden de "'+(o.cliente||'este cliente')+'" quedará marcada como cancelada (en rojo), sin avisos de retraso. Si ya tiene guía de envío, cancélala también. Puedes reactivarla después.',
+    confirmText:'Cancelar orden',
+    danger:true,
+    onConfirm:async()=>{
+      try{
+        await db.collection('orders').doc(id).update({cancelada:true,cancelado:true,estadoEntrega:'cancelada',retrasado:false,canceladaFecha:new Date().toISOString(),canceladaPor:(window.CURRENT_USER&&CURRENT_USER.nombre)||''});
+        toast('Orden cancelada');
+      }catch(e){toast('No se pudo cancelar: '+((e&&e.code)||'error de conexión'));}
+    }
+  });
+}
+function reactivarOrden(id){
+  const o=ORDERS.find(x=>String(x.id)===String(id));if(!o)return;
+  askKPlace({
+    title:'Reactivar orden',
+    message:'La orden de "'+(o.cliente||'este cliente')+'" volverá a estar activa.',
+    confirmText:'Reactivar',
+    onConfirm:async()=>{
+      try{
+        const del=firebase.firestore.FieldValue.delete();
+        await db.collection('orders').doc(id).update({cancelada:false,cancelado:false,anulado:false,estadoEntrega:del,canceladaFecha:del,canceladaPor:del});
+        toast('Orden reactivada');
+      }catch(e){toast('No se pudo reactivar: '+((e&&e.code)||'error de conexión'));}
+    }
+  });
+}
 /* ======================= NUEVA ORDEN / EDITAR ======================= */
 function openNewOrder(){
   editingOrderId = null;
@@ -19527,10 +19564,10 @@ if(typeof oldUpload==='function'&&!oldUpload.__kpLoading){
       const shipment=o.boxfulShipment||{},links=boxfulShipmentLinks(shipment),numero=o.boxfulShipmentNumber||o.boxfulGuideNumber||kpBuscarGuia(shipment)||'—';
       const status=boxfulStatusText(o),pdf=kpPdfDe(o),tracking=o.boxfulTrackingUrl||links.trackingUrl||shipment.trackingUrl||'';
       const wa=boxfulTrackingWhatsAppUrl(o,numero,tracking),cod=!kpNoRecibido(o)&&Number(kpGuiaCobro(o)||0)>0;
-      return `<div class="kp-panel" style="margin-bottom:12px;padding:16px">
+      return `<div class="kp-panel${kpEsCancelada(o)?' kp-cancelada':''}" style="margin-bottom:12px;padding:16px${kpEsCancelada(o)?';border:2px solid #e5484d;background:linear-gradient(145deg,#3a151b,#2a1519)':''}">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
           <label style="display:flex;gap:9px;align-items:center;font-size:12px;font-weight:800"><input type="checkbox" ${kpSel.has(o.id)?'checked':''} onchange="kpSelToggle('${o.id}')"><span>ORDEN #${escapeHtml(String(window.kpNumeroOrdenSafe?window.kpNumeroOrdenSafe(o):String(o.id).slice(-8)))}</span></label>
-          <div class="kp-guide-chip-row"><span class="chip ${cod?'pendiente':'pagado'}">${cod?'COD':'Pagada'}</span><span class="chip boxful">${kpNoRecibido(o)?'Devolución · No recibido':escapeHtml(status)}</span>${(!entreg(o)&&!kpNoRecibido(o))?kpChipRetraso(o):''}</div>
+          <div class="kp-guide-chip-row"><span class="chip ${cod?'pendiente':'pagado'}">${cod?'COD':'Pagada'}</span><span class="chip boxful">${kpNoRecibido(o)?'Devolución · No recibido':escapeHtml(status)}</span>${kpEsCancelada(o)?'<span class="chip kp-cancel-chip">❌ Cancelada</span>':((!entreg(o)&&!kpNoRecibido(o))?kpChipRetraso(o):'')}</div>
         </div>
         <h3 style="margin:12px 0 4px">${escapeHtml(o.cliente||'Cliente')}</h3><div class="small">${escapeHtml(kpDiaCreacion(o)||'')} · ${escapeHtml(o.municipio||o.departamento||'Envío nacional')}</div>
         <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:13px;font-size:13px"><div><span class="small">Número de guía</span><br><b style="overflow-wrap:anywhere">${escapeHtml(numero)}</b></div><div><span class="small">Paquetería</span><br><b>${escapeHtml(kpCourierName(o)||'Boxful')}</b></div></div>
@@ -24347,7 +24384,7 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
    if(!nota){toast('Escribí la razón de la devolución');div.querySelector('#kpDevNote').focus();return;}
    const btn=div.querySelector('#kpDevSave');btn.disabled=true;btn.textContent='Guardando…';
    try{
-    const payload={kpDevolucionNoRecibida:true,kpDevolucion:{tipo:'no_recibido',motivo,nota,estado:current.estado||'registrada',fecha:current.fecha||new Date().toISOString(),fechaActualizacion:new Date().toISOString(),usuario:window.CURRENT_USER?.nombre||'',montoOriginal:Number(totalOrden(o)||0),cobrado:Math.round(cobrado*100)/100,reembolsado:Math.round(reembolsado*100)/100}};
+    const payload={kpDevolucionNoRecibida:true,kpDevolucion:{tipo:'no_recibido',motivo,nota,estado:current.estado||'registrada',fecha:current.fecha||new Date().toISOString(),fechaActualizacion:new Date().toISOString(),usuario:window.CURRENT_USER?.nombre||'',montoOriginal:Number(totalOrden(o)||0),cobrado:Math.round(cobrado*100)/100,reembolsado:Math.round(reembolsado*100)/100},retrasado:false,retrasoCerradoPorDevolucion:true,retrasoCerradoFecha:new Date().toISOString()};
     await db.collection('orders').doc(id).update(payload);
     Object.assign(o,payload);div.remove();toast('Devolución registrada. Solo cuenta el cobro retenido: '+kpMoneda()+' '+kpDevRetenido(o).toFixed(2));
     if(typeof renderRastreosNacionales==='function')renderRastreosNacionales();
@@ -25605,7 +25642,7 @@ const CSS=`#kpb-overlay{position:fixed;inset:0;z-index:100050;background:#0b0d1a
 #kpb-back{width:46px;height:46px;padding:0!important;font-size:24px;line-height:1}
 body:has(#kpb-overlay.open) #kpMikeFab,body:has(#kpb-overlay.open) #kpMikeCompact,body:has(#kpb-overlay.open) [id^=kpMike]{display:none!important}`;
 function ui(){if($('kpb-overlay'))return;const s=document.createElement('style');s.textContent=CSS;document.head.appendChild(s);const o=document.createElement('div');o.id='kpb-overlay';o.innerHTML='<section id="kpb-panel" role="dialog" aria-modal="true" aria-label="Bloc de notas"><header><button id="kpb-back" type="button" aria-label="Abrir menú">☰</button><div class="kpb-brand"><span class="kpb-kicker">KPLACE · ORGANIZACIÓN</span><h2>📝 Bloc de notas</h2><span class="kpb-subtitle">Tus ideas, tareas y recordatorios</span></div></header><div class="kpb-shell"><aside id="kpb-groups"></aside><section class="kpb-workspace"><nav id="kpb-tabs"></nav><div id="kpb-body"></div></section></div></section>';document.body.appendChild(o);
-$('kpb-back').onclick=()=>{close();setTimeout(()=>document.getElementById('menuBtn')?.click(),150)};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}});o.addEventListener('input',e=>{if(e.target.id==='kpb-q'){q=e.target.value;fill()}});o.addEventListener('mousedown',e=>{if(e.target===o)close()});o.addEventListener('click',e=>{if(!e.target.closest('.kpb-dd'))document.querySelectorAll('.kpb-dd.open').forEach(x=>x.classList.remove('open'))},true)}
+$('kpb-back').onclick=()=>{document.getElementById('menuBtn')?.click()};o.addEventListener('click',onClick);o.addEventListener('change',e=>{if(e.target.id==='kpb-n'){times=Number(e.target.value)||1;drawTimes()}});o.addEventListener('input',e=>{if(e.target.id==='kpb-q'){q=e.target.value;fill()}});o.addEventListener('mousedown',e=>{if(e.target===o)close()});o.addEventListener('click',e=>{if(!e.target.closest('.kpb-dd'))document.querySelectorAll('.kpb-dd.open').forEach(x=>x.classList.remove('open'))},true)}
 function open(){ui();start();$('kpb-overlay').classList.add('open');draw();try{window.closeKPlaceMenu?.()}catch(e){}}
 function close(){$('kpb-overlay')?.classList.remove('open')}
 function ddText(){const t=$('kpb-dd-txt');if(!t)return;const on=[...document.querySelectorAll('.kpb-chip.on')].map(i=>i.textContent.trim());t.textContent=on.length?on.join(', '):'Elige para quién'}
@@ -25754,7 +25791,7 @@ const label=i=>[i.categoria,i.modelo,i.tamano,i.colorEn||i.colorEs].filter(Boole
 const staff=()=>Array.isArray(window.VENDEDORES)?window.VENDEDORES.filter(x=>x.activo!==false&&(wide()||inScope(x))):[];
 const options=(items,placeholder)=>`<option value="">${safe(placeholder||'Seleccionar…')}</option>`+items.map(i=>`<option value="${safe(i[0])}">${safe(i[1])}</option>`).join('');
 function icon(id){const paths={finanzas:'M3 3v18h18 M7 16l4-5 4 3 4-8',compras:'M3 7h18l-2 13H5L3 7zm5 0V4h8v3',gestion:'M4 5h16M4 12h16M4 19h16'};return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[id]||paths.finanzas}"/></svg>`}
-function markup(){let e=$('kpf-overlay');if(e)return e;e=document.createElement('div');e.id='kpf-overlay';e.innerHTML=`<section id="kpf-panel" role="dialog" aria-modal="true" aria-label="Administración comercial"><header><div><span class="kpf-eyebrow">KPLACE · ADMINISTRACIÓN</span><h2>Finanzas y compras</h2></div><button type="button" class="kpf-iconbtn" id="kpf-close" aria-label="Abrir menú">☰</button></header><div class="kpf-content-shell"><aside id="kpf-groups" class="kpf-groups"></aside><section class="kpf-workspace"><div class="kpf-tabs" id="kpf-tabs"></div><div class="kpf-body"><div class="kpf-titleline"><div><h3 id="kpf-title"></h3><span class="kpf-subtitle" id="kpf-count"></span></div><div class="kpf-toolbar"><input id="kpf-search" type="search" placeholder="Buscar en esta sección…" aria-label="Buscar registros"><button type="button" id="kpf-print" class="kpf-quiet" title="Abre una versión limpia para imprimir o guardar como PDF">Imprimir</button><button type="button" id="kpf-refresh" class="kpf-quiet" title="Vuelve a leer los datos más recientes">Actualizar</button><button type="button" id="kpf-export" class="kpf-quiet" title="Descarga esta tabla para abrirla en Excel">Exportar CSV</button></div></div><p class="kpf-hint" id="kpf-hint"></p><details class="kpf-help"><summary>¿Para qué sirven los botones?</summary><ul><li><b>Finanzas / Compras / Gestión comercial</b> (arriba): cambian de grupo. Los botones redondos de abajo cambian de sección dentro del grupo.</li><li><b>Buscar</b>: filtra los registros de la sección que estás viendo.</li><li><b>Imprimir</b>: abre una versión limpia para imprimir o guardar como PDF.</li><li><b>Actualizar</b>: vuelve a leer los datos más recientes.</li><li><b>Exportar CSV</b>: descarga la tabla para abrirla en Excel.</li><li><b>☰</b> (arriba a la izquierda): abre el menú lateral.</li></ul></details><div id="kpf-status" role="status" aria-live="polite"></div><div id="kpf-main"></div></div></section></div></section>`;document.body.appendChild(e);$('kpf-close').onclick=()=>{close();setTimeout(()=>document.getElementById('menuBtn')?.click(),150)};$('kpf-refresh').onclick=()=>load();$('kpf-export').onclick=exportCSV;$('kpf-print').onclick=printSection;$('kpf-search').addEventListener('input',ev=>{filterText=ev.target.value.trim().toLocaleLowerCase('es');draw()});e.addEventListener('click',event=>{if(event.target===e)close()});return e}
+function markup(){let e=$('kpf-overlay');if(e)return e;e=document.createElement('div');e.id='kpf-overlay';e.innerHTML=`<section id="kpf-panel" role="dialog" aria-modal="true" aria-label="Administración comercial"><header><div><span class="kpf-eyebrow">KPLACE · ADMINISTRACIÓN</span><h2>Finanzas y compras</h2></div><button type="button" class="kpf-iconbtn" id="kpf-close" aria-label="Abrir menú">☰</button></header><div class="kpf-content-shell"><aside id="kpf-groups" class="kpf-groups"></aside><section class="kpf-workspace"><div class="kpf-tabs" id="kpf-tabs"></div><div class="kpf-body"><div class="kpf-titleline"><div><h3 id="kpf-title"></h3><span class="kpf-subtitle" id="kpf-count"></span></div><div class="kpf-toolbar"><input id="kpf-search" type="search" placeholder="Buscar en esta sección…" aria-label="Buscar registros"><button type="button" id="kpf-print" class="kpf-quiet" title="Abre una versión limpia para imprimir o guardar como PDF">Imprimir</button><button type="button" id="kpf-refresh" class="kpf-quiet" title="Vuelve a leer los datos más recientes">Actualizar</button><button type="button" id="kpf-export" class="kpf-quiet" title="Descarga esta tabla para abrirla en Excel">Exportar CSV</button></div></div><p class="kpf-hint" id="kpf-hint"></p><details class="kpf-help"><summary>¿Para qué sirven los botones?</summary><ul><li><b>Finanzas / Compras / Gestión comercial</b> (arriba): cambian de grupo. Los botones redondos de abajo cambian de sección dentro del grupo.</li><li><b>Buscar</b>: filtra los registros de la sección que estás viendo.</li><li><b>Imprimir</b>: abre una versión limpia para imprimir o guardar como PDF.</li><li><b>Actualizar</b>: vuelve a leer los datos más recientes.</li><li><b>Exportar CSV</b>: descarga la tabla para abrirla en Excel.</li><li><b>☰</b> (arriba a la izquierda): abre el menú lateral.</li></ul></details><div id="kpf-status" role="status" aria-live="polite"></div><div id="kpf-main"></div></div></section></div></section>`;document.body.appendChild(e);$('kpf-close').onclick=()=>{document.getElementById('menuBtn')?.click()};$('kpf-refresh').onclick=()=>load();$('kpf-export').onclick=exportCSV;$('kpf-print').onclick=printSection;$('kpf-search').addEventListener('input',ev=>{filterText=ev.target.value.trim().toLocaleLowerCase('es');draw()});e.addEventListener('click',event=>{if(event.target===e)close()});return e}
 function msg(text,bad=false){const e=$('kpf-status');if(e){e.textContent=text||'';e.classList.toggle('error',bad)}}
 function open(g){if(!finRole()){window.toast?.('Tu rol no tiene acceso a Finanzas y Compras.');return;}group=groups[g]&&groups[g].some(allowed)?g:Object.keys(groups).find(k=>groups[k].some(allowed));if(!group){window.toast?.('Tu rol no tiene secciones disponibles.');return;}active=groups[group].find(allowed);companyAtOpen=company();markup().classList.add('kpf-open');drawNavigation();load()}
 function close(){const e=$('kpf-overlay');if(e)e.classList.remove('kpf-open');version++;companyAtOpen='';}
@@ -26893,5 +26930,115 @@ window.KPDoctor={mikeTool:mikeTool,declarations:DECLS,fixes:FIX,heal:heal,report
   new MutationObserver(function(){if(timer)return;timer=setTimeout(function(){timer=null;try{check();}catch(e){console.warn(e);}},250);}).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
+<script id="kp-batch3-js">
+/* (a) Órdenes ya devueltas/canceladas que seguían marcadas como retrasadas: se limpian una vez por sesión (solo admin). */
+(function(){
+  var tries=0,iv=setInterval(function(){
+    try{
+      if(++tries>30){clearInterval(iv);return;}
+      var u=window.CURRENT_USER,list=window.ORDERS;
+      if(!u||!u.esAdmin||!window.db||!Array.isArray(list)||!list.length)return;
+      clearInterval(iv);
+      var f=typeof kpNoRecibido==='function'?kpNoRecibido:function(){return false};
+      var g=typeof kpEsCancelada==='function'?kpEsCancelada:function(){return false};
+      list.filter(function(o){return o.retrasado===true&&(f(o)||g(o));}).slice(0,40).forEach(function(o){
+        db.collection('orders').doc(o.id).update({retrasado:false,retrasoCerradoPorDevolucion:true,retrasoCerradoFecha:new Date().toISOString()}).catch(function(){});
+      });
+    }catch(e){}
+  },4000);
+})();
+/* (b) Menú lateral: mientras estás en Finanzas o en el Bloc de notas, esa opción queda seleccionada
+   (antes se quedaba marcada la última sección donde estuviste). Al salir, vuelve la sección real. */
+(function(){
+  var timer=null;
+  function mark(el,on){if(!el)return;var has=el.classList.contains('active');if(on&&!has)el.classList.add('active');else if(!on&&has)el.classList.remove('active');}
+  function sync(){
+    var fin=!!document.querySelector('#kpf-overlay.kpf-open'),bloc=!!document.querySelector('#kpb-overlay.open');
+    var special=document.querySelectorAll('#kpMenuDrawer [data-kpf-drawer],#kpSideNav [data-kpf],#kpMenuDrawer [data-kpb],#kpSideNav [data-kpb]');
+    if(!fin&&!bloc){
+      var tuvo=false;special.forEach(function(b){if(b.classList.contains('active')){tuvo=true;b.classList.remove('active');}});
+      if(tuvo){try{if(typeof updateKPlaceNav==='function')updateKPlaceNav();}catch(e){}}
+      return;
+    }
+    document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav button,#kpMenuDrawer [data-section],#kpSideNav button').forEach(function(b){mark(b,false);});
+    special.forEach(function(b){
+      var esFin=b.hasAttribute('data-kpf-drawer')||b.hasAttribute('data-kpf');
+      mark(b,esFin?fin:(bloc&&!fin));
+    });
+  }
+  function later(){if(timer)return;timer=setTimeout(function(){timer=null;try{sync();}catch(e){}},60);}
+  new MutationObserver(later).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+  document.addEventListener('click',function(){setTimeout(sync,150);},true);
+})();
+
+/* (c) Con el menú abierto sobre Bloc/Finanzas, elegir otra opción cierra esa pantalla y abre la elegida. */
+document.addEventListener('click',function(ev){
+  try{
+    var it=ev.target.closest&&ev.target.closest('#kpMenuDrawer .kp-drawer-nav button,#kpMenuDrawer [data-section],#kpMenuDrawer [data-kf-nav],#kpSideNav button');
+    if(!it)return;
+    var esFin=it.hasAttribute('data-kpf-drawer')||it.hasAttribute('data-kpf'),esBloc=it.hasAttribute('data-kpb');
+    if(document.querySelector('#kpb-overlay.open')&&!esBloc&&window.KPBloc)KPBloc.close();
+    if(document.querySelector('#kpf-overlay.kpf-open')&&!esFin&&window.KPBusinessModulesV2)KPBusinessModulesV2.close();
+  }catch(e){}
+},true);
+</script>
+<style id="kp-batch3-css">
+/* Órdenes canceladas: rojo en cualquier tarjeta (Tegucigalpa, nacional, rastreos). */
+html body .card.kp-cancelada,html body .kp-panel.kp-cancelada{border:2px solid #e5484d!important;background:linear-gradient(145deg,#3a151b,#2a1519)!important;box-shadow:0 0 0 1px #e5484d44,0 8px 24px #e5484d22!important}
+html body .card.kp-cancelada .name,html body .card.kp-cancelada h3{color:#ffb4bd!important}
+html body .chip.kp-cancel-chip{background:#4a1a22!important;color:#ffb4bd!important;border:1px solid #e5484d!important;font-weight:800!important}
+
+/* Finanzas y Bloc de notas con los mismos colores y tamaños que el resto de la app
+   (fondo #0b1220, tarjetas #111827, borde #2d3850, acento #7c3aed). Selectores con 2 ids para ganarle a los estilos anteriores. */
+/* El menú lateral se ve ENCIMA de estas pantallas cuando están abiertas */
+body:has(#kpf-overlay.kpf-open) .kp-menu-overlay,body:has(#kpb-overlay.open) .kp-menu-overlay{z-index:100200!important}
+body:has(#kpf-overlay.kpf-open) .kp-menu-drawer,body:has(#kpb-overlay.open) .kp-menu-drawer{z-index:100201!important}
+
+html body #kpf-overlay,html body #kpb-overlay{background:#0b1220!important;backdrop-filter:none!important;padding:0!important}
+html body #kpf-overlay #kpf-panel,html body #kpb-overlay #kpb-panel{background:#0b1220!important;border:0!important;border-radius:0!important;box-shadow:none!important;width:100%!important;height:100dvh!important;max-height:100dvh!important}
+html body #kpf-overlay #kpf-panel>header,html body #kpb-overlay #kpb-panel>header{min-height:72px!important;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px!important;gap:12px!important;background:#0f1729!important;border-bottom:1px solid #2d3850!important;box-shadow:none!important}
+html body #kpf-overlay #kpf-panel header h2,html body #kpb-overlay #kpb-panel header h2{font-size:20px!important;line-height:1.2!important;margin:3px 0 0!important;letter-spacing:-.3px!important}
+html body #kpf-overlay #kpf-panel .kpf-eyebrow,html body #kpb-overlay #kpb-panel .kpb-kicker{font-size:9px!important;letter-spacing:1.8px!important;color:#b79cf5!important}
+html body #kpb-overlay #kpb-panel .kpb-subtitle{font-size:11px!important}
+html body #kpf-overlay #kpf-panel #kpf-close,html body #kpb-overlay #kpb-panel #kpb-back{width:42px!important;height:42px!important;border-radius:13px!important;background:#1a1030!important;border:1px solid #3b2a66!important;box-shadow:none!important;font-size:22px!important}
+
+/* Botones de grupo (Finanzas/Compras/Gestión · Mi bloc/Equipo) */
+html body #kpf-overlay #kpf-panel .kpf-content-shell{background:transparent!important}
+html body #kpf-overlay #kpf-panel .kpf-groups,html body #kpb-overlay #kpb-panel #kpb-groups{background:#0b1220!important;border-right:0!important;border-bottom:1px solid #2d3850!important;padding:8px 10px!important;gap:8px!important}
+html body #kpf-overlay #kpf-panel .kpf-groups button,html body #kpb-overlay #kpb-panel #kpb-groups button{min-height:44px!important;padding:6px 8px!important;font-size:12px!important;gap:6px!important;border-radius:12px!important;background:#111827!important;border:1px solid #2d3850!important;color:#aeb9cc!important;box-shadow:none!important}
+html body #kpf-overlay #kpf-panel .kpf-groups button svg{width:18px!important;height:18px!important}
+html body #kpb-overlay #kpb-panel .kpb-gi{font-size:16px!important}
+html body #kpf-overlay #kpf-panel .kpf-groups button.active,html body #kpb-overlay #kpb-panel #kpb-groups button.active,html body #kpf-overlay #kpf-panel .kpf-tabs button.active,html body #kpb-overlay #kpb-panel #kpb-tabs button.on{background:linear-gradient(115deg,#7c3aed,#6d28d9)!important;border-color:#a78bfa!important;color:#fff!important;box-shadow:none!important}
+
+/* Pestañas redondas */
+html body #kpf-overlay #kpf-panel .kpf-tabs,html body #kpb-overlay #kpb-panel #kpb-tabs{padding:10px 14px!important;gap:8px!important;background:#0b1220!important;border-bottom:1px solid #2d3850!important}
+html body #kpf-overlay #kpf-panel .kpf-tabs button,html body #kpb-overlay #kpb-panel #kpb-tabs button{padding:8px 14px!important;font-size:12px!important;background:#111827!important;border:1px solid #2d3850!important;color:#aeb9cc!important;box-shadow:none!important}
+
+/* Cuerpo */
+html body #kpf-overlay #kpf-panel .kpf-body,html body #kpb-overlay #kpb-panel #kpb-body{background:#0b1220!important;padding:14px 14px 28px!important}
+html body #kpb-overlay #kpb-panel #kpb-body{padding-bottom:90px!important}
+html body #kpf-overlay #kpf-panel .kpf-titleline h3,html body #kpb-overlay #kpb-panel .kpb-titleline h3{font-size:19px!important;letter-spacing:-.3px!important}
+html body #kpf-overlay #kpf-panel .kpf-subtitle,html body #kpb-overlay #kpb-panel .kpb-sub{font-size:12px!important}
+html body #kpf-overlay #kpf-panel #kpf-search,html body #kpb-overlay #kpb-panel .kpb-toolbar input{background:#0b1220!important;border:1px solid #2d3850!important;min-height:42px!important;font-size:14px!important}
+html body #kpf-overlay #kpf-panel .kpf-quiet,html body #kpf-overlay #kpf-panel .kpf-rowbtn{background:#111827!important;border:1px solid #2d3850!important;min-height:38px!important;font-size:13px!important}
+html body #kpf-overlay #kpf-panel .kpf-hint,html body #kpb-overlay #kpb-panel .kpb-hint{background:#1a1633!important;border:1px solid #3b2a66!important;border-left:4px solid #8b5cf6!important;border-radius:13px!important;padding:11px 14px!important;font-size:13px!important;line-height:1.5!important}
+html body #kpf-overlay #kpf-panel .kpf-help{background:#111827!important;border:1px solid #2d3850!important;font-size:13px!important}
+
+/* Tarjetas */
+html body #kpf-overlay #kpf-panel .kpf-card,html body #kpf-overlay #kpf-panel .kpf-section-card,html body #kpb-overlay #kpb-panel .kpb-stat,html body #kpb-overlay #kpb-panel .kpb-card{background:#111827!important;border-left:1px solid #2d3850!important;border-right:1px solid #2d3850!important;border-bottom:1px solid #2d3850!important;box-shadow:none!important}
+html body #kpb-overlay #kpb-panel .kpb-card,html body #kpb-overlay #kpb-panel .kpb-stat{border:1px solid #2d3850!important}
+html body #kpf-overlay #kpf-panel .kpf-card{padding:12px 14px!important;border-radius:16px!important}
+html body #kpf-overlay #kpf-panel .kpf-card strong{font-size:20px!important;line-height:1.2!important}
+html body #kpf-overlay #kpf-panel .kpf-card small,html body #kpf-overlay #kpf-panel .kpf-card span{font-size:12px!important}
+html body #kpb-overlay #kpb-panel .kpb-stat{min-height:80px!important;padding:12px 14px!important;border-radius:14px!important;gap:4px!important}
+html body #kpb-overlay #kpb-panel .kpb-stat strong{font-size:20px!important}
+html body #kpb-overlay #kpb-panel .kpb-card{padding:15px!important;border-radius:16px!important}
+html body #kpb-overlay #kpb-panel .kpb-card h3{font-size:17px!important}
+
+/* Campos y tablas */
+html body #kpf-overlay #kpf-panel form input,html body #kpf-overlay #kpf-panel form select,html body #kpf-overlay #kpf-panel form textarea,html body #kpb-overlay #kpb-panel .kpb-card input,html body #kpb-overlay #kpb-panel .kpb-card select,html body #kpb-overlay #kpb-panel .kpb-card textarea,html body #kpb-overlay #kpb-panel .kpb-dd-btn{background:#0b1220!important;border:1px solid #2d3850!important;border-radius:12px!important}
+html body #kpf-overlay #kpf-panel .kpf-primary{background:linear-gradient(115deg,#7c3aed,#6d28d9)!important;border:1px solid #a78bfa!important}
+html body #kpf-overlay #kpf-panel th{background:#111827!important}
+</style>
 </body>
 </html>
