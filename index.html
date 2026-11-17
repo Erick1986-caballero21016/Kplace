@@ -27956,5 +27956,85 @@ html.kp-day th{background:var(--kp-surface-2)!important;color:var(--kp-text)!imp
 }
 </style>
 
+
+<style id="kp-theme-contrast-fix">
+/* Dashboard: no permitir que las cifras hereden colores oscuros de las tarjetas. */
+html:not(.kp-day) #view .kp-stat .value,
+html:not(.kp-day) #view .kp-stat .trend,
+html:not(.kp-day) #view .kp-stat .label{color:#edf0ff!important}
+html:not(.kp-day) #view .kp-stat.c-amber .value,
+html:not(.kp-day) #view .kp-stat.c-teal .value{color:#edf0ff!important}
+html:not(.kp-day) #view .kp-stat.c-amber,
+html:not(.kp-day) #view .kp-stat.c-teal{background:#13182a!important}
+html:not(.kp-day) #view .kp-stat.c-amber:before,
+html:not(.kp-day) #view .kp-stat.c-teal:before{opacity:.12!important}
+
+/* Modo día: piedra/lavanda apagada, nunca blanco puro. */
+html.kp-day{
+ --kp-bg:#e9e7ed;--kp-surface:#dedbe5;--kp-surface-2:#d5d1df;
+ --kp-surface-3:#cbc7d7;--kp-line:#c2bdcf;--kp-text:#302b3d;
+ --kp-muted:#716b7e;--kp-input:#e7e4ec;
+}
+html.kp-day,html.kp-day body{
+ background:#e9e7ed!important;color:#302b3d!important;
+}
+html.kp-day #view .kp-stat,
+html.kp-day #view .kp-panel,
+html.kp-day #view .kp-order-row,
+html.kp-day #view .kp-order-card,
+html.kp-day #view .card,
+html.kp-day #view .kp-card,
+html.kp-day #view .kp-section,
+html.kp-day #view .kp-search,
+html.kp-day #view .searchbar,
+html.kp-day #view .search-box,
+html.kp-day #view .kp-searchbar,
+html.kp-day #view input,
+html.kp-day #view select,
+html.kp-day #view textarea{
+ background:#dedbe5!important;color:#302b3d!important;
+ border-color:#c2bdcf!important;
+}
+html.kp-day #view .kp-stat .value,
+html.kp-day #view .kp-stat .label,
+html.kp-day #view .kp-stat .trend,
+html.kp-day #view h1,html.kp-day #view h2,
+html.kp-day #view h3,html.kp-day #view h4,
+html.kp-day #view p,html.kp-day #view strong,
+html.kp-day #view .kp-order-name,
+html.kp-day #view .kp-order-meta{color:#302b3d!important}
+html.kp-day #view .kp-stat.c-green{border-top-color:#75b99b!important}
+html.kp-day #view .kp-stat.c-violet{border-top-color:#9478c4!important}
+html.kp-day #view .kp-stat.c-blue{border-top-color:#7899c8!important}
+html.kp-day #view .kp-stat.c-amber{border-top-color:#c5a56d!important}
+html.kp-day #view .kp-stat.c-pink{border-top-color:#c78aa9!important}
+html.kp-day #view .kp-stat.c-teal{border-top-color:#72aaa4!important}
+html.kp-day #view .kp-stat.c-green .value{color:#397d62!important}
+html.kp-day #view .kp-stat.c-violet .value{color:#7254a8!important}
+html.kp-day #view .kp-stat.c-blue .value{color:#4e74aa!important}
+html.kp-day #view .kp-stat.c-amber .value{color:#806331!important}
+html.kp-day #view .kp-stat.c-pink .value{color:#9b5478!important}
+html.kp-day #view .kp-stat.c-teal .value{color:#397d78!important}
+html.kp-day #view .btn:not(.primary):not(.green):not(.red):not(.gold){
+ background:#d4d0dc!important;color:#302b3d!important;border-color:#c0bbcd!important;
+}
+html.kp-day #view .btn.primary{background:linear-gradient(120deg,#8768b9,#6f509f)!important;color:#fff!important}
+html.kp-day #view .btn.green{background:linear-gradient(120deg,#8ec9a7,#70ad8d)!important;color:#183e2d!important}
+html.kp-day #view .kp-order-card,html.kp-day #view .kp-order-row{
+ box-shadow:0 5px 16px rgba(49,39,68,.07)!important;
+}
+html.kp-day .kp-sidebar,html.kp-day .kp-drawer,html.kp-day #kpMenuDrawer{
+ background:#dcd8e3!important;color:#302b3d!important;
+}
+html.kp-day .kp-nav button,html.kp-day .kp-drawer-nav button{color:#514a60!important}
+html.kp-day .kp-nav button.active{color:#fff!important}
+html.kp-day .kp-chat-enterprise,html.kp-day .chatMsgs,
+html.kp-day .chatSheet,html.kp-day .kp-chat26-shell{
+ background:#dedbe5!important;color:#302b3d!important;
+}
+html.kp-day .bubble.theirs{background:#d2ceda!important;color:#302b3d!important}
+html.kp-day .bubble.mine{background:#8061b2!important;color:#fff!important}
+</style>
+
 </body>
 </html>
