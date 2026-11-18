@@ -4220,6 +4220,7 @@ function kpReembolsoTotal(o){
  return Math.round((Array.isArray(o?.kpReembolsos)?o.kpReembolsos:[]).reduce((a,r)=>a+Math.max(0,Number(r?.monto)||0),0)*100)/100;
 }
 function kpVentaContable(o){
+ if(typeof kpEsCancelada==='function'&&kpEsCancelada(o))return 0;
  const base=kpNoRecibido(o)?kpDevRetenido(o):Math.max(0,Number(totalOrden(o))||0);
  return Math.round(Math.max(0,base-kpReembolsoTotal(o))*100)/100;
 }
@@ -4238,6 +4239,7 @@ function totalOrden(o){
    pagado por transferencia/link no hay nada que cobrar; en pago dividido, solo la
    parte marcada como efectivo (o el sobrante sin cubrir, si no cuadró exacto). */
 function montoEfectivoACobrar(o){
+  if(typeof kpEsCancelada==='function'&&kpEsCancelada(o)) return 0;
   const total = totalOrden(o);
   if(o.metodoPago==='efectivo'||o.metodoPago==='pos') return total;
   if(o.metodoPago==='mitad'){
@@ -20492,7 +20494,7 @@ window.exportExcel=KP.exportOrdersDetail=async function(){
   const cap=x=>x?String(x).charAt(0).toUpperCase()+String(x).slice(1):'';
   const tot=o=>kpVentaContable(o);
   const prodTxt=p=>((p.categoria==='__custom__'?(p.categoriaManual||''):(p.categoria||''))+' '+(p.modelo||'')+' '+(p.tamano||'')+' '+(p.colorEn||p.colorEs||'')).replace(/\s+/g,' ').trim()+' x'+(p.cantidad||1);
-  const calc=o=>{const noRec=!!(window.kpNoRecibido&&kpNoRecibido(o)),dev=noRec||o.tipoOrden==='devolucion'||o.esDevolucion===true,t=noRec?(window.kpDevCobradoConfirmado?kpDevCobradoConfirmado(o):0):tot(o),ent=o.entregado===true,split=o.metodoPago==='mitad';
+  const calc=o=>{if(kpEsCancelada(o))return {t:0,ps:[],pag:0,pen:0,dev:false,est:'Cancelada',pago:''};const noRec=!!(window.kpNoRecibido&&kpNoRecibido(o)),dev=noRec||o.tipoOrden==='devolucion'||o.esDevolucion===true,t=noRec?(window.kpDevCobradoConfirmado?kpDevCobradoConfirmado(o):0):tot(o),ent=o.entregado===true,split=o.metodoPago==='mitad';
     if(kpReembolsoTotal(o)>0)return {t,ps:[],pag:0,pen:0,est:kpEstadoReembolso(o),pago:split?'Dividido':cap(o.metodoPago)};
     if(kpNoRecibido(o))return {t:kpVentaContable(o),ps:[],pag:kpVentaContable(o),pen:0,est:kpVentaContable(o)>0?'Devolución con cobro':'Devolución sin cobro',pago:'Cobro retenido'};
     const st=(m,e)=>ent||e==='pagado'?'Pagado':e==='pendiente'?'Pendiente':(split?(m==='efectivo'?'Pendiente':'Pagado'):(o.estadoPago==='pagado'?'Pagado':'Pendiente'));
@@ -20506,33 +20508,37 @@ window.exportExcel=KP.exportOrdersDetail=async function(){
   const CH={Pagado:['FFE6F7EF','FF11805A'],Pendiente:['FFFFF0E6','FFC2571A']},GR=['FFEEF1F5','FF475569'];
   const wb=new ExcelJS.Workbook();wb.creator='KPlace';
   const ws=wb.addWorksheet('Órdenes',{views:[{state:'frozen',ySplit:5,showGridLines:false}]});
-  const H=['Orden','Fecha','Canal','Vendedor','Cliente','Teléfono','Dirección','Productos','Tipo','Cambio de','Total','Pago','Estado','Método','Banco','Monto','Estado','Método','Banco','Monto','Estado','Pagado','Pendiente','Entrega','Entregada','Notas'];
-  const W=[9,12,12,11,17,16,30,34,11,11,11,15,12,14,12,12,11,14,12,12,11,12,12,12,11,42];
+  const H=['Orden','Fecha','Canal','Vendedor','Cliente','Teléfono','Dirección','Productos','Tipo','Cambio de','Total','Pago','Estado','Método','Banco','Monto','Estado','Método','Banco','Monto','Estado','Pagado','Pendiente','Entrega','Entregada','Empresa de envío','Costo de envío','Notas'];
+  const W=[9,12,12,11,17,16,30,34,11,11,11,15,12,14,12,12,11,14,12,12,11,12,12,12,11,22,14,42];
   ws.getCell('A1').value='Órdenes · KPlace';ws.getCell('A1').font={bold:true,size:16,name:'Arial'};
   ws.getCell('A2').value='Sucursal: '+((KP.branches||[]).find(b=>String(b.id)===branchSel)?.nombre||(branchSel==='todas'?'Todas':branchSel))+'  ·  Descargado: '+todayStr()+(desde||hasta?'  ·  '+(desde||'inicio')+' a '+(hasta||'hoy'):'');ws.getCell('A2').font={size:9,color:{argb:'FF64748B'},name:'Arial'};
+  ws.getCell('A3').value='Las órdenes canceladas aparecen en rojo, conservan su número y no se suman a los totales. Empresa y costo de envío: solo nivel nacional.';ws.getCell('A3').font={size:9,italic:true,color:{argb:'FF991B1B'},name:'Arial'};
   [[14,17,'PAGO 1'],[18,21,'PAGO 2'],[22,23,'COBRO']].forEach(g=>{ws.mergeCells(4,g[0],4,g[1]);const c=ws.getCell(4,g[0]);c.value=g[2];c.alignment={horizontal:'center'};c.font={bold:true,size:9,name:'Arial',color:{argb:g[2]==='COBRO'?'FF64748B':SL}};});
   H.forEach((h,i)=>{const c=ws.getCell(5,i+1),k=i+1;c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'},name:'Arial',size:10};c.alignment={horizontal:'center',vertical:'middle'};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NC[k]?NC[k][0]:(k>=14&&k<=21?SL:INK)}};ws.getColumn(k).width=W[i];});
   ws.getRow(5).height=26;
-  const money=new Set([11,16,20,22,23]),ctr=new Set([1,2,9,10,12,13,14,17,18,21,24,25]);
+  const money=new Set([11,16,20,22,23,27]),ctr=new Set([1,2,9,10,12,13,14,17,18,21,24,25]);
   os.forEach((o,i)=>{const r=6+i,c=calc(o),p1=c.ps[0]||{},p2=c.ps[1]||{};
+    const canc=kpEsCancelada(o),esDev=!canc&&(kpNoRecibido(o)||o.tipoOrden==='devolucion'||o.esDevolucion===true),esNac=!canc&&o.tipoEntrega==='nacional',
+      emp=esNac?(window.kpCourierName?kpCourierName(o):''):'',costo=esNac&&Number(o.boxfulSelectedQuotePrice)>0?Number(o.boxfulSelectedQuotePrice):null;
     const vals=[num(o),o.fecha||'',o.plataforma||'',o.vendedor||'',o.cliente||'',o.numero||'',o.direccion||'',(o.productos||[]).map(prodTxt).join(' | '),
-      c.dev?'Devolución':(o.tipoOrden==='cambio'?'Cambio':o.tipoOrden==='remplazo'?'Remplazo':'Normal'),o.ordenOriginalNumero?'#'+o.ordenOriginalNumero:'',c.t,c.pago,c.est,
+      canc?'Cancelada':(esDev?'Devolución':(o.tipoOrden==='cambio'?'Cambio':o.tipoOrden==='remplazo'?'Remplazo':'Normal')),o.ordenOriginalNumero?'#'+o.ordenOriginalNumero:'',c.t,c.pago,c.est,
       p1.m||'',p1.b||'',p1.a||null,p1.s||'',p2.m||'',p2.b||'',p2.a||null,p2.s||'',c.pag,c.pen,
-      (window.TIPO_ENTREGA_LABELS&&TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'',kpNoRecibido(o)?'Devolución':(o.entregado===true?'Sí':'No'),kpNoRecibido(o)?['Devolución: '+kpMotivoDevolucion(o),kpNotaDevolucion(o),'Original: '+Number(totalOrden(o)||0),'Cobrado: '+kpDevCobradoConfirmado(o),'Reembolsado: '+kpDevReembolsado(o),'Retenido: '+kpDevRetenido(o),o.notas||''].filter(Boolean).join(' | '):(o.notas||'')];
+      (window.TIPO_ENTREGA_LABELS&&TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'',canc?'Cancelada':(kpNoRecibido(o)?'Devolución':(o.entregado===true?'Sí':'No')),emp||'',costo,canc?['Cancelada'+(o.canceladaPor?' por '+o.canceladaPor:'')+(o.canceladaFecha?' · '+String(o.canceladaFecha).slice(0,10):''),o.notas||''].filter(Boolean).join(' | '):kpNoRecibido(o)?['Devolución: '+kpMotivoDevolucion(o),kpNotaDevolucion(o),'Original: '+Number(totalOrden(o)||0),'Cobrado: '+kpDevCobradoConfirmado(o),'Reembolsado: '+kpDevReembolsado(o),'Retenido: '+kpDevRetenido(o),o.notas||''].filter(Boolean).join(' | '):(o.notas||'')];
     vals.forEach((v,j)=>{const k=j+1,x=ws.getCell(r,k);x.value=v===''?null:v;x.font={name:'Arial',size:10,bold:k===1};
-      x.alignment={vertical:'middle',wrapText:k===26,horizontal:ctr.has(k)?'center':(money.has(k)?'right':'left')};
+      x.alignment={vertical:'middle',wrapText:k===28,horizontal:ctr.has(k)?'center':(money.has(k)?'right':'left')};
       x.border={bottom:{style:'thin',color:{argb:'FFE8ECF1'}}};if(money.has(k))x.numFmt=FM;
       if(NC[k]){x.fill={type:'pattern',pattern:'solid',fgColor:{argb:NC[k][1]}};x.font={name:'Arial',size:10,bold:true,color:{argb:NC[k][2]}};}
       const ch=[9,12,13,17,21].includes(k)?(CH[v]||(['Cambio','Remplazo','Devolución','Dividido','Parcial'].includes(v)?GR:null)):null;
-      if(ch){x.fill={type:'pattern',pattern:'solid',fgColor:{argb:ch[0]}};x.font={name:'Arial',size:10,bold:true,color:{argb:ch[1]}};}});
+      if(ch){x.fill={type:'pattern',pattern:'solid',fgColor:{argb:ch[0]}};x.font={name:'Arial',size:10,bold:true,color:{argb:ch[1]}};}
+      if(canc){const fuerte=v==='Cancelada';x.fill={type:'pattern',pattern:'solid',fgColor:{argb:fuerte?'FFFECACA':'FFFEE8E8'}};x.font={name:'Arial',size:10,bold:fuerte||k===1,color:{argb:fuerte?'FF991B1B':'FFB91C1C'}};}});
     ws.getRow(r).height=28;});
   const a=6,b=5+os.length,t=b+1;
-  [11,16,20,22,23].forEach(k=>{const L=ws.getColumn(k).letter,x=ws.getCell(t,k);let sum=0;for(let r=a;r<=b;r++)sum+=Number(ws.getCell(r,k).value)||0;x.value={formula:'SUM('+L+a+':'+L+b+')',result:sum};x.numFmt='#,##0.00';x.font={bold:true,name:'Arial',size:10};});
+  [11,16,20,22,23,27].forEach(k=>{const L=ws.getColumn(k).letter,x=ws.getCell(t,k);let sum=0;for(let r=a;r<=b;r++)sum+=Number(ws.getCell(r,k).value)||0;x.value={formula:'SUM('+L+a+':'+L+b+')',result:sum};x.numFmt='#,##0.00';x.font={bold:true,name:'Arial',size:10};});
   ws.getCell(t,10).value='Total';ws.getCell(t,10).font={bold:true,name:'Arial',size:10};ws.getCell(t,10).alignment={horizontal:'right'};
-  ws.autoFilter={from:{row:5,column:1},to:{row:5,column:26}};
+  ws.autoFilter={from:{row:5,column:1},to:{row:5,column:28}};
   const w2=wb.addWorksheet('Desglose de productos');
   w2.addRow(['Orden','Fecha','Cliente','Producto','Color','Cantidad','Precio','Subtotal']).font={bold:true,name:'Arial'};
-  os.forEach(o=>(o.productos||[]).forEach(p=>{const q=Number(p.cantidad)||1,pr=Number(p.precio)||0;w2.addRow([num(o),o.fecha||'',o.cliente||'',((p.categoria==='__custom__'?(p.categoriaManual||''):(p.categoria||''))+' '+(p.modelo||'')+' '+(p.tamano||'')).replace(/\s+/g,' ').trim(),p.colorEn||p.colorEs||'',q,pr,q*pr]);}));
+  os.filter(o=>!kpEsCancelada(o)).forEach(o=>(o.productos||[]).forEach(p=>{const q=Number(p.cantidad)||1,pr=Number(p.precio)||0;w2.addRow([num(o),o.fecha||'',o.cliente||'',((p.categoria==='__custom__'?(p.categoriaManual||''):(p.categoria||''))+' '+(p.modelo||'')+' '+(p.tamano||'')).replace(/\s+/g,' ').trim(),p.colorEn||p.colorEs||'',q,pr,q*pr]);}));
   [10,12,22,40,20,10,12,12].forEach((w,i)=>w2.getColumn(i+1).width=w);
   const refundSheet=wb.addWorksheet('Reembolsos');
   refundSheet.addRow(['Orden','Cliente','Fecha','Monto original','Monto reembolsado','Forma','Banco','Motivo','Nota','Registrado por','Total reembolsado','Neto contabilizado']);
