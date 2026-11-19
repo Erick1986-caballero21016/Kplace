@@ -27983,6 +27983,18 @@ var pS=setTab;setTab=function(id){if(id==='mapaEntregas'){if(window.CURRENT_USER
 var pR=render;render=function(){if(activeTab==='mapaEntregas'&&window.CURRENT_USER){draw();return}return pR.apply(this,arguments)};
 var lastSig='';setInterval(function(){if(window.activeTab!=='mapaEntregas')return;var q=document.getElementById('kpmeQ');if(q&&document.activeElement===q)return;
  var o=window.ORDERS||[],s=o.length+':'+o.filter(function(x){return x.entregado===true||x.kpDevolucionNoRecibida}).length;if(s!==lastSig){lastSig=s;draw()}},8000);
+function menuMapa(){var u=window.CURRENT_USER;if(!u||u.esRepartidor)return;
+ document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top),#kpSideNav').forEach(function(nv){
+  var first=nv.querySelector('button[data-section],button[data-kf-nav]');if(!first)return;
+  var ex=nv.querySelector('[data-section="mapaEntregas"]'),anchor=nv.querySelector('[data-section="cotizaciones"]')||nv.querySelector('[data-section="rastreos"]');
+  if(ex){if(anchor&&anchor.nextElementSibling!==ex)anchor.after(ex);return}
+  var b=document.createElement('button');b.type='button';b.setAttribute('data-section','mapaEntregas');
+  b.className=first.className.replace(/\b(active|on|selected|current|is-active|open)\b/g,'').replace(/\s+/g,' ').trim();
+  b.innerHTML='<span class="'+(nv.id==='kpSideNav'?'ico':'dico')+'">🗺️</span>Mapa de entregas';
+  b.onclick=function(ev){ev.preventDefault();try{closeKPlaceMenu()}catch(e){}setTab('mapaEntregas')};
+  if(anchor)anchor.after(b);else nv.appendChild(b)})}
+setInterval(menuMapa,2000);setTimeout(menuMapa,800);
+document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#menuBtn')){setTimeout(menuMapa,100);setTimeout(menuMapa,400)}},true);
 })();
 </script>
 </body>
