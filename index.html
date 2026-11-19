@@ -12638,7 +12638,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
       if(orig)return window.kpNumeroOrden(orig,(_d||0)+1);
       if(o.ordenOriginalNumero)return o.ordenOriginalNumero;
     }
-    const _pp=x=>!!x&&x.tipoEntrega==='programada'&&!x.enviadaAPrincipal;
+    const _pp=x=>!!x&&x.tipoEntrega==='programada'&&!x.enviadaAPrincipal&&!(typeof kpNoRecibido==='function'&&kpNoRecibido(x));
     const all=ords.filter(x=>!esReenvioOrden(x)&&!_pp(x)).sort(orderSort);
     const i=all.findIndex(x=>String(x.id)===String(o?.id));
     if(i<0&&_pp(o))return null;
@@ -27830,6 +27830,8 @@ html.kp-day body{background-color:#f3f5fb!important}
 var DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 var DC=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 var ORD=[1,2,3,4,5,6,0];
+var ORD6=[1,2,3,4,5,6];
+function nd(x){return x===0?1:x}
 var UI={open:{},openM:{},q:''};
 var ALIAS={'distrito central':'Tegucigalpa','comayaguela':'Tegucigalpa'};
 function norm(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
@@ -27872,11 +27874,11 @@ function courier(o){try{if(esTegus(o)&&!esNac(o))return '';return (typeof kpCour
 function sw(){return {n:0,sum:0,arr:[0,0,0,0,0,0,0]}}
 function mk(n){return {n:n,tot:0,ok:0,dev:0,prob:0,days:[0,0,0,0,0,0,0],hours:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],nh:0,lead:[],cour:{},co:{},dates:{},sd:0,ap:0,snd:[sw(),sw(),sw(),sw(),sw(),sw(),sw()],mot:{},m:{}}}
 function add(a,r){a.tot++;
- if(r.ok){a.ok++;if(r.sinDia)a.sd++;if(r.ap)a.ap++;if(r.sdw!=null&&r.lead!=null){var sx=a.snd[r.sdw];sx.n++;sx.sum+=r.lead;if(r.day!=null)sx.arr[r.day]++}if(r.ds)a.dates[r.ds]=(a.dates[r.ds]||0)+1;if(r.day!=null)a.days[r.day]++;if(r.hour!=null){a.hours[r.hour]++;a.nh++}if(r.lead!=null)a.lead.push(r.lead)}
+ if(r.ok){a.ok++;if(r.sinDia)a.sd++;if(r.ap)a.ap++;if(r.sdw!=null&&r.lead!=null){var sx=a.snd[r.sdw];sx.n++;sx.sum+=r.lead;if(r.day!=null&&r.day!==0)sx.arr[r.day]++}if(r.ds)a.dates[r.ds]=(a.dates[r.ds]||0)+1;if(r.day!=null&&r.day!==0)a.days[r.day]++;if(r.hour!=null){a.hours[r.hour]++;a.nh++}if(r.lead!=null)a.lead.push(r.lead)}
  else if(r.dev){a.dev++;var mt=(typeof kpMotivoDevolucion==='function'&&kpMotivoDevolucion(r.o))||'Sin motivo';a.mot[mt]=(a.mot[mt]||0)+1}
  else if(r.prob)a.prob++;
  if(r.cour){a.cour[r.cour]=(a.cour[r.cour]||0)+1;var c=a.co[r.cour]||(a.co[r.cour]={tot:0,ok:0,dev:0,prob:0,days:[0,0,0,0,0,0,0],lead:[],hours:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],nh:0});c.tot++;
-  if(r.ok){c.ok++;if(r.hour!=null){c.hours[r.hour]++;c.nh++}if(r.day!=null)c.days[r.day]++;if(r.lead!=null)c.lead.push(r.lead)}else if(r.dev)c.dev++;else if(r.prob)c.prob++}}
+  if(r.ok){c.ok++;if(r.hour!=null){c.hours[r.hour]++;c.nh++}if(r.day!=null&&r.day!==0)c.days[r.day]++;if(r.lead!=null)c.lead.push(r.lead)}else if(r.dev)c.dev++;else if(r.prob)c.prob++}}
 function pool(){var out=[];(window.ORDERS||[]).forEach(function(o){
  if(!o||o.eliminadoTs||(!esNac(o)&&!esTegus(o)))return;
  if(typeof kpEsCancelada==='function'&&kpEsCancelada(o))return;
@@ -27918,16 +27920,16 @@ function insight(a,fb){var pd=pickDay(a,fb),ph=pickHour(a,fb);
  var p=[];if(pd)p.push('lo más probable es que entreguen el <b>'+DIAS[pd.d].toLowerCase()+'</b>');if(ph)p.push('entre las <b>'+winLbl(ph.w)+'</b>');
  var own=(!pd||!pd.s)&&(!ph||!ph.s),src=(pd&&pd.s)||(ph&&ph.s)||'';
  return (own?'Según '+a.ok+' entrega'+(a.ok===1?'':'s')+' aquí, ':(pd&&pd.s&&ph&&ph.s&&pd.s!==ph.s?'Con los datos disponibles, ':'Aún hay pocos datos aquí; con la tendencia '+src+', '))+p.join(' ')+'.'+(own&&a.ok<5?' Son pocos datos: se afinará con más entregas.':'')}
-function dayBars(a){var days=a.days,tot=days.reduce(function(s,x){return s+x},0)||1,mx=Math.max.apply(null,days.concat([1])),bd=best(days);
- return ORD.map(function(d){var c=days[d];return '<div class="kpme-bar"><span>'+DC[d]+'</span><i'+(d===bd&&c?' class="top"':'')+' style="width:'+(c?Math.max(4,Math.round(c*100/mx)):2)+'%"></i><span style="text-align:right">'+c+(c?' · '+Math.round(c*100/tot)+'%':'')+'</span></div>'}).join('')}
+function dayBars(a){var days=a.days,tot=days.reduce(function(s,x){return s+x},0)||1,mx=Math.max.apply(null,ORD6.map(function(d){return days[d]}).concat([1]));
+ return ORD6.map(function(d){var c=days[d];return '<div class="kpme-bar"><span>'+DC[d]+'</span><i class="top" style="width:'+(c?Math.max(4,Math.round(c*100/mx)):2)+'%"></i><span style="text-align:right">'+c+(c?' · '+Math.round(c*100/tot)+'%':'')+'</span></div>'}).join('')}
 function hoursChart(a){var sl=a.hours.slice(6,22),mx=Math.max.apply(null,sl.concat([1])),s='';
  for(var h=6;h<=21;h++){var c=a.hours[h];s+='<div class="kpme-hc" title="'+fmtH(h)+': '+c+'"><i'+(c===mx&&c?' class="top"':'')+' style="height:'+(c?Math.max(8,Math.round(c*100/mx)):2)+'%"></i><span>'+(h%12||12)+'</span></div>'}
  return '<div class="kpme-hours">'+s+'</div><div class="kpme-hint">Hora del día · 6 am → 9 pm</div>'}
 function companies(a){return Object.keys(a.co).map(function(n){var c=a.co[n],r=c.ok+c.dev+c.prob,bd=best(c.days);
  return {n:n,tot:c.tot,ok:c.ok,dev:c.dev,res:r,eff:r?Math.round(c.ok*100/r):null,avg:c.lead.length?Math.round(c.lead.reduce(function(s,x){return s+x},0)/c.lead.length*10)/10:null,bd:bd>=0&&c.days[bd]?bd:-1,bw:(c.nh&&bestWin(c.hours)>=0&&(c.hours[bestWin(c.hours)]+c.hours[bestWin(c.hours)+1])?bestWin(c.hours):-1),days:c.days}})
  .sort(function(x,y){return ((y.eff==null?-1:y.eff)-(x.eff==null?-1:x.eff))||((x.avg==null?99:x.avg)-(y.avg==null?99:y.avg))||(y.ok-x.ok)})}
-function dayMini(d){var mx=Math.max.apply(null,d.concat([1])),bd=best(d),s='';
- ORD.forEach(function(i){var c=d[i];s+='<div class="kpme-hc" title="'+DIAS[i]+': '+c+'"><i'+(i===bd&&c?' class="top"':'')+' style="height:'+(c?Math.max(10,Math.round(c*100/mx)):3)+'%"></i><span>'+DC[i].charAt(0)+'</span></div>'});
+function dayMini(d){var mx=Math.max.apply(null,ORD6.map(function(k){return d[k]}).concat([1])),s='';
+ ORD6.forEach(function(k){var c=d[k];s+='<div class="kpme-hc" title="'+DIAS[k]+': '+c+'"><i class="top" style="height:'+(c?Math.max(10,Math.round(c*100/mx)):3)+'%"></i><span>'+DC[k].charAt(0)+'</span></div>'});
  return '<div class="kpme-hours" style="height:46px">'+s+'</div>'}
 function coHtml(a,pd,ph){var cs=companies(a);if(!cs.length)return '';
  var h='<div class="kpme-h">Empresas de envío</div>',lead=cs[0];
@@ -27950,8 +27952,8 @@ function datesHtml(a){var ks=Object.keys(a.dates).sort().reverse();if(!ks.length
  return h+'</div>'}
 function estima(a,fb,wd){var l=[{a:a,s:''}].concat(fb||[]);
  for(var i=0;i<l.length;i++){var x=l[i].a,s=x.snd[wd];
-  if(s.n){var av=s.sum/s.n,bd=best(s.arr);return {dias:Math.round(av*10)/10,llega:(s.n>=2&&bd>=0&&s.arr[bd])?bd:(wd+Math.round(av))%7,n:s.n,s:l[i].s,exacto:true}}
-  var e=avg(x);if(e!=null)return {dias:e,llega:(wd+Math.round(e))%7,n:x.lead.length,s:l[i].s,exacto:false}}
+  if(s.n){var av=s.sum/s.n,bd=best(s.arr);return {dias:Math.round(av*10)/10,llega:(s.n>=2&&bd>=0&&s.arr[bd])?bd:nd((wd+Math.round(av))%7),n:s.n,s:l[i].s,exacto:true}}
+  var e=avg(x);if(e!=null)return {dias:e,llega:nd((wd+Math.round(e))%7),n:x.lead.length,s:l[i].s,exacto:false}}
  return null}
 function fmtD(d){return d+' día'+(d===1?'':'s')}
 function sendHtml(a,fb){var hoy=new Date().getDay(),h='<div class="kpme-h">¿Y si lo enviás?</div>',e=estima(a,fb,hoy);
@@ -27994,8 +27996,7 @@ function totals(D){var T=mk('Todos');Object.keys(D).forEach(function(k){var d=D[
 function head(T){var bd=best(T.days),bw=T.nh?bestWin(T.hours):-1,p=eff(T);
  var k=[['Envíos analizados',T.tot],['Entregados',p==null?'—':p+'%'],['Mejor día',bd>=0&&T.days[bd]?DIAS[bd]:'—'],['Mejor horario',bw>=0&&(T.hours[bw]+T.hours[bw+1])?winLbl(bw):'Sin horas aún']];
  return '<div class="kpme-kicker">Nivel nacional + Tegucigalpa</div><h2>🗺️ Mapa de entregas</h2><p class="kpme-sub">Cuándo y a qué hora se entrega en cada departamento y municipio. Los más buscados aparecen arriba y se actualiza solo con cada entrega.</p>'+
- '<div class="kpme-kpis">'+k.map(function(x){return '<div class="kpme-kpi"><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('')+'</div>'+(T.days.some(function(x){return x})?'<div class="kpme-wk"><div class="kpme-h">Entregas por día de la semana · todo el país</div>'+dayBars(T)+(T.sd?'<div class="kpme-hint">'+T.sd+' entrega'+(T.sd===1?'':'s')+' sin día registrado no se cuentan aquí.</div>':'')+'</div>':'')+
- (T.ok&&T.nh<T.ok?'<div class="kpme-note">Horas registradas: '+T.nh+' de '+T.ok+' entregas. Las entregas anteriores solo tienen el día; desde ahora cada entrega guarda también la hora.</div>':'')}
+ '<div class="kpme-kpis">'+k.map(function(x){return '<div class="kpme-kpi"><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('')+'</div>'+(T.ok&&T.nh<T.ok?'<div class="kpme-note">Horas registradas: '+T.nh+' de '+T.ok+' entregas. Las entregas anteriores solo tienen el día; desde ahora cada entrega guarda también la hora.</div>':'')}
 function refresh(){var l=document.getElementById('kpmeList');if(l)l.innerHTML=list(agg())}
 function draw(){var v=document.getElementById('view');if(!v)return;var D=agg();
  v.innerHTML='<div class="kpme">'+head(totals(D))+'<input id="kpmeQ" class="kpme-q" placeholder="Buscar departamento o municipio…" value="'+esc(UI.q)+'" autocomplete="off"><div id="kpmeList">'+list(D)+'</div></div>';
