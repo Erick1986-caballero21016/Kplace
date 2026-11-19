@@ -3085,6 +3085,7 @@ new MutationObserver(function(){var e=document.getElementById('loginError');if(!
       <button data-section="usuarios" onclick="openUsersPanel()"><span class="ico">👥</span>Usuarios</button>
       <button data-section="reportes" onclick="setTab('inicio')"><span class="ico">◒</span>Reportes</button>
       <button data-section="cotizaciones" onclick="setTab('cotizaciones')"><span class="ico">🧾</span>Cotizaciones</button>
+      <button data-section="mapaEntregas" onclick="setTab('mapaEntregas')"><span class="ico">🗺️</span>Mapa de entregas</button>
     </nav>
     <div class="kp-sidebar-bottom">
       <button onclick="toggleSettingsMenu()">⚙ Configuración</button>
@@ -3396,6 +3397,7 @@ function toggleMenu(){
     ['ordenes','📦','Órdenes'],
     ['envios','🚚','Envíos nacionales'],
     ['rastreos','📍','Rastreo de pedidos'],
+    ['mapaEntregas','🗺️','Mapa de entregas'],
     ['programadas','🕒','Programadas'],
     ['retrasos','🚩','Retrasos'],
     ['repartidores','🛵','Repartidores'],
@@ -4305,7 +4307,7 @@ function orderCard(o){
       ${(o.productos||[]).map(p=>`<div class="prodline">• ${p.categoria==='__custom__'?(p.categoriaManual||''):p.categoria} ${p.modelo&&p.modelo!==p.categoria?p.modelo:''} ${p.tamano||''} — ${p.colorEn||''}${p.colorEs?' ('+p.colorEs+')':''}</div>`).join('')}
     </div>
     ${o.notas?`<div class="notas">${escapeHtml(o.notas)}</div>`:''}
-    ${kpNoRecibido(o)?`<div class="kp-return-note" style="margin-top:8px;padding:11px;border:1px solid #e5ab70;border-radius:12px;background:#38291e;color:#ffd9aa"><strong>Devolución · Cliente no recibió el paquete</strong><br>Motivo: ${escapeHtml(kpMotivoDevolucion(o))}<br>Nota: ${escapeHtml(kpNotaDevolucion(o)||'Sin nota adicional')}<br>Importe original: ${kpMoneda()} ${Number(totalOrden(o)||0).toLocaleString('es-HN')} · <b>Cobro retenido contabilizado: ${kpMoneda()} ${kpDevRetenido(o).toLocaleString('es-HN')}</b></div>`:''}
+    ${kpNoRecibido(o)?`<div class="kp-return-note" style="margin-top:8px;padding:11px;border:1px solid #e5ab70;border-radius:12px;background:#38291e;color:#ffd9aa"><strong>Devolución · Cliente no recibió el paquete</strong><br>Motivo: ${escapeHtml(kpMotivoDevolucion(o))}<br>Nota: ${escapeHtml(kpNotaDevolucion(o)||'Sin nota adicional')}<br>Importe original: ${kpMoneda()} ${Number(totalOrden(o)||0).toLocaleString('es-HN')} · Cobrado: ${kpMoneda()} ${kpDevCobradoConfirmado(o).toLocaleString('es-HN')} · Devuelto al cliente: ${kpMoneda()} ${kpDevReembolsado(o).toLocaleString('es-HN')} · <b>Nos quedamos (cuenta en reportes): ${kpMoneda()} ${kpDevRetenido(o).toLocaleString('es-HN')}</b></div>`:''}
     <div class="kp-order-statuses" style="margin-top:8px;">
       <span class="chip ${o.estadoPago==='pagado'?'pagado':'pendiente'}">${pagoLabel}</span>
       <span class="chip ${o.tipoEntrega==='tegucigalpa'?'tegus':'boxful'}">${(window.TIPO_ENTREGA_LABELS&&window.TIPO_ENTREGA_LABELS[o.tipoEntrega])||o.tipoEntrega||'—'}</span>
@@ -4464,7 +4466,7 @@ function marcarEntrega(id, entregado){
     const o=(window.ORDERS||[]).find(x=>String(x.id)===String(id));
     return db.collection('orders').doc(id).update(kpPagoAlEntregar(o,{
       entregado:true, motivoNoEntrega:'',
-      entregadoFecha:(typeof today==='function'?today():new Date().toISOString().slice(0,10))
+      entregadoFecha:(typeof today==='function'?today():new Date().toISOString().slice(0,10)), entregadoAt:new Date().toISOString()
     })).then(()=>toast('Marcado como entregado y pagado'))
       .catch(e=>{console.error('Entrega y pago:',e);toast('No se pudo guardar la entrega y el pago');});
   } else {
@@ -10743,7 +10745,7 @@ KP.assignDriver=async function(orderId){
  toast(`Orden asignada a ${chosen.nombre}`);
 };
 KP.setDeliveryStatus=async function(id,status){
- const allowed={pendiente:'Pendiente',en_ruta:'En ruta',llego:'Llegó al punto',entregada:'Entregada',no_entregada:'No entregada'};if(!allowed[status])return;const data={estadoEntrega:status,estadoEntregaTexto:allowed[status]};if(status==='entregada'){data.entregado=true;data.entregadoFecha=today();kpPagoAlEntregar((window.ORDERS||[]).find(o=>String(o.id)===String(id)),data);}if(status==='no_entregada')data.entregado=false;await db.collection('orders').doc(id).update(data);toast('Estado actualizado: '+allowed[status]);render();};
+ const allowed={pendiente:'Pendiente',en_ruta:'En ruta',llego:'Llegó al punto',entregada:'Entregada',no_entregada:'No entregada'};if(!allowed[status])return;const data={estadoEntrega:status,estadoEntregaTexto:allowed[status]};if(status==='entregada'){data.entregado=true;data.entregadoFecha=today();data.entregadoAt=new Date().toISOString();kpPagoAlEntregar((window.ORDERS||[]).find(o=>String(o.id)===String(id)),data);}if(status==='no_entregada')data.entregado=false;await db.collection('orders').doc(id).update(data);toast('Estado actualizado: '+allowed[status]);render();};
 
 /* ---------- Nueva orden empresarial ---------- */
 KP.frequentCache=[];
@@ -13181,7 +13183,7 @@ loadBranches().then(()=>KP.Campos.cargar().then(()=>KP.ensureUserScope().then(()
     var u=window.CURRENT_USER;
     if(!u||!(u.esAdmin||u.esEncargadoEnvios)||typeof boxfulFetch!=='function')return;
     var lista=(window.ORDERS||[]).filter(function(o){
-      return (o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan')))&&(o.boxfulShipmentNumber||o.boxfulGuideNumber)&&o.boxfulAlert!=='entregado'&&o.entregado!==true;
+      return (o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan')))&&(o.boxfulShipmentNumber||o.boxfulGuideNumber)&&o.boxfulAlert!=='entregado'&&o.entregado!==true&&!(typeof kpNoRecibido==='function'&&kpNoRecibido(o));
     }).slice(0,15);
     for(var i=0;i<lista.length;i++){
       var o=lista[i], guia=o.boxfulShipmentNumber||o.boxfulGuideNumber;
@@ -19039,7 +19041,7 @@ function setRefreshBtn(txt){var b=document.querySelector('.kpx-refresh');if(b){b
 window.kpRefreshBoxful=async function(manual){
   var u=window.CURRENT_USER;
   if(running||!u||!(u.esAdmin||u.esEncargadoEnvios)||typeof fetchBoxfulTracking!=='function')return;
-  var list=(window.ORDERS||[]).filter(function(o){return isNac(o)&&guiaDe(o)&&o.entregado!==true&&!o.boxfulCancelledAt&&!o.eliminadoTs&&!o.cancelado;});
+  var list=(window.ORDERS||[]).filter(function(o){return isNac(o)&&guiaDe(o)&&o.entregado!==true&&!o.boxfulCancelledAt&&!o.eliminadoTs&&!o.cancelado&&!(typeof kpNoRecibido==='function'&&kpNoRecibido(o));});
   if(!list.length){if(manual&&window.toast)toast('No hay guías pendientes por revisar');return;}
   running=true;lastRun=Date.now();var changed=0,failed=0;
   for(var i=0;i<list.length;i++){
@@ -19051,7 +19053,7 @@ window.kpRefreshBoxful=async function(manual){
       var est=estadoEs(st),tipo=est==='Entregado'?'entregado':(/Problema|Devuelto|Cancelado/.test(est)?'problema':'');
       var update={boxfulTrackingStatus:st,boxfulAlert:tipo,boxfulStatusCheckedAt:new Date().toISOString()};
       var markDelivered=tipo==='entregado'&&o.entregado!==true;
-      if(markDelivered){update.entregado=true;update.motivoNoEntrega='';update.entregadoFecha=(typeof today==='function'?today():new Date().toISOString().slice(0,10));kpPagoAlEntregar(o,update);}
+      if(markDelivered){update.entregado=true;update.motivoNoEntrega='';update.entregadoFecha=(typeof today==='function'?today():new Date().toISOString().slice(0,10));var _ets=(window.kpEntregaTs&&window.kpEntregaTs(data))||'';update.entregadoAt=_ets||new Date().toISOString();update.entregadoAtFuente=_ets?'boxful':'sync';kpPagoAlEntregar(o,update);}
       if(st!==o.boxfulTrackingStatus||tipo!==(o.boxfulAlert||'')||markDelivered){
         await db.collection('orders').doc(String(o.id)).update(update);changed++;
       }
@@ -19579,6 +19581,7 @@ if(typeof oldUpload==='function'&&!oldUpload.__kpLoading){
           ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 Enviar guía al cliente</a>`:`<button class="btn sm" onclick="toast('Esta orden no tiene teléfono del cliente')">💬 Enviar guía al cliente</button>`}
           <button class="btn sm" onclick="kpCompartirPdf('${o.id}')">📤 Compartir PDF</button><button class="btn gold sm" onclick="marcarRetraso('${o.id}')">🚩 Marcar retraso</button><button class="btn sm" onclick="kpCopiarLinkOrden('${o.id}')">📋 Copiar link</button>
           <button class="btn sm" type="button" onclick="kpRastreoDevolucionAbrir('${o.id}')" style="border-color:#d0a060;color:#ffd59a">${kpNoRecibido(o)?'📝 Ver / editar devolución':'↩️ Registrar devolución'}</button>
+          ${(window.CURRENT_USER&&CURRENT_USER.esAdmin)?`<button class="btn sm" type="button" onclick="kpOpenRefundOrder('${o.id}')">💸 Registrar reembolso</button>`:''}
           <button class="btn sm" style="border-color:#8a3e4b;color:#ffb4bd" onclick="kpQuitarGuiaLocal('${o.id}')">🗑️ Quitar guía de KPlace</button>
         </div>
       </div>
@@ -21083,10 +21086,11 @@ function invMatch(txt,n){
  return inv.map(i=>{const h=norm([i.categoria,i.modelo,i.tamano,i.colorEs,i.colorEn,i.etiqueta].join(' '));return{i,s:toks.filter(t=>h.includes(t)).length/toks.length}}).filter(x=>x.s>=.5).sort((a,b)=>b.s-a.s).slice(0,n||8)
   .map(x=>({producto:[x.i.categoria,x.i.modelo&&x.i.modelo!==x.i.categoria?x.i.modelo:'',x.i.tamano,x.i.colorEs||x.i.colorEn].filter(Boolean).join(' '),cantidad:x.i.cantidad,inventario_id:String(x.i.id||''),etiqueta:x.i.etiqueta||undefined,coincidencia:Math.round(x.s*100)+'%'}));
 }
-const SECCIONES={inicio:'inicio',cotizaciones:'cotizaciones',chat:'principal',ordenes:'hoy',nivel_nacional:'boxful',rastreos:'rastreosNacionales',programadas:'programadas',retrasos:'retrasos',repartidor:'repartidor',admin:'admin',devoluciones:'adminEnviosDevoluciones'};
+const SECCIONES={mapa_entregas:'mapaEntregas',inicio:'inicio',cotizaciones:'cotizaciones',chat:'principal',ordenes:'hoy',nivel_nacional:'boxful',rastreos:'rastreosNacionales',programadas:'programadas',retrasos:'retrasos',repartidor:'repartidor',admin:'admin',devoluciones:'adminEnviosDevoluciones'};
 
 /* ===== Herramientas (las usa el chat y la voz en vivo) ===== */
 const TOOLS=[{functionDeclarations:[
+ {name:'mapa_entregas',description:'Consulta el Mapa de entregas (nivel nacional y Tegucigalpa): a qué día y hora se suele entregar, porcentaje de entrega, días promedio, devoluciones y paquetería por departamento o municipio. Sin parámetros da el resumen general y los departamentos más activos. Usa abrir=true solo si piden verlo en pantalla.',parameters:{type:'OBJECT',properties:{departamento:{type:'STRING',description:'Ej: Cortés, Francisco Morazán'},municipio:{type:'STRING',description:'Ej: San Pedro Sula, Villanueva'},abrir:{type:'BOOLEAN'}}}},
  {name:'resumen_pedidos',description:'Cifras actuales: pedidos de hoy, pendientes, entregados, nacionales sin guía, retrasados.'},
  {name:'buscar_pedidos',description:'Busca pedidos por cliente, teléfono, dirección, producto, fecha, estado o vendedor. Devuelve una lista corta.',parameters:{type:'OBJECT',properties:{texto:{type:'STRING',description:'Nombre, teléfono, producto o dirección'},fecha:{type:'STRING',description:'hoy, ayer, manana o YYYY-MM-DD'},estado:{type:'STRING',enum:['todos','pendientes','entregados','sin_guia','con_guia','retrasados','sin_pagar','pagados']},entrega:{type:'STRING',description:'tegucigalpa, nacional, roatan o programada'},vendedor:{type:'STRING'},repartidor:{type:'STRING',description:'Nombre del repartidor asignado'},desde:{type:'STRING',description:'YYYY-MM-DD'},hasta:{type:'STRING',description:'YYYY-MM-DD'},limite:{type:'NUMBER'}}}},
  {name:'detalle_pedido',description:'Detalle completo de un pedido por id, referencia de 5 caracteres o nombre del cliente.',parameters:{type:'OBJECT',properties:{pedido:{type:'STRING'}},required:['pedido']}},
@@ -21296,6 +21300,7 @@ async function runTool(name,a){
   if(guiaDe(o))return{ya_tiene_guia:guiaDe(o)};
   guideCard(o);return{tarjeta_mostrada:true,nota:'La tarjeta con los botones Cotizar y Crear guía ya está en el chat. NO digas que la guía fue creada; pídele al usuario que confirme con el botón.'};
  }
+ if(name==='mapa_entregas')return window.kpMapaEntregas?kpMapaEntregas.consulta(a):{error:'El Mapa de entregas no está disponible.'};
  if(name==='crear_orden')return crearOrden(a);
  if(name==='elegir_producto')return elegirProducto(a);
  if(name==='crear_cotizacion'){if(!window.kpCot||!kpCot.fill)return{error:'La pestaña Cotizaciones no está disponible.'};try{const r=kpCot.fill(a);setTab('cotizaciones');minimize();return Object.assign({ok:true,nota:'La cotización quedó armada en la pestaña Cotizaciones. Dile al usuario que la revise y use Descargar o Compartir PDF. Si hay productos sin precio, avísale.'},r)}catch(e){return{error:String(e.message||e)}}}
@@ -21488,7 +21493,7 @@ async function cambiarEntrega(a){
  if(!window.db||!window.firebase)return{ok:false,error:'Sin conexión a la base de datos.'};
  const ref=db.collection('orders').doc(String(o.id)),e=a.estado;let txt='';
  try{
-  if(e==='entregado'){await ref.update(kpPagoAlEntregar(o,{entregado:true,motivoNoEntrega:'',entregadoFecha:hoy()}));txt='Entregado y pagado ✅'}
+  if(e==='entregado'){await ref.update(kpPagoAlEntregar(o,{entregado:true,motivoNoEntrega:'',entregadoFecha:hoy(),entregadoAt:new Date().toISOString()}));txt='Entregado y pagado ✅'}
   else if(e==='pendiente'){await ref.update({entregado:null,motivoNoEntrega:'',entregadoFecha:firebase.firestore.FieldValue.delete()});txt='Vuelve a pendiente'}
   else if(e==='no_entregado'){
    if(!a.motivo)return{ok:false,error:'Pregúntale al usuario por qué no se entregó.'};
@@ -21608,7 +21613,7 @@ function mikePlanEditar(o,c){
   des.push('método de pago: '+pay);
  }
  if(c.estado_entrega!==undefined){const e=c.estado_entrega;
-  if(e==='entregado'){u.entregado=true;u.entregadoFecha=hoy();u.motivoNoEntrega='';kpPagoAlEntregar({...o,...u},u);}
+  if(e==='entregado'){u.entregado=true;u.entregadoFecha=hoy();u.entregadoAt=new Date().toISOString();u.motivoNoEntrega='';kpPagoAlEntregar({...o,...u},u);}
   else if(e==='pendiente'){u.entregado=null;del('entregadoFecha');u.motivoNoEntrega='';}
   else if(e==='no_entregado'){u.entregado=false;}
   else throw Error('Estado de entrega inválido.');
@@ -24381,37 +24386,92 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
 </style>
 <script id="kp-devoluciones-no-recibidas">
 (function(){
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const r2=x=>Math.round((Math.max(0,Number(x)||0)+Number.EPSILON)*100)/100;
+ const money=n=>kpMoneda()+' '+r2(n).toLocaleString('es-HN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const canReturn=()=>!!(window.CURRENT_USER?.esAdmin||window.CURRENT_USER?.esEncargadoEnvios);
+ if(!document.getElementById('kpdv-css')){const st=document.createElement('style');st.id='kpdv-css';st.textContent=`
+ .kpdv-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px}
+ .kpdv-seg button{font:inherit;font-size:12px;font-weight:700;line-height:1.25;padding:10px 6px;border-radius:11px;border:1px solid #39425c;background:#101829;color:#c9cfe2;cursor:pointer}
+ .kpdv-seg button.on{background:#3a2c18;border-color:#e5ab70;color:#ffd9aa}
+ .kpdv-sum{margin:12px 0;border:1px solid #39425c;border-radius:12px;background:#0f1626;overflow:hidden}
+ .kpdv-sum div{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;font-size:13px;color:#c9cfe2;border-bottom:1px solid #252f47}
+ .kpdv-sum div:last-child{border-bottom:0}
+ .kpdv-sum b{color:#f4f5ff;white-space:nowrap}
+ .kpdv-sum .key{background:#1d2a1f}.kpdv-sum .key b{color:#7ee2a8}
+ .kpdv-hint{font-size:12px;color:#aab3cb;margin:8px 0 0}
+ `;document.head.appendChild(st);}
  window.kpRastreoDevolucionAbrir=function(id){
   const o=(window.ORDERS||[]).find(x=>String(x.id)===String(id));if(!o){toast('No encontré esa orden');return;}
-  if(!(window.CURRENT_USER?.esAdmin||window.CURRENT_USER?.esEncargadoEnvios)){toast('No tenés permiso para registrar devoluciones');return;}
+  if(!canReturn()){toast('No tenés permiso para registrar devoluciones');return;}
   document.querySelector('#kpDevForm')?.remove();
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const div=document.createElement('div');div.className='kp-dev-form';div.id='kpDevForm';
-  const current=o.kpDevolucion||{};
-  const actualCobrado=kpDevCobradoConfirmado({...o,kpDevolucionNoRecibida:true}),actualReembolsado=kpDevReembolsado({...o,kpDevolucionNoRecibida:true});
+  const total=r2(totalOrden(o)),editing=kpNoRecibido(o),current=o.kpDevolucion||{};
+  const cob0=editing?kpDevCobradoConfirmado({...o,kpDevolucionNoRecibida:true}):kpDevCobradoConfirmado({...o,kpDevolucionNoRecibida:true,kpDevolucion:{}});
+  const ref0=editing?kpDevReembolsado({...o,kpDevolucionNoRecibida:true}):0;
+  let mode=ref0<=0?'ninguno':(ref0>=cob0-.004&&cob0>0?'total':'parcial');
+  const extra=kpReembolsoTotal(o);
   const reasons=['Cliente rechazó el paquete','Cliente no retiró el paquete','Dirección incorrecta','No se logró contactar al cliente','Paquete retornado por paquetería','Otro motivo'];
-  div.innerHTML=`<div class="kp-dev-dialog" role="dialog" aria-modal="true" aria-label="Registrar devolución"><h2 style="margin:0 0 6px">${kpNoRecibido(o)?'Editar devolución':'Registrar devolución'}</h2><p><b>Orden #${esc(window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):o.id)}</b> · ${esc(o.cliente||'')}</p><label>Motivo del paquete no recibido<select id="kpDevReason">${reasons.map(r=>`<option ${current.motivo===r?'selected':''}>${esc(r)}</option>`).join('')}</select></label><label>Dinero que el cliente sí pagó (confirmado)<input type="number" id="kpDevCollected" min="0" step="0.01" value="${actualCobrado.toFixed(2)}"></label><label>Dinero devuelto o reembolsado al cliente<input type="number" id="kpDevRefunded" min="0" step="0.01" value="${actualReembolsado.toFixed(2)}"></label><div id="kpDevNetLabel" style="padding:10px;background:#252037;border-radius:9px">Cobro retenido que contará en reportes: ${kpMoneda()} ${(actualCobrado-actualReembolsado).toFixed(2)}</div><label>Nota (obligatoria)<textarea id="kpDevNote" rows="4" maxlength="1200" placeholder="Explicá por qué el cliente no recibió el paquete">${esc(current.nota||'')}</textarea></label><p>La orden se conservará. Solo el importe cobrado y no reembolsado se contabilizará en Reportes y Excel; el resto del total original no. No se modificará el inventario ni se reembolsará dinero automáticamente.</p><div class="kp-dev-actions"><button type="button" class="btn" id="kpDevCancel">Cancelar</button><button type="button" class="btn primary" id="kpDevSave">${kpNoRecibido(o)?'Guardar cambios':'Confirmar devolución'}</button></div></div>`;
+  const div=document.createElement('div');div.className='kp-dev-form';div.id='kpDevForm';
+  div.innerHTML=`<div class="kp-dev-dialog" role="dialog" aria-modal="true" aria-label="Registrar devolución">
+   <h2 style="margin:0 0 6px">${editing?'Editar devolución':'Registrar devolución'}</h2>
+   <p style="margin:0"><b>Orden #${esc(window.kpNumeroOrdenSafe?kpNumeroOrdenSafe(o):o.id)}</b> · ${esc(o.cliente||'')}</p>
+   <label>Motivo<select id="kpDevReason">${reasons.map(r=>`<option ${current.motivo===r?'selected':''}>${esc(r)}</option>`).join('')}</select></label>
+   <label>Dinero que el cliente sí pagó (confirmado)<input type="number" id="kpDevCollected" min="0" max="${total}" step="0.01" value="${cob0.toFixed(2)}"></label>
+   <div style="font-size:13px;color:#b6bdd0">¿Se devolvió dinero al cliente?</div>
+   <div class="kpdv-seg" id="kpDevMode"><button type="button" data-m="ninguno">No, nos quedamos lo cobrado</button><button type="button" data-m="parcial">Sí, una parte</button><button type="button" data-m="total">Sí, todo lo cobrado</button></div>
+   <label id="kpDevRefWrap" style="display:none">Monto devuelto al cliente<input type="number" id="kpDevRefunded" min="0" step="0.01" value="${ref0.toFixed(2)}"></label>
+   <div class="kpdv-sum" id="kpDevSum"></div>
+   <label>Nota (obligatoria)<textarea id="kpDevNote" rows="3" maxlength="1200" placeholder="Explicá qué pasó con el paquete y con el dinero">${esc(current.nota||'')}</textarea></label>
+   <p class="kpdv-hint">La orden queda como <b>no entregada · devolución</b>, conserva su número y deja de generar avisos de retraso. Solo cuenta en reportes lo que nos quedamos.</p>
+   <div class="kp-dev-actions"><button type="button" class="btn" id="kpDevCancel">Cancelar</button>${editing?'<button type="button" class="btn red" id="kpDevRemove">Quitar devolución</button>':''}<button type="button" class="btn primary" id="kpDevSave">Guardar devolución</button></div>
+  </div>`;
   document.body.appendChild(div);
-  const updateRetained=()=>{const a=Number(div.querySelector('#kpDevCollected').value)||0,b=Number(div.querySelector('#kpDevRefunded').value)||0;div.querySelector('#kpDevNetLabel').textContent='Cobro retenido que contará en reportes: '+kpMoneda()+' '+Math.max(0,a-b).toFixed(2)};
-  div.querySelector('#kpDevCollected').addEventListener('input',updateRetained);div.querySelector('#kpDevRefunded').addEventListener('input',updateRetained);
-  div.querySelector('#kpDevCancel').onclick=()=>div.remove();
+  const $=q=>div.querySelector(q);
+  const collected=()=>Math.min(total,r2($('#kpDevCollected').value));
+  const refunded=()=>{const c=collected();if(mode==='ninguno')return 0;if(mode==='total')return c;return Math.min(c,r2($('#kpDevRefunded').value));};
+  const paint=()=>{
+   const c=collected(),r=refunded(),keep=r2(c-r),real=Math.max(0,r2(keep-extra));
+   div.querySelectorAll('#kpDevMode button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
+   $('#kpDevRefWrap').style.display=mode==='parcial'?'grid':'none';
+   if(mode==='total')$('#kpDevRefunded').value=c.toFixed(2);
+   $('#kpDevSum').innerHTML=`<div><span>Total de la orden</span><b>${money(total)}</b></div><div><span>Cobrado</span><b>${money(c)}</b></div><div><span>Devuelto al cliente</span><b>${money(r)}</b></div><div><span>Nunca se cobró (no cuenta)</span><b>${money(total-c)}</b></div>${extra>0?`<div><span>Reembolsos aparte (botón Reembolso)</span><b>− ${money(extra)}</b></div>`:''}<div class="key"><span>Nos quedamos · cuenta en reportes</span><b>${money(real)}</b></div>`;
+  };
+  div.querySelectorAll('#kpDevMode button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;if(mode==='parcial'&&r2($('#kpDevRefunded').value)<=0)$('#kpDevRefunded').value='';paint();});
+  $('#kpDevCollected').addEventListener('input',paint);$('#kpDevRefunded').addEventListener('input',paint);
+  $('#kpDevCancel').onclick=()=>div.remove();
   div.addEventListener('click',e=>{if(e.target===div)div.remove()});
-  div.querySelector('#kpDevSave').onclick=async()=>{
-   const motivo=div.querySelector('#kpDevReason').value,nota=div.querySelector('#kpDevNote').value.trim();
-   const cobrado=Number(div.querySelector('#kpDevCollected').value),reembolsado=Number(div.querySelector('#kpDevRefunded').value);
-   const total=Math.max(0,Number(totalOrden(o))||0);
-   if(!Number.isFinite(cobrado)||!Number.isFinite(reembolsado)||cobrado<0||reembolsado<0||cobrado>total+.001||reembolsado>cobrado+.001){toast('Revisá los cobros: no pueden superar el total de la orden y el reembolso no puede superar lo cobrado.');return;}
-   if(!nota){toast('Escribí la razón de la devolución');div.querySelector('#kpDevNote').focus();return;}
-   const btn=div.querySelector('#kpDevSave');btn.disabled=true;btn.textContent='Guardando…';
+  paint();
+  const finish=()=>{div.remove();if(typeof renderRastreosNacionales==='function'&&window.activeTab==='rastreosNacionales')renderRastreosNacionales();if(window.KP)KP._repSig='';try{render()}catch(e){}};
+  if($('#kpDevRemove'))$('#kpDevRemove').onclick=async()=>{
+   if(!confirm('¿Quitar la devolución? La orden vuelve a quedar pendiente de entrega.'))return;
+   const btn=$('#kpDevRemove');btn.disabled=true;
    try{
-    const payload={kpDevolucionNoRecibida:true,kpDevolucion:{tipo:'no_recibido',motivo,nota,estado:current.estado||'registrada',fecha:current.fecha||new Date().toISOString(),fechaActualizacion:new Date().toISOString(),usuario:window.CURRENT_USER?.nombre||'',montoOriginal:Number(totalOrden(o)||0),cobrado:Math.round(cobrado*100)/100,reembolsado:Math.round(reembolsado*100)/100},retrasado:false,retrasoCerradoPorDevolucion:true,retrasoCerradoFecha:new Date().toISOString()};
-    await db.collection('orders').doc(id).update(payload);
-    Object.assign(o,payload);div.remove();toast('Devolución registrada. Solo cuenta el cobro retenido: '+kpMoneda()+' '+kpDevRetenido(o).toFixed(2));
-    if(typeof renderRastreosNacionales==='function')renderRastreosNacionales();
-    if(window.KP)KP._repSig='';
+    await db.collection('orders').doc(String(id)).update({kpDevolucionNoRecibida:false,kpDevolucion:firebase.firestore.FieldValue.delete(),entregado:null,motivoNoEntrega:'',estadoEntrega:'pendiente',estadoEntregaTexto:'Pendiente'});
+    Object.assign(o,{kpDevolucionNoRecibida:false,entregado:null,motivoNoEntrega:'',estadoEntrega:'pendiente',estadoEntregaTexto:'Pendiente'});delete o.kpDevolucion;
+    toast('Devolución quitada. La orden volvió a pendiente.');finish();
+   }catch(e){console.error(e);toast('No se pudo quitar: '+(e.message||'error'));btn.disabled=false;}
+  };
+  $('#kpDevSave').onclick=async()=>{
+   const motivo=$('#kpDevReason').value,nota=$('#kpDevNote').value.trim(),c=collected(),r=refunded();
+   if(!Number.isFinite(c)||c<0||c>total+.001){toast('Lo cobrado no puede superar el total de la orden.');return;}
+   if(mode==='parcial'&&!(r>0)){toast('Escribí cuánto se devolvió al cliente.');$('#kpDevRefunded').focus();return;}
+   if(r>c+.001){toast('Lo devuelto no puede superar lo cobrado.');return;}
+   if(!nota){toast('Escribí la razón de la devolución');$('#kpDevNote').focus();return;}
+   const btn=$('#kpDevSave');btn.disabled=true;btn.textContent='Guardando…';
+   try{
+    const now=new Date().toISOString();
+    const dinero=r<=0?'no':(c>0&&r>=c-.004?'total':'parcial');
+    const base={kpDevolucionNoRecibida:true,kpDevolucion:{tipo:'no_recibido',motivo,nota,estado:current.estado||'registrada',fecha:current.fecha||now,fechaActualizacion:now,usuario:window.CURRENT_USER?.nombre||'',montoOriginal:total,cobrado:c,reembolsado:r2(r),dineroDevuelto:dinero,retenido:r2(c-r)},
+     entregado:false,motivoNoEntrega:'Devolución: '+motivo,estadoEntrega:'no_entregada',estadoEntregaTexto:'No entregada · Devolución',
+     retrasado:false,retrasoCerradoPorDevolucion:true,retrasoCerradoFecha:now};
+    await db.collection('orders').doc(String(id)).update({...base,entregadoFecha:firebase.firestore.FieldValue.delete(),entregadoAt:firebase.firestore.FieldValue.delete()});
+    Object.assign(o,base);delete o.entregadoFecha;delete o.entregadoAt;
+    toast('Devolución registrada. Nos quedamos '+money(Math.max(0,kpDevRetenido(o)-kpReembolsoTotal(o))));
+    finish();
    }catch(e){console.error(e);toast('No se pudo registrar la devolución: '+(e.message||'error'));btn.disabled=false;btn.textContent='Reintentar';}
   };
  };
+ window.kpDevolucionAbrir=window.kpRastreoDevolucionAbrir;
 })();
 </script>
 <!-- KPlace: reembolsos por orden y cierre de detalle al cambiar fecha -->
@@ -24439,9 +24499,10 @@ body:not(.kp-dark) .kp-settings-org-sheet .kpso-icon{background:#e9defb;color:#7
  const prev=window.orderActions;
  if(typeof prev==='function')window.orderActions=function(o){
    let html=prev.apply(this,arguments);
-   if(!access()||!o||!o.id)return html;
+   const canRet=!!(window.CURRENT_USER&&(CURRENT_USER.esAdmin||CURRENT_USER.esEncargadoEnvios));
+    if((!access()&&!canRet)||!o||!o.id)return html;
    const id=encodeURIComponent(String(o.id)),total=kpReembolsoTotal(o),label=kpEstadoReembolso(o);
-   html+=`<div class="btnrow kp-refund-actions" style="margin-top:10px"><button type="button" class="btn sm" onclick="window.kpOpenRefundOrder(decodeURIComponent('${id}'))">↩ Registrar reembolso</button>${label?`<span class="kp-refund-note" style="margin:0">${safe(label)} · ${safe(kpMoneda())} ${total.toFixed(2)}</span>`:''}</div>`;
+   html+=`<div class="btnrow kp-refund-actions" style="margin-top:10px">${canRet?`<button type="button" class="btn sm" style="border-color:#d0a060;color:#ffd59a" onclick="window.kpRastreoDevolucionAbrir(decodeURIComponent('${id}'))">${kpNoRecibido(o)?'📝 Ver / editar devolución':'↩️ Registrar devolución'}</button>`:''}${access()?`<button type="button" class="btn sm" onclick="window.kpOpenRefundOrder(decodeURIComponent('${id}'))">💸 Registrar reembolso</button>`:''}${label?`<span class="kp-refund-note" style="margin:0">${safe(label)} · ${safe(kpMoneda())} ${total.toFixed(2)}</span>`:''}</div>`;
    if(total)html+=`<div class="kp-refund-note"><b>Historial de reembolsos</b>${(o.kpReembolsos||[]).map(r=>`<div style="margin-top:7px">${safe(r.fecha||'')} · ${safe(r.motivo||'')} · ${safe(kpMoneda())} ${amount(r.monto).toFixed(2)}<br>${safe(r.nota||'')}</div>`).join('')}</div>`;
    return html;
  };
@@ -26241,7 +26302,7 @@ function parse(b){
   var label=[].slice.call(b.childNodes).filter(function(n){return n.nodeType===3}).map(function(n){return n.textContent}).join('').replace(/\s+/g,' ').trim()||b.textContent.replace(sp?sp.textContent:'','').replace(/\s+/g,' ').trim();
   return {ic:ic,label:label};
 }
-var SECMAP={inicio:'inicio',hoy:'ordenes',principal:'chat',admin:'usuarios',reportes:'reportes',boxful:'envios',rastreosNacionales:'rastreos',repartidor:'repartidores',adminOrdersInventory:'inventario',cotizaciones:'cotizaciones'};
+var SECMAP={inicio:'inicio',hoy:'ordenes',principal:'chat',admin:'usuarios',reportes:'reportes',boxful:'envios',rastreosNacionales:'rastreos',repartidor:'repartidores',adminOrdersInventory:'inventario',cotizaciones:'cotizaciones',mapaEntregas:'mapaEntregas'};
 var lastClick=-1;
 function activeIdx(all){
   var t=String(window.activeTab||''),idx=-1;
@@ -27692,5 +27753,237 @@ html.kp-day body #kpb-overlay #kpb-panel .kpb-card,html.kp-day body #kpb-overlay
 html.kp-day body #kpf-overlay #kpf-panel form input,html.kp-day body #kpf-overlay #kpf-panel form select,html.kp-day body #kpf-overlay #kpf-panel form textarea,html.kp-day body #kpb-overlay #kpb-panel .kpb-card input,html.kp-day body #kpb-overlay #kpb-panel .kpb-card select,html.kp-day body #kpb-overlay #kpb-panel .kpb-card textarea,html.kp-day body #kpb-overlay #kpb-panel .kpb-dd-btn{border:1px solid #dbdee6!important}
 html.kp-day body{background-color:#f3f5fb!important}
 </style>
+<style id="kp-mapa-entregas-css">
+.kpme{max-width:920px;margin:0 auto;padding:4px 2px 90px;color:#f1f4ff}
+.kpme *{box-sizing:border-box}
+.kpme-kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9aa6c8;font-weight:800}
+.kpme h2{margin:4px 0 4px;font-size:22px;color:#f6f7ff}
+.kpme-sub{margin:0 0 12px;font-size:13px;color:#aab3cb;line-height:1.4}
+.kpme-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:10px}
+.kpme-kpi{background:#121b2d;border:1px solid #2c3754;border-radius:14px;padding:12px}
+.kpme-kpi small{display:block;font-size:11px;color:#9aa6c8;margin-bottom:3px}
+.kpme-kpi b{font-size:17px;color:#f6f7ff}
+.kpme-note{font-size:12px;color:#ffd9aa;background:#2f2619;border:1px solid #6b5230;border-radius:12px;padding:9px 11px;margin-bottom:10px;line-height:1.4}
+.kpme-q{width:100%;padding:12px;border-radius:12px;border:1px solid #39425c;background:#101829;color:#f4f5ff;font:inherit;margin-bottom:10px}
+.kpme-dep{background:#121b2d;border:1px solid #2c3754;border-radius:16px;margin-bottom:9px;overflow:hidden}
+.kpme-dep.nodata{opacity:.72}
+.kpme-dephead,.kpme-munhead{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:11px;width:100%;padding:13px;cursor:pointer;color:#f1f4ff}
+.kpme-rank{flex:none;width:28px;height:28px;border-radius:9px;background:#22304f;color:#a9c0ff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}
+.kpme-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.kpme-name b{font-size:15px}.kpme-name small{font-size:12px;color:#9aa6c8}
+.kpme-chev{color:#9aa6c8;font-size:14px}
+.kpme-depbody{padding:0 12px 12px;border-top:1px solid #252f47}
+.kpme-chips{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0}
+.kpme-chip{font-size:12px;background:#1a2540;border:1px solid #33416a;color:#d6defa;border-radius:999px;padding:5px 10px}
+.kpme-chip b{color:#fff}
+.kpme-mun{background:#0f1626;border:1px solid #252f47;border-radius:12px;margin-top:7px;overflow:hidden}
+.kpme-mun.nodata{opacity:.6}
+.kpme-munhead{padding:11px 12px}
+.kpme-munhead .kpme-name b{font-size:14px}
+.kpme-pct{font-weight:800;font-size:13px;color:#7ee2a8;white-space:nowrap}
+.kpme-pct.low{color:#ffb4bd}.kpme-pct.mid{color:#ffd59a}
+.kpme-det{padding:2px 12px 13px;border-top:1px solid #252f47;font-size:13px;color:#c9cfe2}
+.kpme-insight{margin:11px 0;padding:10px 12px;border-radius:11px;background:#1d2a1f;border:1px solid #2f5a3c;color:#c9f3d9;line-height:1.4}
+.kpme-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.kpme-grid3 div{background:#141d33;border-radius:10px;padding:9px;text-align:center}
+.kpme-grid3 b{display:block;font-size:16px;color:#fff}.kpme-grid3 small{font-size:11px;color:#9aa6c8}
+.kpme-h{margin:12px 0 6px;font-size:12px;font-weight:800;color:#9aa6c8;text-transform:uppercase;letter-spacing:.05em}
+.kpme-bar{display:grid;grid-template-columns:34px 1fr 26px;align-items:center;gap:8px;margin:4px 0;font-size:12px}
+.kpme-bar i{display:block;height:9px;border-radius:6px;background:#2d3b61}
+.kpme-bar i.top{background:#5ed49a}
+.kpme-hours{display:flex;align-items:flex-end;gap:3px;height:74px;margin:4px 0 2px}
+.kpme-hc{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
+.kpme-hc i{display:block;width:100%;border-radius:4px 4px 0 0;background:#2d3b61;min-height:2px}
+.kpme-hc i.top{background:#5ed49a}
+.kpme-hc span{font-size:9px;color:#8793b6}
+.kpme-co{background:#141d33;border:1px solid #2c3754;border-radius:12px;padding:10px 12px;margin-top:8px}
+.kpme-cohead{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#f1f4ff}
+.kpme-empty{padding:26px;text-align:center;color:#9aa6c8}
+.kpme-hint{font-size:11px;color:#8793b6;margin-top:3px}
+</style>
+<script id="kp-mapa-entregas">
+(function(){
+var DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+var DC=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+var ORD=[1,2,3,4,5,6,0];
+var UI={open:{},openM:{},q:''};
+var ALIAS={'distrito central':'Tegucigalpa','comayaguela':'Tegucigalpa'};
+function norm(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function cov(){try{return COBERTURA_HN||{}}catch(e){return {}}}
+function esNac(o){return o.tipoEntrega==='nacional'||o.tipoEntrega==='roatan'||(o.tipoEntrega==='programada'&&(o.programadaTipo==='nacional'||o.programadaTipo==='roatan'))}
+function esTegus(o){var t=o.tipoEntrega==='tegucigalpa'||(o.tipoEntrega==='programada'&&o.programadaTipo==='tegucigalpa');if(!t&&typeof kpIsTegusShip==='function'){try{t=!!kpIsTegusShip(o)}catch(e){}}return t}
+function depCanon(d){var n=norm(d);if(!n)return '';var k=Object.keys(cov());for(var i=0;i<k.length;i++)if(norm(k[i])===n)return k[i];return String(d).trim()}
+function place(o){
+ var C=cov(),dep=depCanon(o.departamento),mun=String(o.municipio||'').trim(),r;
+ if(!dep&&mun){var hits=Object.keys(C).filter(function(d){return C[d].some(function(m){return norm(m)===norm(mun)})});
+  if(hits.length===1)dep=hits[0];
+  else if(hits.length>1){try{r=buscarMunicipioEnDireccion(o.direccion||'');if(r&&hits.indexOf(r.departamento)>-1)dep=r.departamento}catch(e){}if(!dep)dep=hits[0]}}
+ if(!dep&&!mun){try{r=buscarMunicipioEnDireccion(o.direccion||'');if(r){dep=r.departamento;mun=r.municipio}}catch(e){}}
+ if(!dep&&esTegus(o))dep='Francisco Morazán';
+ if(!dep)return null;
+ if(!mun&&esTegus(o))mun='Tegucigalpa';
+ if(ALIAS[norm(mun)])mun=ALIAS[norm(mun)];
+ var mm=(C[dep]||[]).filter(function(m){return norm(m)===norm(mun)})[0];
+ return {dep:dep,mun:mm||mun||'(sin municipio)'};
+}
+function ymd(s){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||''));return m?new Date(+m[1],+m[2]-1,+m[3]):null}
+var DK=['createdAt','date','timestamp','dateTime','datetime','fecha','updatedAt','statusDate','time','at','created_at','updated_at'];
+function itemDate(x){for(var i=0;i<DK.length;i++){var v=x[DK[i]];if(v){var d=new Date(v);if(!isNaN(d)&&d.getFullYear()>2000){return {d:d,t:!(typeof v==='string'&&!/\d:\d/.test(v))}}}}return null}
+function isDeliv(x){var t=String(x.statusDescription||x.description||x.status||x.estado||x.statusName||'');return /entreg|deliver/i.test(t)&&!/no\s*entreg|not\s*deliver|undeliver/i.test(t)}
+function walk(x,dep){if(!x||typeof x!=='object'||dep>6)return null;var r,i;
+ if(Array.isArray(x)){for(i=x.length-1;i>=0;i--){r=walk(x[i],dep+1);if(r)return r}return null}
+ if(isDeliv(x)){r=itemDate(x);if(r&&r.t)return r}
+ var k=Object.keys(x);for(i=0;i<k.length;i++){if(typeof x[k[i]]==='object'){r=walk(x[k[i]],dep+1);if(r)return r}}return null}
+window.kpEntregaTs=function(data){try{var r=walk(data,0);return r?r.d.toISOString():''}catch(e){return ''}};
+function deliveredAt(o){
+ var ts=o.entregadoAt||o.boxfulEntregadoAt,d;
+ if(ts){d=new Date(ts);if(!isNaN(d))return {d:d,t:true}}
+ var sh=o.boxfulShipment&&o.boxfulShipment.statusHistory;
+ if(Array.isArray(sh)){var r=walk(sh,0);if(r)return r}
+ var f=ymd(o.entregadoFecha||'');return f?{d:f,t:false}:null}
+function courier(o){try{if(esTegus(o)&&!esNac(o))return '';return (typeof kpCourierName==='function'&&kpCourierName(o))||'Boxful'}catch(e){return ''}}
+function mk(n){return {n:n,tot:0,ok:0,dev:0,prob:0,days:[0,0,0,0,0,0,0],hours:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],nh:0,lead:[],cour:{},co:{},mot:{},m:{}}}
+function add(a,r){a.tot++;
+ if(r.ok){a.ok++;if(r.day!=null)a.days[r.day]++;if(r.hour!=null){a.hours[r.hour]++;a.nh++}if(r.lead!=null)a.lead.push(r.lead)}
+ else if(r.dev){a.dev++;var mt=(typeof kpMotivoDevolucion==='function'&&kpMotivoDevolucion(r.o))||'Sin motivo';a.mot[mt]=(a.mot[mt]||0)+1}
+ else if(r.prob)a.prob++;
+ if(r.cour){a.cour[r.cour]=(a.cour[r.cour]||0)+1;var c=a.co[r.cour]||(a.co[r.cour]={tot:0,ok:0,dev:0,prob:0,days:[0,0,0,0,0,0,0],lead:[],hours:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],nh:0});c.tot++;
+  if(r.ok){c.ok++;if(r.hour!=null){c.hours[r.hour]++;c.nh++}if(r.day!=null)c.days[r.day]++;if(r.lead!=null)c.lead.push(r.lead)}else if(r.dev)c.dev++;else if(r.prob)c.prob++}}
+function pool(){var out=[];(window.ORDERS||[]).forEach(function(o){
+ if(!o||o.eliminadoTs||(!esNac(o)&&!esTegus(o)))return;
+ if(typeof kpEsCancelada==='function'&&kpEsCancelada(o))return;
+ var p=place(o);if(!p)return;
+ var dev=typeof kpNoRecibido==='function'&&kpNoRecibido(o),ok=!dev&&o.entregado===true;
+ var r={o:o,dep:p.dep,mun:p.mun,ok:ok,dev:dev,prob:!ok&&!dev&&o.boxfulAlert==='problema',cour:courier(o)};
+ if(ok){var da=deliveredAt(o);if(da){r.day=da.d.getDay();r.hour=da.t?da.d.getHours():null;
+  var cr=ymd(typeof kpDiaCreacion==='function'?kpDiaCreacion(o):o.fecha);
+  if(cr){var n=Math.round((Date.UTC(da.d.getFullYear(),da.d.getMonth(),da.d.getDate())-Date.UTC(cr.getFullYear(),cr.getMonth(),cr.getDate()))/864e5);if(n>=0&&n<60)r.lead=n}}}
+ out.push(r)});return out}
+function agg(){var C=cov(),D={};
+ Object.keys(C).forEach(function(d){D[d]=mk(d);C[d].forEach(function(m){D[d].m[m]=mk(m)})});
+ pool().forEach(function(r){var d=D[r.dep]||(D[r.dep]=mk(r.dep)),m=d.m[r.mun]||(d.m[r.mun]=mk(r.mun));add(d,r);add(m,r)});
+ return D}
+function best(a){var bi=-1,bv=0;a.forEach(function(v,i){if(v>bv){bv=v;bi=i}});return bi}
+function bestWin(h){var bw=-1,bv=0;for(var i=0;i<23;i++){var v=h[i]+h[i+1];if(v>bv){bv=v;bw=i}}return bw}
+function fmtH(h){h=h%24;return (h%12||12)+':00 '+(h>=12?'pm':'am')}
+function winLbl(i){return fmtH(i)+' – '+fmtH(i+2)}
+function resolved(a){return a.ok+a.dev+a.prob}
+function eff(a){var r=resolved(a);return r?Math.round(a.ok*100/r):null}
+function avg(a){return a.lead.length?Math.round(a.lead.reduce(function(s,x){return s+x},0)/a.lead.length*10)/10:null}
+function top(o){var k=Object.keys(o).sort(function(a,b){return o[b]-o[a]});return k.length?k[0]:''}
+function sortKeys(D){return Object.keys(D).sort(function(a,b){return (D[b].tot-D[a].tot)||a.localeCompare(b,'es')})}
+function sortM(d){return Object.keys(d.m).sort(function(a,b){return (d.m[b].tot-d.m[a].tot)||a.localeCompare(b,'es')})}
+function info(a,fb){var pd=pickDay(a,fb),ph=pickHour(a,fb),bd=best(a.days),bw=a.nh?bestWin(a.hours):-1;
+ return {nombre:a.n,envios:a.tot,entregados:a.ok,devoluciones:a.dev,con_problema:a.prob,pendientes:a.tot-a.ok-a.dev-a.prob,
+  porcentaje_entrega:eff(a),dia_mas_probable:pd?DIAS[pd.d]+(pd.s?' (tendencia '+pd.s+')':''):null,horario_mas_probable:ph?winLbl(ph.w)+(ph.s?' (tendencia '+ph.s+')':''):null,
+  entregas_con_hora_registrada:a.nh,dias_promedio_entrega:avg(a),paqueteria_principal:top(a.cour)||null,motivo_devolucion_principal:top(a.mot)||null,
+  entregas_por_dia:DC.reduce(function(o,n,i){o[n]=a.days[i];return o},{}),
+  mejor_empresa:(function(){var c=companies(a);return c.length>1&&c[0].res>0?c[0].n:null})(),
+  empresas:companies(a).map(function(c){return {empresa:c.n,envios:c.tot,entregados:c.ok,devoluciones:c.dev,porcentaje_entrega:c.eff,dias_promedio:c.avg,dia_mas_probable:c.bd>=0?DIAS[c.bd]:null,hora_mas_probable:c.bw>=0?winLbl(c.bw):null}})}}
+function pctCls(p){return p==null?'':(p<60?' low':(p<85?' mid':''))}
+var CUR={D:null,T:null};
+function fbFor(k){return [{a:CUR.D[k],s:'de '+k},{a:CUR.T,s:'general de todos los envíos'}]}
+function pickDay(a,fb){var l=[{a:a,s:''}].concat(fb||[]);for(var i=0;i<l.length;i++){var b=best(l[i].a.days);if(b>=0&&l[i].a.days[b])return {d:b,s:l[i].s,days:l[i].a.days,n:l[i].a.ok}}return null}
+function pickHour(a,fb){var l=[{a:a,s:''}].concat(fb||[]);for(var i=0;i<l.length;i++){if(l[i].a.nh){var w=bestWin(l[i].a.hours);if(w>=0&&(l[i].a.hours[w]+l[i].a.hours[w+1]))return {w:w,s:l[i].s,hours:l[i].a.hours,n:l[i].a.nh}}}return null}
+function insight(a,fb){var pd=pickDay(a,fb),ph=pickHour(a,fb);
+ if(!pd&&!ph)return 'Todavía no hay entregas completadas en el sistema para calcular día y hora. Se llenará solo con la primera.';
+ var p=[];if(pd)p.push('lo más probable es que entreguen el <b>'+DIAS[pd.d].toLowerCase()+'</b>');if(ph)p.push('entre las <b>'+winLbl(ph.w)+'</b>');
+ var own=(!pd||!pd.s)&&(!ph||!ph.s),src=(pd&&pd.s)||(ph&&ph.s)||'';
+ return (own?'Según '+a.ok+' entrega'+(a.ok===1?'':'s')+' aquí, ':(pd&&pd.s&&ph&&ph.s&&pd.s!==ph.s?'Con los datos disponibles, ':'Aún hay pocos datos aquí; con la tendencia '+src+', '))+p.join(' ')+'.'+(own&&a.ok<5?' Son pocos datos: se afinará con más entregas.':'')}
+function dayBars(a){var mx=Math.max.apply(null,a.days.concat([1])),bd=best(a.days);
+ return ORD.map(function(d){var c=a.days[d];return '<div class="kpme-bar"><span>'+DC[d]+'</span><i'+(d===bd&&c?' class="top"':'')+' style="width:'+(c?Math.max(4,Math.round(c*100/mx)):2)+'%"></i><span>'+c+'</span></div>'}).join('')}
+function hoursChart(a){var sl=a.hours.slice(6,22),mx=Math.max.apply(null,sl.concat([1])),s='';
+ for(var h=6;h<=21;h++){var c=a.hours[h];s+='<div class="kpme-hc" title="'+fmtH(h)+': '+c+'"><i'+(c===mx&&c?' class="top"':'')+' style="height:'+(c?Math.max(8,Math.round(c*100/mx)):2)+'%"></i><span>'+(h%12||12)+'</span></div>'}
+ return '<div class="kpme-hours">'+s+'</div><div class="kpme-hint">Hora del día · 6 am → 9 pm</div>'}
+function companies(a){return Object.keys(a.co).map(function(n){var c=a.co[n],r=c.ok+c.dev+c.prob,bd=best(c.days);
+ return {n:n,tot:c.tot,ok:c.ok,dev:c.dev,res:r,eff:r?Math.round(c.ok*100/r):null,avg:c.lead.length?Math.round(c.lead.reduce(function(s,x){return s+x},0)/c.lead.length*10)/10:null,bd:bd>=0&&c.days[bd]?bd:-1,bw:(c.nh&&bestWin(c.hours)>=0&&(c.hours[bestWin(c.hours)]+c.hours[bestWin(c.hours)+1])?bestWin(c.hours):-1),days:c.days}})
+ .sort(function(x,y){return ((y.eff==null?-1:y.eff)-(x.eff==null?-1:x.eff))||((x.avg==null?99:x.avg)-(y.avg==null?99:y.avg))||(y.ok-x.ok)})}
+function dayMini(d){var mx=Math.max.apply(null,d.concat([1])),bd=best(d),s='';
+ ORD.forEach(function(i){var c=d[i];s+='<div class="kpme-hc" title="'+DIAS[i]+': '+c+'"><i'+(i===bd&&c?' class="top"':'')+' style="height:'+(c?Math.max(10,Math.round(c*100/mx)):3)+'%"></i><span>'+DC[i].charAt(0)+'</span></div>'});
+ return '<div class="kpme-hours" style="height:46px">'+s+'</div>'}
+function coHtml(a,pd,ph){var cs=companies(a);if(!cs.length)return '';
+ var h='<div class="kpme-h">Empresas de envío</div>',lead=cs[0];
+ if(cs.length>1&&lead.res>0)h+='<div class="kpme-insight">Mejor opción aquí: <b>'+esc(lead.n)+'</b> ('+lead.eff+'% de entrega'+(lead.avg!=null?', promedio '+lead.avg+' días':'')+').'+(lead.res<3?' Todavía son pocos envíos, tomalo con calma.':'')+'</div>';
+ else if(cs.length===1)h+='<div class="kpme-hint" style="margin:0 0 6px">Solo se ha usado '+esc(lead.n)+' en este lugar; todavía no hay con qué comparar.</div>';
+ cs.forEach(function(c,i){
+  var dTxt=c.bd>=0?DIAS[c.bd]:(pd?DIAS[pd.d]+' (tendencia del lugar)':''),hTxt=c.bw>=0?winLbl(c.bw):(ph?winLbl(ph.w)+' (tendencia del lugar)':'');
+  h+='<div class="kpme-co"><div class="kpme-cohead"><b>'+(i===0&&cs.length>1&&c.res>0?'⭐ ':'')+esc(c.n)+'</b><span class="kpme-pct'+pctCls(c.eff)+'">'+(c.eff==null?'—':c.eff+'%')+'</span></div>'+
+  '<div class="kpme-hint">'+c.tot+' envío'+(c.tot===1?'':'s')+' · '+c.ok+' entregado'+(c.ok===1?'':'s')+(c.avg!=null?' · promedio '+c.avg+' días':'')+(c.dev?' · '+c.dev+' devolución'+(c.dev===1?'':'es'):'')+'</div>'+
+  '<div class="kpme-chips" style="margin:7px 0 2px">'+(dTxt?'<span class="kpme-chip">Día más probable: <b>'+dTxt+'</b></span>':'')+(hTxt?'<span class="kpme-chip">Hora más probable: <b>'+hTxt+'</b></span>':'')+'</div>'+
+  (c.bd>=0?dayMini(c.days):'')+'</div>'});
+ return h}
+function detail(a,fb){var pd=pickDay(a,fb),ph=pickHour(a,fb),e=avg(a),p=eff(a),pend=a.tot-a.ok-a.dev-a.prob;
+ var h='<div class="kpme-det"><div class="kpme-insight">'+insight(a,fb)+'</div>'+
+ '<div class="kpme-grid3"><div><b>'+a.ok+' / '+a.tot+'</b><small>Entregados</small></div><div><b>'+(e==null?'—':e+' d')+'</b><small>Prom. de entrega</small></div><div><b>'+a.dev+'</b><small>Devoluciones</small></div></div>'+
+ '<div class="kpme-h">Día de entrega</div>'+(pd?dayBars(pd)+(pd.s?'<div class="kpme-hint">Tendencia '+esc(pd.s)+' (aún sin entregas con día aquí).</div>':''):'<div class="kpme-hint">Sin entregas todavía.</div>')+'<div class="kpme-h">Horario</div>';
+ h+=ph?hoursChart(ph)+'<div class="kpme-hint">'+(ph.s?'Tendencia '+esc(ph.s)+': aún no hay horas registradas aquí.':'Basado en '+ph.n+' entrega'+(ph.n===1?'':'s')+' con hora registrada.')+'</div>':'<div class="kpme-hint">Aún no hay horas registradas. Desde ahora cada entrega nueva guarda su hora.</div>';
+ h+=coHtml(a,pd,ph);h+='<div class="kpme-h">Más información</div><div class="kpme-chips">';
+ if(top(a.cour))h+='<span class="kpme-chip">Paquetería: <b>'+esc(top(a.cour))+'</b></span>';
+ if(pend>0)h+='<span class="kpme-chip">En camino / pendientes: <b>'+pend+'</b></span>';
+ if(a.prob)h+='<span class="kpme-chip">Con problema: <b>'+a.prob+'</b></span>';
+ if(top(a.mot))h+='<span class="kpme-chip">Motivo de devolución: <b>'+esc(top(a.mot))+'</b></span>';
+ if(p!=null)h+='<span class="kpme-chip">Efectividad: <b>'+p+'%</b></span>';
+ return h+'</div></div>'}
+function summary(d){if(!d.tot)return '';var bd=best(d.days),bw=d.nh?bestWin(d.hours):-1,e=avg(d),c='',cs=companies(d);
+ if(cs.length>1&&cs[0].res>0)c+='<span class="kpme-chip">Mejor empresa: <b>'+esc(cs[0].n)+'</b></span>';
+ var sfb=CUR.T?[{a:CUR.T,s:'general'}]:[],pd=pickDay(d,sfb),ph=pickHour(d,sfb);
+ if(pd)c+='<span class="kpme-chip">Mejor día: <b>'+DIAS[pd.d]+(pd.s?' (general)':'')+'</b></span>';
+ if(ph)c+='<span class="kpme-chip">Horario: <b>'+winLbl(ph.w)+(ph.s?' (general)':'')+'</b></span>';
+ if(e!=null)c+='<span class="kpme-chip">Promedio: <b>'+e+' días</b></span>';
+ return c?'<div class="kpme-chips">'+c+'</div>':''}
+function munHtml(k,m,a){var key=k+'|'+m,open=!!UI.openM[key],p=eff(a);
+ return '<div class="kpme-mun'+(a.tot?'':' nodata')+'"><button class="kpme-munhead" data-kpme="mun" data-k="'+esc(k)+'" data-m="'+esc(m)+'"><span class="kpme-name"><b>'+esc(m)+'</b><small>'+(a.tot?a.tot+' envío'+(a.tot===1?'':'s'):'Sin datos todavía')+'</small></span>'+(p!=null?'<span class="kpme-pct'+pctCls(p)+'">'+p+'%</span>':'')+'<span class="kpme-chev">'+(open?'▴':'▾')+'</span></button>'+(open?detail(a,fbFor(k)):'')+'</div>'}
+function depHtml(k,d,show,open,rank){
+ var h='<section class="kpme-dep'+(d.tot?'':' nodata')+'"><button class="kpme-dephead" data-kpme="dep" data-k="'+esc(k)+'"><span class="kpme-rank">'+(d.tot?rank:'·')+'</span><span class="kpme-name"><b>'+esc(k)+'</b><small>'+(d.tot?d.tot+' envío'+(d.tot===1?'':'s')+(eff(d)!=null?' · '+eff(d)+'% entregado':''):'Sin envíos todavía')+'</small></span><span class="kpme-chev">'+(open?'▴':'▾')+'</span></button>';
+ if(open)h+='<div class="kpme-depbody">'+summary(d)+show.map(function(m){return munHtml(k,m,d.m[m])}).join('')+'</div>';
+ return h+'</section>'}
+function list(D){CUR.D=D;CUR.T=totals(D);var q=norm(UI.q),out='',rank=0;
+ sortKeys(D).forEach(function(k){var d=D[k],ms=sortM(d),dm=!q||norm(k).indexOf(q)>-1,mm=ms.filter(function(m){return norm(m).indexOf(q)>-1});
+  if(q&&!dm&&!mm.length)return;rank++;
+  var open=(k in UI.open)?UI.open[k]:!!(q&&mm.length&&!dm);
+  out+=depHtml(k,d,(q&&!dm)?mm:ms,open,rank)});
+ return out||'<div class="kpme-empty">No encontré ese departamento o municipio.</div>'}
+function totals(D){var T=mk('Todos');Object.keys(D).forEach(function(k){var d=D[k];T.tot+=d.tot;T.ok+=d.ok;T.dev+=d.dev;T.prob+=d.prob;T.nh+=d.nh;d.days.forEach(function(v,i){T.days[i]+=v});d.hours.forEach(function(v,i){T.hours[i]+=v});T.lead=T.lead.concat(d.lead)});return T}
+function head(T){var bd=best(T.days),bw=T.nh?bestWin(T.hours):-1,p=eff(T);
+ var k=[['Envíos analizados',T.tot],['Entregados',p==null?'—':p+'%'],['Mejor día',bd>=0&&T.days[bd]?DIAS[bd]:'—'],['Mejor horario',bw>=0&&(T.hours[bw]+T.hours[bw+1])?winLbl(bw):'Sin horas aún']];
+ return '<div class="kpme-kicker">Nivel nacional + Tegucigalpa</div><h2>🗺️ Mapa de entregas</h2><p class="kpme-sub">Cuándo y a qué hora se entrega en cada departamento y municipio. Los más buscados aparecen arriba y se actualiza solo con cada entrega.</p>'+
+ '<div class="kpme-kpis">'+k.map(function(x){return '<div class="kpme-kpi"><small>'+x[0]+'</small><b>'+x[1]+'</b></div>'}).join('')+'</div>'+
+ (T.ok&&T.nh<T.ok?'<div class="kpme-note">Horas registradas: '+T.nh+' de '+T.ok+' entregas. Las entregas anteriores solo tienen el día; desde ahora cada entrega guarda también la hora.</div>':'')}
+function refresh(){var l=document.getElementById('kpmeList');if(l)l.innerHTML=list(agg())}
+function draw(){var v=document.getElementById('view');if(!v)return;var D=agg();
+ v.innerHTML='<div class="kpme">'+head(totals(D))+'<input id="kpmeQ" class="kpme-q" placeholder="Buscar departamento o municipio…" value="'+esc(UI.q)+'" autocomplete="off"><div id="kpmeList">'+list(D)+'</div></div>';
+ var q=document.getElementById('kpmeQ');if(q)q.addEventListener('input',function(){UI.q=q.value;UI.open={};refresh()})}
+document.addEventListener('click',function(e){
+ if(window.activeTab!=='mapaEntregas')return;
+ var b=e.target.closest&&e.target.closest('[data-kpme]');if(!b)return;
+ var t=b.getAttribute('data-kpme'),k=b.getAttribute('data-k');
+ if(t==='dep'){var cur=!!b.parentNode.querySelector('.kpme-depbody');UI.open[k]=!cur}
+ else if(t==='mun'){var key=k+'|'+b.getAttribute('data-m');UI.openM[key]=!UI.openM[key]}
+ else return;
+ refresh()});
+function findPlace(a){var D=agg(),dn=norm(a.departamento||''),mn=norm(a.municipio||''),dep=null,mun=null,k,m;
+ if(dn){var ks=Object.keys(D);dep=ks.filter(function(x){return norm(x)===dn})[0]||ks.filter(function(x){return norm(x).indexOf(dn)>-1})[0]||null}
+ if(mn){var pools=dep?[dep]:Object.keys(D),found=[];
+  pools.forEach(function(d){Object.keys(D[d].m).forEach(function(x){if(norm(x)===mn||norm(x).indexOf(mn)>-1)found.push([d,x,norm(x)===mn?1:0,D[d].m[x].tot])})});
+  found.sort(function(x,y){return (y[2]-x[2])||(y[3]-x[3])});if(found.length){dep=found[0][0];mun=found[0][1]}}
+ return {D:D,dep:dep,mun:mun}}
+window.kpMapaEntregas={
+ draw:draw,
+ consulta:function(a){a=a||{};var f=findPlace(a),D=f.D,nota='Basado en las órdenes de KPlace. El horario solo usa entregas con hora registrada (las anteriores solo tienen el día).';
+  if((a.departamento||a.municipio)&&!f.dep)return {error:'No encontré ese departamento o municipio en el Mapa de entregas.'};
+  if(a.abrir&&f.dep){UI.q='';UI.open[f.dep]=true;if(f.mun)UI.openM[f.dep+'|'+f.mun]=true;try{setTab('mapaEntregas')}catch(e){}}
+  if(f.mun)return {ok:true,lugar:f.mun+', '+f.dep,datos:info(D[f.dep].m[f.mun],[{a:D[f.dep],s:'de '+f.dep},{a:totals(D),s:'general'}]),nota:nota};
+  if(f.dep){var d=D[f.dep];return {ok:true,departamento:f.dep,datos:info(d,[{a:totals(D),s:'general'}]),municipios_mas_activos:sortM(d).filter(function(m){return d.m[m].tot}).slice(0,6).map(function(m){return info(d.m[m])}),nota:nota}}
+  var T=totals(D);return {ok:true,resumen_general:info(T),departamentos_mas_activos:sortKeys(D).filter(function(k){return D[k].tot}).slice(0,8).map(function(k){return info(D[k])}),nota:nota}}
+};
+var pB=buildTabs;buildTabs=function(){var a=activeTab;pB.apply(this,arguments);if(a==='mapaEntregas')activeTab=a;var t=document.getElementById('tabs');
+ if(t&&window.CURRENT_USER&&!CURRENT_USER.esRepartidor&&!t.querySelector('[data-tab="mapaEntregas"]'))t.insertAdjacentHTML('beforeend','<div class="tab '+(activeTab==='mapaEntregas'?'active':'')+'" data-tab="mapaEntregas" onclick="setTab(\'mapaEntregas\')">Mapa de entregas</div>')};
+var pS=setTab;setTab=function(id){if(id==='mapaEntregas'){if(window.CURRENT_USER&&CURRENT_USER.esRepartidor)return;activeTab=id;buildTabs();render();try{updateKPlaceNav()}catch(e){}try{window.scrollTo(0,0)}catch(e){}return}return pS.apply(this,arguments)};
+var pR=render;render=function(){if(activeTab==='mapaEntregas'&&window.CURRENT_USER){draw();return}return pR.apply(this,arguments)};
+var lastSig='';setInterval(function(){if(window.activeTab!=='mapaEntregas')return;var q=document.getElementById('kpmeQ');if(q&&document.activeElement===q)return;
+ var o=window.ORDERS||[],s=o.length+':'+o.filter(function(x){return x.entregado===true||x.kpDevolucionNoRecibida}).length;if(s!==lastSig){lastSig=s;draw()}},8000);
+})();
+</script>
 </body>
 </html>
