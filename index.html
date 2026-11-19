@@ -27798,6 +27798,9 @@ html.kp-day body{background-color:#f3f5fb!important}
 .kpme-hc span{font-size:9px;color:#8793b6}
 .kpme-co{background:#141d33;border:1px solid #2c3754;border-radius:12px;padding:10px 12px;margin-top:8px}
 .kpme-cohead{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#f1f4ff}
+.kpme-dates{background:#141d33;border-radius:10px;overflow:hidden}
+.kpme-date{display:flex;justify-content:space-between;gap:8px;padding:8px 11px;border-bottom:1px solid #252f47;font-size:13px;color:#c9cfe2}
+.kpme-date:last-child{border-bottom:0}.kpme-date b{color:#fff;white-space:nowrap}
 .kpme-empty{padding:26px;text-align:center;color:#9aa6c8}
 .kpme-hint{font-size:11px;color:#8793b6;margin-top:3px}
 </style>
@@ -27843,9 +27846,9 @@ function deliveredAt(o){
  if(Array.isArray(sh)){var r=walk(sh,0);if(r)return r}
  var f=ymd(o.entregadoFecha||'');return f?{d:f,t:false}:null}
 function courier(o){try{if(esTegus(o)&&!esNac(o))return '';return (typeof kpCourierName==='function'&&kpCourierName(o))||'Boxful'}catch(e){return ''}}
-function mk(n){return {n:n,tot:0,ok:0,dev:0,prob:0,days:[0,0,0,0,0,0,0],hours:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],nh:0,lead:[],cour:{},co:{},mot:{},m:{}}}
+function mk(n){return {n:n,tot:0,ok:0,dev:0,prob:0,days:[0,0,0,0,0,0,0],hours:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],nh:0,lead:[],cour:{},co:{},dates:{},mot:{},m:{}}}
 function add(a,r){a.tot++;
- if(r.ok){a.ok++;if(r.day!=null)a.days[r.day]++;if(r.hour!=null){a.hours[r.hour]++;a.nh++}if(r.lead!=null)a.lead.push(r.lead)}
+ if(r.ok){a.ok++;if(r.ds)a.dates[r.ds]=(a.dates[r.ds]||0)+1;if(r.day!=null)a.days[r.day]++;if(r.hour!=null){a.hours[r.hour]++;a.nh++}if(r.lead!=null)a.lead.push(r.lead)}
  else if(r.dev){a.dev++;var mt=(typeof kpMotivoDevolucion==='function'&&kpMotivoDevolucion(r.o))||'Sin motivo';a.mot[mt]=(a.mot[mt]||0)+1}
  else if(r.prob)a.prob++;
  if(r.cour){a.cour[r.cour]=(a.cour[r.cour]||0)+1;var c=a.co[r.cour]||(a.co[r.cour]={tot:0,ok:0,dev:0,prob:0,days:[0,0,0,0,0,0,0],lead:[],hours:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],nh:0});c.tot++;
@@ -27856,7 +27859,7 @@ function pool(){var out=[];(window.ORDERS||[]).forEach(function(o){
  var p=place(o);if(!p)return;
  var dev=typeof kpNoRecibido==='function'&&kpNoRecibido(o),ok=!dev&&o.entregado===true;
  var r={o:o,dep:p.dep,mun:p.mun,ok:ok,dev:dev,prob:!ok&&!dev&&o.boxfulAlert==='problema',cour:courier(o)};
- if(ok){var da=deliveredAt(o);if(da){r.day=da.d.getDay();r.hour=da.t?da.d.getHours():null;
+ if(ok){var da=deliveredAt(o);if(da){r.day=da.d.getDay();r.ds=da.d.getFullYear()+'-'+('0'+(da.d.getMonth()+1)).slice(-2)+'-'+('0'+da.d.getDate()).slice(-2);r.hour=da.t?da.d.getHours():null;
   var cr=ymd(typeof kpDiaCreacion==='function'?kpDiaCreacion(o):o.fecha);
   if(cr){var n=Math.round((Date.UTC(da.d.getFullYear(),da.d.getMonth(),da.d.getDate())-Date.UTC(cr.getFullYear(),cr.getMonth(),cr.getDate()))/864e5);if(n>=0&&n<60)r.lead=n}}}
  out.push(r)});return out}
@@ -27878,7 +27881,7 @@ function info(a,fb){var pd=pickDay(a,fb),ph=pickHour(a,fb),bd=best(a.days),bw=a.
  return {nombre:a.n,envios:a.tot,entregados:a.ok,devoluciones:a.dev,con_problema:a.prob,pendientes:a.tot-a.ok-a.dev-a.prob,
   porcentaje_entrega:eff(a),dia_mas_probable:pd?DIAS[pd.d]+(pd.s?' (tendencia '+pd.s+')':''):null,horario_mas_probable:ph?winLbl(ph.w)+(ph.s?' (tendencia '+ph.s+')':''):null,
   entregas_con_hora_registrada:a.nh,dias_promedio_entrega:avg(a),paqueteria_principal:top(a.cour)||null,motivo_devolucion_principal:top(a.mot)||null,
-  entregas_por_dia:DC.reduce(function(o,n,i){o[n]=a.days[i];return o},{}),
+  entregas_por_dia:DC.reduce(function(o,n,i){o[n]=a.days[i];return o},{}),ultimas_fechas_entrega:fechas(a),
   mejor_empresa:(function(){var c=companies(a);return c.length>1&&c[0].res>0?c[0].n:null})(),
   empresas:companies(a).map(function(c){return {empresa:c.n,envios:c.tot,entregados:c.ok,devoluciones:c.dev,porcentaje_entrega:c.eff,dias_promedio:c.avg,dia_mas_probable:c.bd>=0?DIAS[c.bd]:null,hora_mas_probable:c.bw>=0?winLbl(c.bw):null}})}}
 function pctCls(p){return p==null?'':(p<60?' low':(p<85?' mid':''))}
@@ -27913,10 +27916,18 @@ function coHtml(a,pd,ph){var cs=companies(a);if(!cs.length)return '';
   '<div class="kpme-chips" style="margin:7px 0 2px">'+(dTxt?'<span class="kpme-chip">Día más probable: <b>'+dTxt+'</b></span>':'')+(hTxt?'<span class="kpme-chip">Hora más probable: <b>'+hTxt+'</b></span>':'')+'</div>'+
   (c.bd>=0?dayMini(c.days):'')+'</div>'});
  return h}
+var MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fechas(a){return Object.keys(a.dates).sort().reverse().slice(0,10).map(function(k){var p=k.split('-');return {fecha:k,dia:DIAS[new Date(+p[0],+p[1]-1,+p[2]).getDay()],paquetes:a.dates[k]}})}
+function datesHtml(a){var ks=Object.keys(a.dates).sort().reverse();if(!ks.length)return '';
+ var h='<div class="kpme-h">Entregas por fecha</div><div class="kpme-dates">',yr=new Date().getFullYear();
+ ks.slice(0,15).forEach(function(k){var p=k.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]),n=a.dates[k];
+  h+='<div class="kpme-date"><span>'+DIAS[d.getDay()]+' '+(+p[2])+' '+MES[+p[1]-1]+(+p[0]!==yr?' '+p[0]:'')+'</span><b>'+n+' paquete'+(n===1?'':'s')+'</b></div>'});
+ if(ks.length>15)h+='<div class="kpme-hint">Mostrando las últimas 15 fechas de '+ks.length+'.</div>';
+ return h+'</div>'}
 function detail(a,fb){var pd=pickDay(a,fb),ph=pickHour(a,fb),e=avg(a),p=eff(a),pend=a.tot-a.ok-a.dev-a.prob;
  var h='<div class="kpme-det"><div class="kpme-insight">'+insight(a,fb)+'</div>'+
  '<div class="kpme-grid3"><div><b>'+a.ok+' / '+a.tot+'</b><small>Entregados</small></div><div><b>'+(e==null?'—':e+' d')+'</b><small>Prom. de entrega</small></div><div><b>'+a.dev+'</b><small>Devoluciones</small></div></div>'+
- '<div class="kpme-h">Día de entrega</div>'+(pd?dayBars(pd)+(pd.s?'<div class="kpme-hint">Tendencia '+esc(pd.s)+' (aún sin entregas con día aquí).</div>':''):'<div class="kpme-hint">Sin entregas todavía.</div>')+'<div class="kpme-h">Horario</div>';
+ '<div class="kpme-h">Día de entrega</div>'+(pd?dayBars(pd)+(pd.s?'<div class="kpme-hint">Tendencia '+esc(pd.s)+' (aún sin entregas con día aquí).</div>':''):'<div class="kpme-hint">Sin entregas todavía.</div>')+datesHtml(a)+'<div class="kpme-h">Horario</div>';
  h+=ph?hoursChart(ph)+'<div class="kpme-hint">'+(ph.s?'Tendencia '+esc(ph.s)+': aún no hay horas registradas aquí.':'Basado en '+ph.n+' entrega'+(ph.n===1?'':'s')+' con hora registrada.')+'</div>':'<div class="kpme-hint">Aún no hay horas registradas. Desde ahora cada entrega nueva guarda su hora.</div>';
  h+=coHtml(a,pd,ph);h+='<div class="kpme-h">Más información</div><div class="kpme-chips">';
  if(top(a.cour))h+='<span class="kpme-chip">Paquetería: <b>'+esc(top(a.cour))+'</b></span>';
@@ -27986,13 +27997,12 @@ var lastSig='';setInterval(function(){if(window.activeTab!=='mapaEntregas')retur
 function menuMapa(){var u=window.CURRENT_USER;if(!u||u.esRepartidor)return;
  document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top),#kpSideNav').forEach(function(nv){
   var first=nv.querySelector('button[data-section],button[data-kf-nav]');if(!first)return;
-  var ex=nv.querySelector('[data-section="mapaEntregas"]'),anchor=nv.querySelector('[data-section="cotizaciones"]')||nv.querySelector('[data-section="rastreos"]');
-  if(ex){if(anchor&&anchor.nextElementSibling!==ex)anchor.after(ex);return}
+  if(nv.querySelector('[data-section="mapaEntregas"]'))return;
   var b=document.createElement('button');b.type='button';b.setAttribute('data-section','mapaEntregas');
   b.className=first.className.replace(/\b(active|on|selected|current|is-active|open)\b/g,'').replace(/\s+/g,' ').trim();
   b.innerHTML='<span class="'+(nv.id==='kpSideNav'?'ico':'dico')+'">🗺️</span>Mapa de entregas';
   b.onclick=function(ev){ev.preventDefault();try{closeKPlaceMenu()}catch(e){}setTab('mapaEntregas')};
-  if(anchor)anchor.after(b);else nv.appendChild(b)})}
+  var dk=nv.querySelector('[data-kpd]');if(dk)nv.insertBefore(b,dk);else nv.appendChild(b)})}
 setInterval(menuMapa,2000);setTimeout(menuMapa,800);
 document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#menuBtn')){setTimeout(menuMapa,100);setTimeout(menuMapa,400)}},true);
 })();
