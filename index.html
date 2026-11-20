@@ -7,6 +7,9 @@
  if(!String.prototype.replaceAll)String.prototype.replaceAll=function(a,b){return typeof a==='string'?this.split(a).join(b):this.replace(a,b)};
  if(!Array.prototype.at)Object.defineProperty(Array.prototype,'at',{value:function(n){n=Math.trunc(n)||0;if(n<0)n+=this.length;return this[n]},writable:true,configurable:true});
  if(!Array.prototype.findLast)Object.defineProperty(Array.prototype,'findLast',{value:function(f){for(var i=this.length-1;i>=0;i--)if(f(this[i],i,this))return this[i]},writable:true,configurable:true});
+ window.kpMatchMe=function(list,u){list=list||[];if(!u)return null;var n=function(x){return String(x==null?'':x).trim().toLowerCase()},us=n(u.usuario),nm=n(u.nombre);
+ if(us){var a=list.filter(function(v){return n(v.usuario)===us});if(a.length)return a[0];var b=list.filter(function(v){return n(v.nombre)===nm&&!n(v.usuario)});return b.length===1?b[0]:null}
+ var c=list.filter(function(v){return n(v.nombre)===nm});return c.length===1?c[0]:null};
  if(!Object.hasOwn)Object.hasOwn=function(o,k){return Object.prototype.hasOwnProperty.call(o,k)};
  if(typeof window.structuredClone==='undefined')window.structuredClone=function(v){return JSON.parse(JSON.stringify(v))};
  if(!window.requestIdleCallback)window.requestIdleCallback=function(cb){return setTimeout(function(){cb({timeRemaining:function(){return 8}})},1)};
@@ -3333,7 +3336,7 @@ db.collection('config').doc('vendedores').onSnapshot({includeMetadataChanges:tru
   // por datos viejos guardados en localStorage.
   if(CURRENT_USER){
     const norm = x=>String(x||'').trim().toLowerCase();
-    const yo = VENDEDORES.find(v=>norm(v.nombre)===norm(CURRENT_USER.nombre) || norm(v.usuario)===norm(CURRENT_USER.usuario));
+    const yo = window.kpMatchMe(VENDEDORES,CURRENT_USER);
     if(!yo && VENDEDORES.length>1){CURRENT_USER.esAdmin=false;CURRENT_USER.esEncargadoEnvios=false;CURRENT_USER.esRepartidor=false;CURRENT_USER.soloOrdenes=true;CURRENT_USER.kpRol='vendedor';}
     if(yo){
       const __prev=[CURRENT_USER.esAdmin,CURRENT_USER.esEncargadoEnvios,CURRENT_USER.esRepartidor,CURRENT_USER.soloOrdenes].join('|');
@@ -8052,6 +8055,7 @@ function renderAdminEnviosTab(tipo){
     if(kpIsHazabPickup(o)) return false;
     if(globalSearchTerm && !orderMatchesSearch(o)) return false;
     if(o.fecha!==selectedDate) return false;
+    if(kpEsCancelada(o)) return false;
     return esTegus ? kpIsTegusShip(o) : kpIsNational(o);
   });
   list.sort((a,b)=>{
@@ -8061,13 +8065,14 @@ function renderAdminEnviosTab(tipo){
     return String(a.cliente||'').localeCompare(String(b.cliente||''));
   });
   const emp=list.filter(o=>o.estadoNacional==='empacado').length;
-  const pendientes=list.filter(o=>o.estadoNacional!=='empacado').length;
+  const pendientes=list.filter(o=>o.estadoNacional!=='empacado'&&o.entregado!==true&&!(typeof kpNoRecibido==='function'&&kpNoRecibido(o))).length;
   const canGuide=!esTegus && kpCanManageShipping();
+  const canc=ORDERS.filter(o=>!kpIsHazabPickup(o)&&o.fecha===selectedDate&&kpEsCancelada(o)&&(esTegus?kpIsTegusShip(o):kpIsNational(o))).length;
   const toolbar=`
     <div class="kp-admin-ship-head">
       <div><div class="kp-kicker">Administrador de envíos</div>
       <h2>${esTegus?'Tegucigalpa':'Envíos nacionales'}</h2>
-      <p>${fmtDate(selectedDate)} · ${list.length} órdenes · ${emp} empacadas · ${pendientes} pendientes</p></div>
+      <p>${fmtDate(selectedDate)} · ${list.length} órdenes · ${emp} empacadas · ${pendientes} pendientes${canc?` · ${canc} cancelada${canc===1?'':'s'} (no se envía${canc===1?'':'n'})`:''}</p></div>
       <div class="btnrow" style="margin-top:0">
         <button class="btn ${esTegus?'active':''}" onclick="setTab('adminEnviosTegus')">Tegucigalpa${window.kpEnvBadge?kpEnvBadge('tegus'):''}</button>
         <button class="btn ${!esTegus?'active':''}" onclick="setTab('adminEnviosNacional')">Envíos nacionales${window.kpEnvBadge?kpEnvBadge('nac'):''}</button>
@@ -8081,7 +8086,7 @@ function renderAdminEnviosTab(tipo){
     const quote=!!o.boxfulSelectedQuote;
     const guide=!!(o.boxfulShipmentNumber||o.boxfulGuideNumber);
     return `<div class="card ${packed?'empacado':''}">
-      ${guide?'<span class="kp-guia-ok">✅ Guía creada</span>':''}${orderCard(o)}
+      ${orderCard(o)}
       <div class="btnrow" style="border-top:1px solid #eef1f5;padding-top:10px;margin-top:10px">
         <button class="btn ${packed?'green':'gold'} sm" onclick="marcarEstadoNacional('${o.id}','${packed?'pendiente':'empacado'}')">${packed?'✓ Empacada':'📦 Marcar empacada'}</button>
         ${packed?`<button class="btn sm" onclick="marcarEstadoNacional('${o.id}','pendiente')">↩ Desmarcar</button>`:''}
@@ -10000,8 +10005,7 @@ if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!
     const u=window.CURRENT_USER||(typeof CURRENT_USER!=='undefined'?CURRENT_USER:null);
     if(!u) return null;
     const list=window.VENDEDORES||VENDEDORES||[];
-    return list.find(v=>String(v.usuario||v.nombre||'').toLowerCase()===String(u.usuario||u.nombre||'').toLowerCase())
-      || list.find(v=>String(v.nombre||'').toLowerCase()===String(u.nombre||'').toLowerCase()) || null;
+    return window.kpMatchMe(list,u);
   };
   window.kpIsAdmin=function(){
     const u=window.CURRENT_USER||CURRENT_USER, r=window.kpCurrentUserRecord();
@@ -10493,14 +10497,14 @@ KP.closeBranchEditor=function(){closeModal();};
 KP.ensureUserScope=async function(){
   if(!CURRENT_USER)return;
   let changed=false;
-  const me=VENDEDORES.find(v=>String(v.nombre).toLowerCase()===String(CURRENT_USER.nombre).toLowerCase()||String(v.usuario||'').toLowerCase()===String(CURRENT_USER.usuario||'').toLowerCase());
+  const me=window.kpMatchMe(VENDEDORES,CURRENT_USER);
   if(me){
     if(!me.sucursalId){me.sucursalId='sucursal_1';me.sucursalNombre='Sucursal 1';changed=true;}
     if(!me.sucursalNombre){me.sucursalNombre=(KP.branches.find(b=>b.id===me.sucursalId)||KP.defaults[0]).nombre;changed=true;}
     CURRENT_USER.sucursalId=me.sucursalId;CURRENT_USER.sucursalNombre=me.sucursalNombre;
     CURRENT_USER.cargo=roleOf(me);
-    CURRENT_USER.esAdmin=!!me.esAdmin || CURRENT_USER.esAdmin===true;
-    CURRENT_USER.esEncargadoEnvios=!!me.esEncargadoEnvios || CURRENT_USER.esEncargadoEnvios===true;
+    CURRENT_USER.esAdmin=!!me.esAdmin;
+    CURRENT_USER.esEncargadoEnvios=!!me.esEncargadoEnvios;
     CURRENT_USER.esRepartidor=CURRENT_USER.esAdmin?false:!!me.esRepartidor;
     localStorage.setItem('eunoia_current_user',JSON.stringify(CURRENT_USER));
     if(changed){try{await db.collection('config').doc('vendedores').set({lista:VENDEDORES});}catch(e){}}
@@ -28133,7 +28137,7 @@ function ts(o){var c=o&&o.creado;try{if(c&&c.toMillis)return c.toMillis();if(typ
 function esTegus(o){try{return !!kpIsTegusShip(o)}catch(e){return false}}
 function esNac(o){try{return !!kpIsNational(o)}catch(e){return false}}
 function guiaDe(o){return !!(o&&(o.boxfulShipmentNumber||o.boxfulGuideNumber))}
-function elegible(o){
+function pendiente(o){
  if(!o||o.eliminadoTs||o.cancelado||o.anulado)return false;
  try{if(kpEsCancelada(o))return false}catch(e){}
  try{if(kpNoRecibido(o))return false}catch(e){}
@@ -28142,7 +28146,14 @@ function elegible(o){
  if(o.entregado===true||o.empacado===true)return false;
  if(o.estadoNacional&&o.estadoNacional!=='pendiente')return false;
  if(!esTegus(o)&&!esNac(o))return false;
- return String(o.fecha||'')>=minFecha()}
+ return true}
+var olderOn=false;
+function todayS(){return ymdLocal(new Date())}
+function selD(){try{return (typeof selectedDate!=='undefined'&&selectedDate)?selectedDate:todayS()}catch(e){return todayS()}}
+function minus(d,n){var p=String(d).split('-'),x=new Date(+p[0],+p[1]-1,+p[2]);x.setDate(x.getDate()-n);return ymdLocal(x)}
+function elegible(o){if(!pendiente(o))return false;var f=String(o.fecha||''),s=selD();return olderOn?(f<=s&&f>=minus(s,7)):f===s}
+function olderCount(){var s=selD(),a=minus(s,7);return (window.ORDERS||[]).filter(function(o){var f=String(o.fecha||'');return pendiente(o)&&f<s&&f>=a}).length}
+function pendHoy(o){return pendiente(o)&&String(o.fecha||'')===todayS()}
 var skipped=[];try{skipped=JSON.parse(sessionStorage.getItem('kpSkip')||'[]')}catch(e){}
 function saveSkip(){try{sessionStorage.setItem('kpSkip',JSON.stringify(skipped.slice(-200)))}catch(e){}}
 function queue(){var all=(window.ORDERS||[]).filter(elegible),ids={};all.forEach(function(o){ids[o.id]=o});
@@ -28170,7 +28181,7 @@ function cardHtml(o,q){
  return h+'</div>'}
 function kpCanShip(){try{return kpCanManageShipping()}catch(e){return false}}
 function drawEmpacar(){var v=document.getElementById('view');if(!v)return;var q=queue(),cur=q[0],sk=skipped.filter(function(i){return q.some(function(o){return String(o.id)===i})}).length;
- var h='<div class="kpe"><div class="kpe-kicker">Administrador de envíos</div><h2>📦 Empacar</h2><div class="kpe-chips"><span class="kpe-chip">Por empacar: <b>'+q.length+'</b></span>'+(sk?'<span class="kpe-chip">Saltadas: <b>'+sk+'</b></span>':'')+(lastPacked?'<button class="kpe-undo" data-kpe="undo">↩ Deshacer la última</button>':'')+'</div>';
+ var h='<div class="kpe"><div class="kpe-kicker">Administrador de envíos</div><h2>📦 Empacar</h2><div class="kpe-chips"><span class="kpe-chip">Por empacar: <b>'+q.length+'</b></span>'+(sk?'<span class="kpe-chip">Saltadas: <b>'+sk+'</b></span>':'')+((olderCount()||olderOn)?'<button class="kpe-undo" data-kpe="older">'+(olderOn?'Solo este día':'Incluir días anteriores ('+olderCount()+')')+'</button>':'')+(lastPacked?'<button class="kpe-undo" data-kpe="undo">↩ Deshacer la última</button>':'')+'</div>';
  h+=cur?cardHtml(cur,q):'<div class="kpe-empty"><b>🎉 No hay órdenes por empacar</b>Cuando entre una nueva, aparece aquí y te llega la notificación.</div>';
  v.innerHTML=h+'</div>'}
 function refreshEmp(){if(isEnv()&&window.activeTab==='adminEmpacar'){drawEmpacar();try{buildTabs()}catch(e){}}}
@@ -28183,12 +28194,13 @@ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.c
  else if(k==='undo'&&lastPacked){var id2=lastPacked;try{marcarEstadoNacional(id2,'pendiente')}catch(er){}
   var o2=(window.ORDERS||[]).find(function(x){return String(x.id)===String(id2)});if(o2){o2.estadoNacional='pendiente';o2.empacado=false}
   skipped=skipped.filter(function(i){return i!==String(id2)});saveSkip();lastPacked=null;refreshEmp()}
+ else if(k==='older'){olderOn=!olderOn;refreshEmp()}
  else if(k==='quote'){try{boxfulQuoteOrder(id)}catch(er){}}
  else if(k==='guide'){try{boxfulCreateShipment(id)}catch(er){}}
 });
 
 /* ---------- Contadores en los botones Tegucigalpa / Envíos nacionales ---------- */
-window.kpEnvBadge=function(kind){var n=(window.ORDERS||[]).filter(function(o){return elegible(o)&&(kind==='tegus'?esTegus(o):(esNac(o)&&!esTegus(o)))}).length;
+window.kpEnvBadge=function(kind){var n=(window.ORDERS||[]).filter(function(o){return pendiente(o)&&String(o.fecha||'')===selD()&&(kind==='tegus'?esTegus(o):(esNac(o)&&!esTegus(o)))}).length;
  return n?'<span class="badge" style="margin-left:6px">'+n+'</span>':''};
 
 /* ---------- Pestañas y menú del administrador de envíos ---------- */
@@ -28236,10 +28248,10 @@ function envNotify(t,b){try{window.toast&&window.toast(t+(b?': '+b:''))}catch(e)
   if(navigator.serviceWorker&&navigator.serviceWorker.ready)navigator.serviceWorker.ready.then(function(r){r.showNotification(t,o)}).catch(function(){try{new Notification(t,o)}catch(e){}});else new Notification(t,o)}}catch(e){}}
 var seen=null,first0=0,lastSig='';
 function watch(){try{if(!isEnv())return;var os=window.ORDERS||[];if(!os.length)return;if(!first0)first0=Date.now();var quiet=Date.now()-first0<6000;
- var cur={};os.forEach(function(o){cur[o.id]={pend:elegible(o),packed:o.estadoNacional==='empacado'||o.empacado===true,deliv:o.entregado===true,guide:guiaDe(o)}});
+ var cur={};os.forEach(function(o){cur[o.id]={pend:pendHoy(o),packed:o.estadoNacional==='empacado'||o.empacado===true,deliv:o.entregado===true,guide:guiaDe(o)}});
  if(seen&&!quiet){os.forEach(function(o){var c=cur[o.id],s=seen[o.id];
   if(!s){if(c.pend)envNotify('📦 Nueva orden por empacar',label(o));return}
-  if(!s.packed&&c.packed){var nx=queue().filter(function(x){return String(x.id)!==String(o.id)})[0];
+  if(!s.packed&&c.packed){var nx=(window.ORDERS||[]).filter(function(x){return pendHoy(x)&&String(x.id)!==String(o.id)}).sort(function(a,b){return ts(a)-ts(b)})[0];
    envNotify('✅ Orden empacada',label(o)+(nx?' · Siguiente por empacar: '+label(nx):' · No quedan órdenes por empacar'))}
   if(!s.deliv&&c.deliv)envNotify('🎉 Orden entregada',label(o));
   if(!s.guide&&c.guide)envNotify('🚚 Guía creada',label(o))})}
