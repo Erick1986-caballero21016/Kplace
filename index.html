@@ -8075,7 +8075,7 @@ function renderAdminEnviosTab(tipo){
       <p>${fmtDate(selectedDate)} · ${list.length} órdenes · ${emp} empacadas · ${pendientes} pendientes${canc?` · ${canc} cancelada${canc===1?'':'s'} (no se envía${canc===1?'':'n'})`:''}</p></div>
       <div class="btnrow" style="margin-top:0">
         <button class="btn ${esTegus?'active':''}" onclick="setTab('adminEnviosTegus')">Tegucigalpa${window.kpEnvBadge?kpEnvBadge('tegus'):''}</button>
-        <button class="btn ${!esTegus?'active':''}" onclick="setTab('adminEnviosNacional')">Envíos nacionales${window.kpEnvBadge?kpEnvBadge('nac'):''}</button>
+        <button class="btn ${!esTegus?'active':''}" onclick="setTab('adminEnviosNacional')">Envíos nacionales${window.kpEnvBadge?kpEnvBadge('nac'):''}</button>${window.kpEnvExtra?kpEnvExtra():''}
       </div>
     </div>
     <div class="kp-panel" style="margin-bottom:12px">
@@ -19604,7 +19604,7 @@ if(typeof oldUpload==='function'&&!oldUpload.__kpLoading){
         <h3 style="margin:12px 0 4px">${escapeHtml(o.cliente||'Cliente')}</h3><div class="small">${escapeHtml(kpDiaCreacion(o)||'')} · ${escapeHtml(o.municipio||o.departamento||'Envío nacional')}</div>
         <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:13px;font-size:13px"><div><span class="small">Número de guía</span><br><b style="overflow-wrap:anywhere">${escapeHtml(numero)}</b></div><div><span class="small">Paquetería</span><br><b>${escapeHtml(kpCourierName(o)||'Boxful')}</b></div></div>
         <div class="btnrow kp-rastreo-actions" style="margin-top:14px">
-          <button class="btn primary sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Abrir rastreo</button><button class="btn sm" onclick="kpAbrirPdf('${o.id}')">📄 PDF</button>
+          <button class="btn primary sm" onclick="abrirRastreoConfirmado('${o.id}')">🔎 Abrir rastreo</button><button class="btn sm" type="button" onclick="kpCopiarGuia(decodeURIComponent('${encodeURIComponent(String(numero))}'))">📋 Copiar guía</button><button class="btn sm" onclick="kpAbrirPdf('${o.id}')">📄 PDF</button>
           ${wa?`<a class="btn green sm waAction" href="${escapeHtml(wa)}" target="_blank" rel="noopener" onclick="kpMarcarEnviada('${o.id}')">💬 Enviar guía al cliente</a>`:`<button class="btn sm" onclick="toast('Esta orden no tiene teléfono del cliente')">💬 Enviar guía al cliente</button>`}
           <button class="btn sm" onclick="kpCompartirPdf('${o.id}')">📤 Compartir PDF</button><button class="btn gold sm" onclick="marcarRetraso('${o.id}')">🚩 Marcar retraso</button><button class="btn sm" onclick="kpCopiarLinkOrden('${o.id}')">📋 Copiar link</button>
           <button class="btn sm" type="button" onclick="kpRastreoDevolucionAbrir('${o.id}')" style="border-color:#d0a060;color:#ffd59a">${kpNoRecibido(o)?'📝 Ver / editar devolución':'↩️ Registrar devolución'}</button>
@@ -24844,11 +24844,11 @@ window.buildTabs=function(){const out=originalBuildTabs?.apply(this,arguments);t
 const originalToggleMenu=window.toggleMenu;
 window.toggleMenu=function(){const out=originalToggleMenu?.apply(this,arguments);setTimeout(syncNavigation,0);return out;};
 const PAGE_PERMISSIONS={
-  inicio:'orders.view',principal:'customer.view',hoy:'orders.view',boxful:'shipping.view',
+  inicio:'orders.view',principal:'',hoy:'orders.view',boxful:'shipping.view',
   rastreosNacionales:'tracking.view',programadas:'orders.view',retrasos:'shipping.view',
   repartidor:'shipping.manage',adminEnviosTegus:'shipping.manage',adminEnviosNacional:'shipping.manage',
   adminEnviosDevoluciones:'refunds.view',adminOrdersInventory:'inventory.view',
-  admin:'team.view',reportes:'reports.view',integraciones:'admin.only',
+  admin:'team.view',reportes:'reports.view',integraciones:'admin.only',gps:'admin.only',configNegocio:'admin.only',
   kplace_packing:'packing.manage',kplace_cash:'cash.view',kplace_documents:'receipts.create'
 };
 const MENU_MAP={inicio:'inicio',ordenes:'hoy',envios:'boxful',rastreos:'rastreosNacionales',repartidores:'repartidor',inventario:'adminOrdersInventory',chat:'principal',usuarios:'admin',reportes:'reportes',integraciones:'integraciones',admin:'admin',kplace_cash:'kplace_cash',kplace_packing:'kplace_packing',kplace_documents:'kplace_documents'};
@@ -28181,7 +28181,7 @@ function cardHtml(o,q){
  return h+'</div>'}
 function kpCanShip(){try{return kpCanManageShipping()}catch(e){return false}}
 function drawEmpacar(){var v=document.getElementById('view');if(!v)return;var q=queue(),cur=q[0],sk=skipped.filter(function(i){return q.some(function(o){return String(o.id)===i})}).length;
- var h='<div class="kpe"><div class="kpe-kicker">Administrador de envíos</div><h2>📦 Empacar</h2><div class="kpe-chips"><span class="kpe-chip">Por empacar: <b>'+q.length+'</b></span>'+(sk?'<span class="kpe-chip">Saltadas: <b>'+sk+'</b></span>':'')+((olderCount()||olderOn)?'<button class="kpe-undo" data-kpe="older">'+(olderOn?'Solo este día':'Incluir días anteriores ('+olderCount()+')')+'</button>':'')+(lastPacked?'<button class="kpe-undo" data-kpe="undo">↩ Deshacer la última</button>':'')+'</div>';
+ var h='<div class="kpe"><div class="kpe-chips"><button class="kpe-undo" onclick="setTab(\'adminEnviosTegus\')">← Tegucigalpa</button><button class="kpe-undo" onclick="setTab(\'adminEnviosNacional\')">← Envíos nacionales</button></div><div class="kpe-kicker">Administrador de envíos</div><h2>📦 Empacar</h2><div class="kpe-chips"><span class="kpe-chip">Por empacar: <b>'+q.length+'</b></span>'+(sk?'<span class="kpe-chip">Saltadas: <b>'+sk+'</b></span>':'')+((olderCount()||olderOn)?'<button class="kpe-undo" data-kpe="older">'+(olderOn?'Solo este día':'Incluir días anteriores ('+olderCount()+')')+'</button>':'')+(lastPacked?'<button class="kpe-undo" data-kpe="undo">↩ Deshacer la última</button>':'')+'</div>';
  h+=cur?cardHtml(cur,q):'<div class="kpe-empty"><b>🎉 No hay órdenes por empacar</b>Cuando entre una nueva, aparece aquí y te llega la notificación.</div>';
  v.innerHTML=h+'</div>'}
 function refreshEmp(){if(isEnv()&&window.activeTab==='adminEmpacar'){drawEmpacar();try{buildTabs()}catch(e){}}}
@@ -28203,26 +28203,29 @@ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.c
 window.kpEnvBadge=function(kind){var n=(window.ORDERS||[]).filter(function(o){return pendiente(o)&&String(o.fecha||'')===selD()&&(kind==='tegus'?esTegus(o):(esNac(o)&&!esTegus(o)))}).length;
  return n?'<span class="badge" style="margin-left:6px">'+n+'</span>':''};
 
+window.kpEnvExtra=function(){if(!isEnv())return '';var n=queue().length,nd=nDev();
+ return '<button class="btn sm primary" onclick="setTab(\'adminEmpacar\')">📦 Empacar'+(n?'<span class="badge" style="margin-left:6px">'+n+'</span>':'')+'</button>'+(nd?'<button class="btn sm" onclick="setTab(\'adminEnviosDevoluciones\')">↩ Devoluciones<span class="badge" style="margin-left:6px">'+nd+'</span></button>':'')};
 /* ---------- Pestañas y menú del administrador de envíos ---------- */
-var ENV_TABS=[['adminEnviosTegus','Órdenes'],['adminEmpacar','Empacar'],['rastreosNacionales','Rastreo'],['adminEnviosDevoluciones','Devoluciones'],['mapaEntregas','Mapa de entregas']];
-var ENV_OK={adminEnviosTegus:1,adminEnviosNacional:1,adminEmpacar:1,rastreosNacionales:1,adminEnviosDevoluciones:1,mapaEntregas:1,ayuda:1};
+var ENV_TABS=[['adminEnviosTegus','Órdenes'],['principal','Canales'],['rastreosNacionales','Rastreo'],['mapaEntregas','Mapa de entregas']];
+var ENV_OK={principal:1,adminEnviosTegus:1,adminEnviosNacional:1,adminEmpacar:1,rastreosNacionales:1,adminEnviosDevoluciones:1,mapaEntregas:1,ayuda:1};
 function nDev(){return (window.ORDERS||[]).filter(function(o){return o.devolucionPendiente&&!o.devolucionProcesada}).length}
 var pB=buildTabs;buildTabs=function(){var a=window.activeTab;pB.apply(this,arguments);
  var t=document.getElementById('tabs');if(!t||!me())return;
- if(isEnv()){if(a&&ENV_OK[a])activeTab=a;var act=window.activeTab,ord=(act==='adminEnviosTegus'||act==='adminEnviosNacional');
+ if(isEnv()){if(a&&ENV_OK[a])activeTab=a;var act=window.activeTab,ord=(act==='adminEnviosTegus'||act==='adminEnviosNacional'||act==='adminEmpacar'||act==='adminEnviosDevoluciones');
   var nq=queue().length,nd=nDev();
-  t.innerHTML=ENV_TABS.map(function(x){var on=x[0]==='adminEnviosTegus'?ord:act===x[0],b=x[0]==='adminEmpacar'?nq:(x[0]==='adminEnviosDevoluciones'?nd:0);
+  t.innerHTML=ENV_TABS.map(function(x){var on=x[0]==='adminEnviosTegus'?ord:act===x[0],b=x[0]==='adminEnviosTegus'?nq:0;
    return '<div class="tab '+(on?'active':'')+'" data-tab="'+x[0]+'">'+x[1]+(b?'<span class="badge">'+b+'</span>':'')+'</div>'}).join('');
   t.querySelectorAll('.tab').forEach(function(x){x.onclick=function(){window.setTab(x.getAttribute('data-tab'))}})}
  else if(plainSeller()){t.querySelectorAll('[data-tab="rastreosNacionales"]').forEach(function(x){x.remove()})}};
 var pS=setTab;setTab=function(id){
  if(isEnv()){if(!ENV_OK[id])id='adminEnviosTegus';
-  if(id==='adminEmpacar'||id==='rastreosNacionales'||id==='adminEnviosDevoluciones'||id==='adminEnviosTegus'||id==='adminEnviosNacional'){
+  if(id==='principal'||id==='adminEmpacar'||id==='rastreosNacionales'||id==='adminEnviosDevoluciones'||id==='adminEnviosTegus'||id==='adminEnviosNacional'){
    activeTab=id;buildTabs();render();try{updateKPlaceNav()}catch(e){}try{window.scrollTo(0,0)}catch(e){}return}}
  if(id==='rastreosNacionales'&&plainSeller()){toastS('El rastreo lo maneja el administrador de envíos.');return}
  return pS.apply(this,arguments)};
 var pR=render;render=function(){
  if(isEnv()){var a=window.activeTab;
+  if(a==='principal'&&window.KP&&KP.Channels&&KP.Channels.render){KP.Channels.render();try{updateKPlaceNav()}catch(e){}return}
   if(a==='adminEmpacar'){drawEmpacar();try{updateKPlaceNav()}catch(e){}return}
   if(a==='adminEnviosTegus'){renderAdminEnviosTab('tegus');return}
   if(a==='adminEnviosNacional'){renderAdminEnviosTab('nacional');return}
@@ -28232,7 +28235,7 @@ var pR=render;render=function(){
 function envDrawer(){if(!isEnv())return;var dr=document.getElementById('kpMenuDrawer');if(!dr||!dr.classList.contains('show'))return;
  var nv=dr.querySelector('.kp-drawer-nav:not(.kpn-top)');if(!nv||nv.getAttribute('data-kpenv')==='1')return;
  var first=nv.querySelector('button');if(!first)return;
- var items=ENV_TABS.concat([['ayuda','Ayuda']]),ico={adminEnviosTegus:'📋',adminEmpacar:'📦',rastreosNacionales:'📍',adminEnviosDevoluciones:'↩️',mapaEntregas:'🗺️',ayuda:'📖'};
+ var items=ENV_TABS.concat([['ayuda','Ayuda']]),ico={principal:'💬',adminEnviosTegus:'📋',adminEmpacar:'📦',rastreosNacionales:'📍',adminEnviosDevoluciones:'↩️',mapaEntregas:'🗺️',ayuda:'📖'};
  var cls=first.className.replace(/\b(active|on|selected|current|is-active|open)\b/g,'').replace(/\s+/g,' ').trim();
  nv.innerHTML='';
  items.forEach(function(it){var b=document.createElement('button');b.type='button';b.className=cls;b.setAttribute('data-section',it[0]);
@@ -28258,6 +28261,53 @@ function watch(){try{if(!isEnv())return;var os=window.ORDERS||[];if(!os.length)r
  seen=cur;if(window.activeTab==='adminEmpacar'){var sg=queue().map(function(o){return o.id}).join(',')+'|'+skipped.length;if(sg!==lastSig){lastSig=sg;drawEmpacar();try{buildTabs()}catch(e){}}}
 }catch(e){}}
 setInterval(watch,3000);
+})();
+</script>
+<style id="kp-menu-order-css">
+#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > *,#kpSideNav > *{order:60}
+#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > .kpg,#kpSideNav > .kpg{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#98a2b3;padding:12px 12px 3px;pointer-events:none;line-height:1.2}
+#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > .kpg:first-child,#kpSideNav > .kpg:first-child{padding-top:2px}
+body.kp-role-repartidor #kpMenuDrawer .kp-drawer-nav button[data-section="hoy"],
+body.kp-role-repartidor #kpMenuDrawer .kp-drawer-nav button[data-section="repartidor"],
+body.kp-role-repartidor #kpMenuDrawer .kp-drawer-nav button[data-section="principal"],
+body.kp-role-repartidor #kpMenuDrawer .kp-drawer-nav button[data-section="ayuda"]{display:flex!important}
+</style>
+<script id="kp-menu-order">
+(function(){
+function me(){return window.CURRENT_USER||null}
+/* ---------- Copiar guía (iPhone y Android) ---------- */
+window.kpCopiarGuia=function(n){n=String(n==null?'':n).trim();
+ if(!n){try{toast('Esta orden no tiene número de guía')}catch(e){}return}
+ var ok1=function(){try{toast('Guía copiada: '+n)}catch(e){}};
+ var fb=function(){try{var ta=document.createElement('textarea');ta.value=n;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0;font-size:16px';document.body.appendChild(ta);ta.focus();ta.select();try{ta.setSelectionRange(0,n.length)}catch(e){}
+  var ok=document.execCommand('copy');document.body.removeChild(ta);if(ok)ok1();else toast('No se pudo copiar. Guía: '+n)}catch(e){try{toast('Guía: '+n)}catch(e2){}}};
+ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(n).then(ok1).catch(fb);else fb()};
+
+/* ---------- Menú lateral ordenado por secciones (solo con CSS order: no se mueve ningún botón) ---------- */
+var ORD={inicio:10,principal:11,chat:11,hoy:12,ordenes:12,programadas:13,retrasos:14,
+ boxful:20,envios:20,rastreosNacionales:21,rastreos:21,repartidor:22,repartidores:22,mapaEntregas:23,cotizaciones:24,
+ adminOrdersInventory:30,inventario:30,kplace_packing:31,kplace_cash:32,kplace_documents:33,finanzas:34,
+ reportes:40,admin:41,usuarios:41,gps:42,configNegocio:43,integraciones:44,ayuda:50,diagnostico:51};
+var GROUPS=[[9,'Principal',10,14],[19,'Envíos',20,24],[29,'Operación',30,34],[39,'Administración',40,44],[49,'Soporte',50,59]];
+function keyOf(b){var s=b.getAttribute('data-section'),k=b.getAttribute('data-kf-nav');
+ if(b.hasAttribute('data-kpd'))return 'diagnostico';
+ if(s&&ORD[s]!=null)return s;if(k&&ORD['kplace_'+k]!=null)return 'kplace_'+k;return null}
+(function css(){var r=[];Object.keys(ORD).forEach(function(k){var v=ORD[k];
+ if(k.indexOf('kplace_')===0){var a=k.slice(7);r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) [data-kf-nav="'+a+'"],#kpSideNav [data-kf-nav="'+a+'"]{order:'+v+'}')}
+ if(k==='diagnostico'){r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) [data-kpd],#kpSideNav [data-kpd]{order:'+v+'}')}
+ r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) [data-section="'+k+'"],#kpSideNav [data-section="'+k+'"]{order:'+v+'}')});
+ GROUPS.forEach(function(g,i){r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > .kpg[data-g="'+i+'"],#kpSideNav > .kpg[data-g="'+i+'"]{order:'+g[0]+'}')});
+ var st=document.createElement('style');st.id='kp-menu-order-rules';st.textContent=r.join('\n');document.head.appendChild(st)})();
+function isFlat(){var u=me();return !u||u.esRepartidor||(u.esEncargadoEnvios&&!u.esAdmin)}
+function tidy(){if(isFlat())return;
+ var navs=[document.getElementById('kpSideNav')].concat(Array.prototype.slice.call(document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top)')));
+ navs.forEach(function(nv){if(!nv||!nv.querySelector('button'))return;
+  var btns=Array.prototype.slice.call(nv.querySelectorAll('button[data-section],button[data-kf-nav]'));
+  GROUPS.forEach(function(g,i){var h=nv.querySelector(':scope > .kpg[data-g="'+i+'"]');
+   if(!h){h=document.createElement('div');h.className='kpg';h.setAttribute('data-g',i);h.textContent=g[1];nv.appendChild(h)}
+   var vis=btns.some(function(b){var k=keyOf(b);if(k==null)return false;var o=ORD[k];return o>=g[2]&&o<=g[3]&&b.style.display!=='none'});
+   var want=vis?'':'none';if(h.style.display!==want)h.style.display=want})})}
+setInterval(tidy,700);
 })();
 </script>
 </body>
