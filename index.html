@@ -28265,8 +28265,7 @@ setInterval(watch,3000);
 </script>
 <style id="kp-menu-order-css">
 #kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > *,#kpSideNav > *{order:60}
-#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > .kpg,#kpSideNav > .kpg{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#98a2b3;padding:12px 12px 3px;pointer-events:none;line-height:1.2}
-#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > .kpg:first-child,#kpSideNav > .kpg:first-child{padding-top:2px}
+#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > .kp-gstart,#kpSideNav > .kp-gstart{margin-top:12px}
 body.kp-role-repartidor #kpMenuDrawer .kp-drawer-nav button[data-section="hoy"],
 body.kp-role-repartidor #kpMenuDrawer .kp-drawer-nav button[data-section="repartidor"],
 body.kp-role-repartidor #kpMenuDrawer .kp-drawer-nav button[data-section="principal"],
@@ -28283,30 +28282,31 @@ window.kpCopiarGuia=function(n){n=String(n==null?'':n).trim();
   var ok=document.execCommand('copy');document.body.removeChild(ta);if(ok)ok1();else toast('No se pudo copiar. Guía: '+n)}catch(e){try{toast('Guía: '+n)}catch(e2){}}};
  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(n).then(ok1).catch(fb);else fb()};
 
-/* ---------- Menú lateral ordenado por secciones (solo con CSS order: no se mueve ningún botón) ---------- */
+/* ---------- Menú lateral ordenado: solo CSS order + un espacio entre grupos (no se agrega ni se mueve ningún elemento) ---------- */
 var ORD={inicio:10,principal:11,chat:11,hoy:12,ordenes:12,programadas:13,retrasos:14,
  boxful:20,envios:20,rastreosNacionales:21,rastreos:21,repartidor:22,repartidores:22,mapaEntregas:23,cotizaciones:24,
  adminOrdersInventory:30,inventario:30,kplace_packing:31,kplace_cash:32,kplace_documents:33,finanzas:34,
  reportes:40,admin:41,usuarios:41,gps:42,configNegocio:43,integraciones:44,ayuda:50,diagnostico:51};
-var GROUPS=[[9,'Principal',10,14],[19,'Envíos',20,24],[29,'Operación',30,34],[39,'Administración',40,44],[49,'Soporte',50,59]];
 function keyOf(b){var s=b.getAttribute('data-section'),k=b.getAttribute('data-kf-nav');
  if(b.hasAttribute('data-kpd'))return 'diagnostico';
  if(s&&ORD[s]!=null)return s;if(k&&ORD['kplace_'+k]!=null)return 'kplace_'+k;return null}
+function grp(o){return o<20?0:o<30?1:o<40?2:o<50?3:4}
 (function css(){var r=[];Object.keys(ORD).forEach(function(k){var v=ORD[k];
  if(k.indexOf('kplace_')===0){var a=k.slice(7);r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) [data-kf-nav="'+a+'"],#kpSideNav [data-kf-nav="'+a+'"]{order:'+v+'}')}
  if(k==='diagnostico'){r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) [data-kpd],#kpSideNav [data-kpd]{order:'+v+'}')}
  r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) [data-section="'+k+'"],#kpSideNav [data-section="'+k+'"]{order:'+v+'}')});
- GROUPS.forEach(function(g,i){r.push('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) > .kpg[data-g="'+i+'"],#kpSideNav > .kpg[data-g="'+i+'"]{order:'+g[0]+'}')});
  var st=document.createElement('style');st.id='kp-menu-order-rules';st.textContent=r.join('\n');document.head.appendChild(st)})();
 function isFlat(){var u=me();return !u||u.esRepartidor||(u.esEncargadoEnvios&&!u.esAdmin)}
 function tidy(){if(isFlat())return;
  var navs=[document.getElementById('kpSideNav')].concat(Array.prototype.slice.call(document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top)')));
  navs.forEach(function(nv){if(!nv||!nv.querySelector('button'))return;
-  var btns=Array.prototype.slice.call(nv.querySelectorAll('button[data-section],button[data-kf-nav]'));
-  GROUPS.forEach(function(g,i){var h=nv.querySelector(':scope > .kpg[data-g="'+i+'"]');
-   if(!h){h=document.createElement('div');h.className='kpg';h.setAttribute('data-g',i);h.textContent=g[1];nv.appendChild(h)}
-   var vis=btns.some(function(b){var k=keyOf(b);if(k==null)return false;var o=ORD[k];return o>=g[2]&&o<=g[3]&&b.style.display!=='none'});
-   var want=vis?'':'none';if(h.style.display!==want)h.style.display=want})})}
+  Array.prototype.slice.call(nv.querySelectorAll(':scope > .kpg')).forEach(function(h){h.remove()});
+  var list=[];Array.prototype.slice.call(nv.querySelectorAll('button[data-section],button[data-kf-nav]')).forEach(function(b,i){
+   var k=keyOf(b);if(k==null)return;if(b.style.display==='none'){if(b.classList.contains('kp-gstart'))b.classList.remove('kp-gstart');return}
+   list.push({b:b,o:ORD[k],i:i})});
+  list.sort(function(a,b){return (a.o-b.o)||(a.i-b.i)});
+  var last=-1;list.forEach(function(x){var g=grp(x.o),want=(last!==-1&&g!==last);
+   if(x.b.classList.contains('kp-gstart')!==want)x.b.classList.toggle('kp-gstart',want);last=g})})}
 setInterval(tidy,700);
 })();
 </script>
