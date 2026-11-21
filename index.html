@@ -3337,6 +3337,7 @@ db.collection('config').doc('vendedores').onSnapshot({includeMetadataChanges:tru
   if(CURRENT_USER){
     const norm = x=>String(x||'').trim().toLowerCase();
     const yo = window.kpMatchMe(VENDEDORES,CURRENT_USER);
+    if(VENDEDORES.length>1){try{localStorage.setItem('kp_vend_cache',JSON.stringify(VENDEDORES.filter(function(v){return v&&(v.usuario||v.nombre)}).map(function(v){return {usuario:v.usuario,nombre:v.nombre,esAdmin:!!v.esAdmin,esEncargadoEnvios:!!v.esEncargadoEnvios,esRepartidor:!!v.esRepartidor,esEmpacador:!!v.esEmpacador,soloOrdenes:!!v.soloOrdenes,kpRol:v.kpRol||''}})));}catch(e){}}
     if(!yo && VENDEDORES.length>1){CURRENT_USER.esAdmin=false;CURRENT_USER.esEncargadoEnvios=false;CURRENT_USER.esRepartidor=false;CURRENT_USER.soloOrdenes=true;CURRENT_USER.kpRol='vendedor';}
     if(yo){
       const __prev=[CURRENT_USER.esAdmin,CURRENT_USER.esEncargadoEnvios,CURRENT_USER.esRepartidor,CURRENT_USER.soloOrdenes].join('|');
@@ -3554,7 +3555,9 @@ function finishLogin(user){
   let user=null; try{ user = JSON.parse(saved); }catch(e){}
   if(user && user.nombre){
     // Seguridad: los permisos guardados en este navegador no se confían. Se reconfirman con la lista de usuarios.
-    user.esAdmin=false; user.esEncargadoEnvios=false; user.esRepartidor=false; user.soloOrdenes=true; user.kpRol='vendedor';
+    (function(){var yo=null;try{yo=window.kpMatchMe(JSON.parse(localStorage.getItem('kp_vend_cache')||'[]'),user);}catch(e){}
+      user.esAdmin=!!(yo&&yo.esAdmin); user.esEncargadoEnvios=!!(yo&&yo.esEncargadoEnvios); user.esRepartidor=!!(yo&&!yo.esAdmin&&yo.esRepartidor); user.esEmpacador=!!(yo&&yo.esEmpacador); user.soloOrdenes=!!(yo&&yo.soloOrdenes);
+      user.kpRol=(yo&&yo.kpRol)||(yo?(yo.esAdmin?'admin_general':yo.esEncargadoEnvios?'admin_envios':yo.esRepartidor?'repartidor':yo.esEmpacador?'empacador':'vendedor'):'vendedor');})();
     user.cargo = cargoLabel(user);
     CURRENT_USER = user; activeTab = user.esRepartidor ? 'hoy' : 'inicio'; document.body.classList.toggle('kp-role-repartidor', !!user.esRepartidor);
     document.getElementById('loginScreen').classList.add('hide');
@@ -9643,9 +9646,9 @@ if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!
   window.enviarARepartidor=async function(id){
     const order=ORDERS.find(o=>o.id===id); if(!order){toast('No se encontró la orden.');return;}
     if(order.enviadoRepartidor && (order.repartidorId||order.repartidorUsuario||order.repartidorNombre)){toast(`Ya está asignada a ${order.repartidorNombre||'un repartidor'}.`);return;}
-    await loadAttendance();
+    try{await (window.kpReloadDriverState?window.kpReloadDriverState():loadAttendance());}catch(e){}
     const drivers=kpActiveDrivers();
-    if(!drivers.length){toast('No hay repartidores activos hoy. Deben marcar "Activo".');return;}
+    if(!drivers.length){const reg=(VENDEDORES||[]).filter(v=>v&&v.esRepartidor&&v.activo!==false&&v.aprobado!==false).map(v=>v.nombre);toast(reg.length?`No hay repartidores activos hoy. Aún no marcan "Activo": ${reg.join(', ')}.`:'No hay repartidores creados.');return;}
     const fecha=order.fecha||todayStr(); const counterRef=db.collection('config').doc('repartidorAsignacion'); const orderRef=db.collection('orders').doc(id); let chosen=null;
     try{
       await db.runTransaction(async tx=>{
@@ -9663,6 +9666,7 @@ if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!
   window.kpRenderRepartidorView=function(){
     const view=document.getElementById('view'); const fecha=selectedDate; let assigned=ORDERS.filter(o=>o.enviadoRepartidor&&(o.tipoEntrega==='tegucigalpa'||!o.tipoEntrega)&&(globalSearchTerm?orderMatchesSearch(o):o.fecha===fecha));
     if(CURRENT_USER?.esRepartidor) assigned=assigned.filter(o=>kpOrderBelongsToCurrentDriver(o));
+    assigned=assigned.filter((o,i,a)=>a.findIndex(x=>String(x.id)===String(o.id))===i);
     assigned.sort((a,b)=>(a.entregado===true?1:0)-(b.entregado===true?1:0));
     const drivers=kpActiveDrivers();
     const info=CURRENT_USER?.esRepartidor?kpDriverAttendanceHtml():`<div class="card"><b>Repartidores activos hoy: ${drivers.length}</b><div class="small">Solo quienes marcaron entrada reciben nuevas órdenes.</div></div>`;
@@ -9979,6 +9983,7 @@ if(!producto||!modelo){toast('Producto y modelo son obligatorios.');return;}if(!
   };
   
   // Sin bloqueo por "desactivado por hoy": el interruptor se puede usar todas las veces que sea necesario.
+  window.kpReloadDriverState=load;
   setTimeout(load,0);
   ATT_REF_SIMPLE().onSnapshot(snap=>{
     try{
@@ -10843,6 +10848,7 @@ window.openNewOrder=function(){
    editingOrderId=null;draftProducts=[];KP.openEnterpriseOrder({}).catch(e=>{console.error('openEnterpriseOrder falló',e);toast('No se pudo abrir el formulario de orden: '+(e?.message||'error desconocido'));});
  }catch(e){ console.error('openNewOrder falló',e); toast('No se pudo abrir el formulario de orden: '+(e?.message||'error desconocido')); }
 };
+setTimeout(function(){try{if(window.kpFastLoad)window.kpFastLoad(loadBranches,loadFrequent)}catch(e){}},2500);
 KP.openEnterpriseOrder=async function(o={}){
  try{
  await (window.kpFastLoad?window.kpFastLoad(loadBranches,loadFrequent):(async()=>{await loadBranches();await loadFrequent();})());
@@ -11332,7 +11338,7 @@ window.buildTabs=function(){
  document.getElementById('tabs').innerHTML=tabs.map(t=>`<div class="tab ${activeTab===t.id?'active':''}" data-tab="${t.id}">${t.label}${t.badge?`<span class="badge">${t.badge}</span>`:''}</div>`).join('');
  document.querySelectorAll('#tabs .tab').forEach(x=>x.onclick=()=>window.setTab(x.dataset.tab));
 };
-window.setTab=function(id){if(!CURRENT_USER)return;document.querySelectorAll('.kpMsgCtxOverlay,.kpMsgCtxWrap').forEach(n=>n.remove());if(id==='ayuda'){activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);return;}if(CURRENT_USER.soloOrdenes&&!CURRENT_USER.esAdmin&&!CURRENT_USER.esRepartidor&&!CURRENT_USER.esEncargadoEnvios&&id!=='hoy')return;if(CURRENT_USER.esRepartidor&&!['repartidor','principal'].includes(id))return;if(CURRENT_USER.esEncargadoEnvios&&!CURRENT_USER.esAdmin&&!['adminEnviosTegus','adminEnviosNacional','rastreosNacionales','adminOrdersInventory','gps'].includes(id))return;activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);};
+window.setTab=function(id){if(!CURRENT_USER)return;document.querySelectorAll('.kpMsgCtxOverlay,.kpMsgCtxWrap').forEach(n=>n.remove());if(id==='ayuda'){activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);return;}if(CURRENT_USER.soloOrdenes&&!CURRENT_USER.esAdmin&&!CURRENT_USER.esRepartidor&&!CURRENT_USER.esEncargadoEnvios&&!['hoy','principal'].includes(id))return;if(CURRENT_USER.esRepartidor&&!['repartidor','principal'].includes(id))return;if(CURRENT_USER.esEncargadoEnvios&&!CURRENT_USER.esAdmin&&!['adminEnviosTegus','adminEnviosNacional','rastreosNacionales','adminOrdersInventory','gps'].includes(id))return;activeTab=id;buildTabs();render();updateKPlaceNav?.();window.kpUpdateDateNav?.();window.scrollTo(0,0);};
 window.kpSafeSetTab=window.setTab;
 const oldRender=window.render;
 window.render=function(){
@@ -18127,18 +18133,17 @@ window.kpBancoFalta=function(id){
   function abierto(){var sh=document.getElementById('sheet');return !!(sh&&sh.classList.contains('show'));}
   var orig=window.openNewOrder;
   window.openNewOrder=function(){
-    if(busy)return; busy=true; var n=0;
-    function intento(){
-      n++;
-      try{editingOrderId=null;}catch(e){} try{draftProducts=[];}catch(e){}
-      try{ if(typeof orig==='function') orig(); }catch(e){}
-      setTimeout(function(){
-        if(abierto()){busy=false;return;}
-        if(n<3){var sh=document.getElementById('sheet'); if(sh&&!sh.classList.contains('show'))sh.innerHTML=''; intento();}
-        else{busy=false;try{sessionStorage.setItem('kp_reabrir_nueva','1');}catch(e){} location.reload();}
-      },n===1?1400:2200);
-    }
-    intento();
+    if(abierto())return;
+    var now=Date.now(); if(window.__kpOpening&&now-window.__kpOpening<2500)return; window.__kpOpening=now;
+    try{editingOrderId=null;}catch(e){} try{draftProducts=[];}catch(e){}
+    var sh=document.getElementById('sheet');
+    if(sh){ /* respuesta inmediata: se ve algo al primer toque mientras carga el formulario real */
+      sh.innerHTML='<div data-kp-skel="1" style="padding:56px 20px;text-align:center;color:inherit;font-size:16px">⏳ Abriendo formulario…</div>'; sh.classList.add('show'); }
+    try{ if(typeof orig==='function') orig(); }catch(e){}
+    setTimeout(function(){ var s=document.getElementById('sheet');
+      if(s&&s.querySelector('[data-kp-skel]')){ try{ if(typeof orig==='function') orig(); }catch(e){} } },2200);
+    setTimeout(function(){ var s=document.getElementById('sheet');
+      if(s&&s.querySelector('[data-kp-skel]')){ s.innerHTML='<div style="padding:44px 20px;text-align:center"><b>No se pudo abrir el formulario.</b><br><button class="btn primary" style="margin-top:14px" onclick="window.__kpOpening=0;openNewOrder()">Reintentar</button> <button class="btn" style="margin-top:14px" onclick="document.getElementById(\'sheet\').classList.remove(\'show\')">Cerrar</button></div>'; } },6000);
   };
   /* Si hubo que recargar, la orden nueva se abre sola */
   try{ if(sessionStorage.getItem('kp_reabrir_nueva')==='1'){ sessionStorage.removeItem('kp_reabrir_nueva');
@@ -19959,15 +19964,30 @@ const setLocalG=k=>{try{localStorage.setItem('kp_groq_key',k);}catch(e){}};
 const refG=()=>db.collection('config').doc('groq');
 async function cloudGetG(){try{const s=await refG().get();return s.exists?((s.data()||{}).key||''):'';}catch(e){return '';}}
 function cloudSetG(k){try{return refG().set({key:k,por:quien(),cuando:new Date().toISOString()},{merge:true});}catch(e){}}
+const limpiaG=k=>String(k||'').replace(/[\s\u200B-\u200D\uFEFF]/g,'').replace(/^bearer/i,'').replace(/^["'`]+|["'`]+$/g,'');
+let groqMalo=false;
 async function getGroqKey(){
-  let k=getLocalG();
-  if(!k){const c=await cloudGetG();if(c){k=c;setLocalG(k);}}
+  let k=limpiaG(getLocalG());
+  if(!k){const c=limpiaG(await cloudGetG());if(c){k=c;setLocalG(k);}}
   if(!k&&!pidioGroq){
     pidioGroq=true;
-    try{k=(prompt('Pega tu clave de API de Groq (empieza con gsk_). Se guarda en tu cuenta y sirve en todos tus dispositivos. Déjalo vacío para usar Gemini.')||'').trim().replace(/^["'`]+|["'`]+$/g,'');
+    try{k=limpiaG(prompt('Pega tu clave de API de Groq (empieza con gsk_). Se guarda en tu cuenta y sirve en todos tus dispositivos. Déjalo vacío para usar Gemini.')||'');
       if(k){setLocalG(k);cloudSetG(k);}}catch(e){}
   }
   return k;
+}
+async function renovarGroq(mala){
+  /* La clave guardada dio 401: se descarta y se pide una nueva (antes se reutilizaba para siempre). */
+  try{localStorage.removeItem('kp_groq_key');}catch(e){}
+  let k=limpiaG(await cloudGetG());
+  if(k&&k!==mala){setLocalG(k);return k;}
+  if(groqMalo)return '';
+  groqMalo=true;
+  try{k=limpiaG(prompt('La clave de Groq guardada no es válida (error 401). Pega una clave nueva (empieza con gsk_) o deja vacío para usar solo Gemini.')||'');}catch(e){k='';}
+  if(k&&!/^gsk_/.test(k)){try{toast('Esa clave no empieza con gsk_. Revisa que sea la clave de Groq.');}catch(e){}return '';}
+  if(k){setLocalG(k);cloudSetG(k);groqMalo=false;return k;}
+  try{cloudSetG('');}catch(e){}
+  return '';
 }
 async function getKeySilent(){
   let k=getLocal();
@@ -19987,7 +20007,7 @@ async function groq(texto,key){
       if(r.ok)break;
       if(r.status!==400&&r.status!==404)break; /* 401/429/5xx: otro modelo no ayuda */
     }
-    if(!r||!r.ok){throw new Error(ultimo===401?'Groq 401: clave inválida':ultimo===429?'Groq 429: límite de uso':'Groq '+ultimo);}
+    if(!r||!r.ok){const er=new Error(ultimo===401?'Groq 401: clave inválida':ultimo===429?'Groq 429: límite de uso':'Groq '+ultimo);er.status=ultimo;throw er;}
     const data=await r.json(),txt=data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;
     if(!txt)throw new Error('Groq sin contenido');
     let j;try{j=JSON.parse(txt);}catch(e){const m=txt.match(/\{[\s\S]*\}/);if(!m)throw e;j=JSON.parse(m[0]);}
@@ -20058,7 +20078,11 @@ function wrap(obj,key){
       if(gk){
         ponerBtn('🪄 Leyendo con Groq…');
         try{const r=await groq(source,gk);if(aEtiquetas(r)){ai=r;motor='Groq';}}
-        catch(e){console.warn('Groq falló',e);aviso('Groq no respondió ('+(e.message||'error')+'). Pruebo con Gemini');}
+        catch(e){console.warn('Groq falló',e);
+          if(e&&e.status===401){let nk='';try{nk=await renovarGroq(gk);}catch(e2){}
+            if(nk){try{ponerBtn('🪄 Leyendo con Groq…');const r2=await groq(source,nk);if(aEtiquetas(r2)){ai=r2;motor='Groq';}}catch(e3){aviso('Groq no respondió ('+(e3.message||'error')+'). Pruebo con Gemini');}}
+            else aviso('Groq no está configurado. Uso Gemini');
+          }else aviso('Groq no respondió ('+(e.message||'error')+'). Pruebo con Gemini');}
       }
       if(!ai){
         const key=await getKeySilent();
@@ -28308,6 +28332,91 @@ function tidy(){if(isFlat())return;
   var last=-1;list.forEach(function(x){var g=grp(x.o),want=(last!==-1&&g!==last);
    if(x.b.classList.contains('kp-gstart')!==want)x.b.classList.toggle('kp-gstart',want);last=g})})}
 setInterval(tidy,700);
+})();
+</script>
+<style id="kp-fixes-css">
+.kp-drv-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:999px;padding:5px 11px;margin:6px 0 2px;background:#3a2c18;border:1px solid #8a6a2f;color:#ffd9aa}
+.kp-drv-chip.ok{background:#1d3a2a;border-color:#2f5a3c;color:#7ee2a8}
+.kp-drv-chip.off{background:#222c47;border-color:#3a4770;color:#c9cfe2}
+#kpMiMeta .kpm{background:linear-gradient(135deg,#1c1740,#121b2d);border:1px solid #3b3a78;border-radius:18px;padding:14px 16px;margin:0 0 14px;color:#f1f4ff}
+#kpMiMeta .kpm small{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a9b3d6;font-weight:800}
+#kpMiMeta .kpm b.big{display:block;font-size:22px;margin:2px 0 8px}
+#kpMiMeta .kpm .bar{height:10px;border-radius:8px;background:#2a3358;overflow:hidden}
+#kpMiMeta .kpm .bar i{display:block;height:100%;border-radius:8px;background:#5ed49a}
+#kpMiMeta .kpm .row{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#c9cfe2;margin-top:8px}
+</style>
+<script id="kp-fixes-v1">
+(function(){
+function me(){return window.CURRENT_USER||null}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function nm(s){return String(s==null?'':s).trim().toLowerCase()}
+function toastS(m){try{window.toast(m)}catch(e){}}
+function pad(n){return ('0'+n).slice(-2)}
+function hora(iso){try{var d=new Date(iso);return isNaN(d)?'':d.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
+
+/* ---------- Canales: nunca quedar en blanco; visibles sin importar mayúsculas ---------- */
+try{if(window.KP&&KP.Channels){
+ KP.Channels.visibleFor=function(u){var ids=[u&&u.usuario,u&&u.nombre].filter(Boolean).map(nm);
+  return (KP.Channels.list||[]).filter(function(c){return (u&&u.esAdmin)||c.tipo==='general'||(c.miembros||[]).some(function(m){return ids.indexOf(nm(m))>-1})})};
+ var pCR=KP.Channels.render;
+ if(typeof pCR==='function')KP.Channels.render=async function(){try{return await pCR.apply(this,arguments)}catch(e){console.error('Canales',e);var v=document.getElementById('view');
+  if(v)v.innerHTML='<div style="padding:34px 16px;text-align:center;color:#c9cfe2"><b style="display:block;font-size:17px;color:#fff;margin-bottom:6px">No se pudieron cargar los canales</b><small>'+esc(e&&e.message||'Revisa tu conexión')+'</small><br><button class="btn primary" style="margin-top:14px" onclick="KP.Channels.render()">Reintentar</button></div>'}}
+}}catch(e){}
+
+/* ---------- Repartidor: recibida / enviada, y quitar la orden ---------- */
+function canRecall(o){var u=me();if(!u||u.esRepartidor)return false;if(u.esAdmin||u.esEncargadoEnvios)return true;return nm(o.vendedor)===nm(u.nombre)||(!!u.usuario&&nm(o.vendedor)===nm(u.usuario))}
+window.kpQuitarDeRepartidor=async function(id){
+ var o=(window.ORDERS||[]).find(function(x){return String(x.id)===String(id)});
+ if(!o||!canRecall(o)){toastS('No tienes permiso para quitar esta orden del repartidor.');return}
+ if(o.entregado===true){toastS('Esa orden ya fue entregada.');return}
+ if(!confirm('¿Quitar esta orden de '+(o.repartidorNombre||'el repartidor')+'? Desaparece de su lista y podés editarla y volver a enviarla.'))return;
+ try{var db=window.db,F=firebase.firestore.FieldValue,ref=db.collection('orders').doc(String(id)),cref=db.collection('config').doc('repartidorAsignacion'),de='';
+  await db.runTransaction(async function(tx){var os=await tx.get(ref),cs=await tx.get(cref);if(!os.exists)throw new Error('La orden ya no existe');
+   var cur=os.data()||{};if(cur.entregado===true)throw new Error('Ya fue entregada');de=cur.repartidorNombre||'';var key=String(cur.repartidorId||cur.repartidorUsuario||'');
+   tx.update(ref,{enviadoRepartidor:false,repartidorRetiradoAt:new Date().toISOString(),repartidorRetiradoDe:de,repartidorRetiradoPor:(me()&&me().nombre)||'',repartidorId:F.delete(),repartidorUsuario:F.delete(),repartidorNombre:F.delete(),repartidorAsignadoFecha:F.delete(),repartidorVistoAt:F.delete()});
+   if(cs.exists&&key){var d=cs.data()||{},c=Object.assign({},d.conteos||{});if(Number(c[key]||0)>0){c[key]=Number(c[key])-1;tx.set(cref,{fecha:d.fecha,conteos:c},{merge:false})}}});
+  o.enviadoRepartidor=false;o.repartidorRetiradoAt=new Date().toISOString();o.repartidorRetiradoDe=de;['repartidorId','repartidorUsuario','repartidorNombre','repartidorAsignadoFecha','repartidorVistoAt'].forEach(function(k){delete o[k]});
+  toastS('Orden quitada'+(de?' de '+de:'')+'. Ya puedes editarla y volver a enviarla.');try{window.render()}catch(e){}
+ }catch(e){console.error(e);toastS('No se pudo quitar: '+(e&&e.message||'error'))}};
+var pOA=window.orderActions;
+if(typeof pOA==='function')window.orderActions=function(o){var h=pOA.apply(this,arguments);
+ try{if(o&&o.enviadoRepartidor&&o.entregado!==true&&canRecall(o))h+='<div class="btnrow" style="margin-top:8px"><button type="button" class="btn sm" style="border-color:#d0a060;color:#ffd59a" onclick="kpQuitarDeRepartidor(\''+String(o.id).replace(/'/g,"\\'")+'\')">↩ Quitar del repartidor</button></div>'}catch(e){}
+ return h};
+var pOC=window.orderCard;
+if(typeof pOC==='function')window.orderCard=function(o){var h=pOC.apply(this,arguments);
+ try{var u=me();if(!o||(u&&u.esRepartidor))return h;var chip='';
+  if(o.enviadoRepartidor&&o.entregado!==true){var nmb=esc(o.repartidorNombre||'repartidor');
+   chip=o.repartidorVistoAt?'<div class="kp-drv-chip ok">🛵 '+nmb+' · recibida ✓ '+hora(o.repartidorVistoAt)+'</div>':'<div class="kp-drv-chip">🛵 Enviada a '+nmb+(o.repartidorAsignadoFecha?' · '+hora(o.repartidorAsignadoFecha):'')+' · ⏳ aún no la recibe</div>'}
+  else if(o.repartidorRetiradoAt&&!o.enviadoRepartidor&&o.entregado!==true)chip='<div class="kp-drv-chip off">↩ Retirada de '+esc(o.repartidorRetiradoDe||'repartidor')+' · '+hora(o.repartidorRetiradoAt)+'</div>';
+  if(chip){var i=h.indexOf('kp-order-number');if(i>-1){var j=h.indexOf('</div>',i);if(j>-1)return h.slice(0,j+6)+chip+h.slice(j+6)}}}catch(e){}
+ return h};
+var acked={};
+function ack(){try{var u=me();if(!u||!u.esRepartidor||typeof kpOrderBelongsToCurrentDriver!=='function'||!window.db)return;
+ (window.ORDERS||[]).forEach(function(o){if(o.enviadoRepartidor&&!o.repartidorVistoAt&&o.entregado!==true&&acked[o.id]!==o.repartidorAsignadoFecha&&kpOrderBelongsToCurrentDriver(o)){
+  acked[o.id]=o.repartidorAsignadoFecha;var now=new Date().toISOString();o.repartidorVistoAt=now;
+  window.db.collection('orders').doc(String(o.id)).update({repartidorVistoAt:now}).catch(function(){acked[o.id]=null})}})}catch(e){}}
+setInterval(ack,3000);
+
+/* ---------- Mi meta (cada vendedor ve solo la suya) ---------- */
+var mc={t:0,key:'',row:null};
+function mesES(p){var m=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];var a=String(p).split('-');return (m[+a[1]-1]||p)+' '+a[0]}
+function money(n){return (typeof kpMoneda==='function'?kpMoneda():'L.')+' '+Math.round(Number(n)||0).toLocaleString('es-HN')}
+async function loadMeta(){var u=me(),d=new Date(),per=d.getFullYear()+'-'+pad(d.getMonth()+1),comp=String((window.KPLACE_ACTIVE_CONTEXT&&KPLACE_ACTIVE_CONTEXT.companyId)||u.companyId||u.empresaId||'principal').trim(),key=comp+'|'+nm(u.nombre)+'|'+per;
+ var row;if(mc.key===key&&Date.now()-mc.t<90000)row=mc.row;else{
+  var snap=await window.db.collection('kpBusinessModules').doc(comp).collection('metas_y_comisiones').get();
+  row=snap.docs.map(function(x){return x.data()}).filter(function(r){return nm(r.empleado)===nm(u.nombre)&&String(r.periodo||'')===per})[0]||null;mc={t:Date.now(),key:key,row:row}}
+ if(!row)return null;
+ var vend=(window.ORDERS||[]).filter(function(o){if(nm(o.vendedor)!==nm(u.nombre)||o.entregado!==true)return false;try{if(kpEsCancelada(o)||kpNoRecibido(o))return false}catch(e){}return String(o.entregadoFecha||o.fecha||'').slice(0,7)===per})
+  .reduce(function(s,o){var v=0;try{v=kpVentaContable(o)}catch(e){v=Number(o.total)||0}return s+(Number(v)||0)},0);
+ var meta=Number(row.meta)||0,pc=meta>0?Math.min(100,Math.round(vend*100/meta)):0,com=vend*(Number(row.porcentaje)||0)/100;
+ return '<div class="kpm"><small>🎯 Mi meta · '+esc(mesES(per))+'</small><b class="big">'+pc+'% de la meta</b><div class="bar"><i style="width:'+pc+'%"></i></div>'+
+  '<div class="row"><span>Vendido: <b>'+money(vend)+'</b></span><span>Meta: <b>'+money(meta)+'</b></span></div>'+
+  '<div class="row"><span>'+(vend>=meta&&meta>0?'¡Meta cumplida! 🎉':'Faltan: <b>'+money(Math.max(0,meta-vend))+'</b>')+'</span>'+(Number(row.porcentaje)?'<span>Comisión estimada: <b>'+money(com)+'</b></span>':'')+'</div></div>'}
+function drawMeta(){try{var u=me();if(!u||u.esAdmin||u.esRepartidor||window.activeTab!=='inicio'||!window.db)return;
+ var v=document.getElementById('view');if(!v||v.querySelector('#kpMiMeta'))return;
+ var box=document.createElement('div');box.id='kpMiMeta';v.insertBefore(box,v.firstChild);
+ loadMeta().then(function(h){if(h)box.innerHTML=h;else box.remove()}).catch(function(){box.remove()})}catch(e){}}
+var pR=render;render=function(){var r=pR.apply(this,arguments);setTimeout(drawMeta,200);setTimeout(drawMeta,1200);return r};
 })();
 </script>
 </body>
