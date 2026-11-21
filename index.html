@@ -11555,9 +11555,7 @@ KP.Channels.render = async function(){
   const v=document.getElementById('view'); if(!v) return;
   KP.Channels._currentOpenId = null;
   await KP.Channels.load();
-  if(window.activeTab!=='principal') return;
   if(!KP.Channels.list.length) await KP.Channels.ensureDefaults();
-  if(window.activeTab!=='principal') return;
   const visibles = KP.Channels.visibleFor(CURRENT_USER);
   const adminBtn = CURRENT_USER.esAdmin ? `<button class="btn" onclick="KP.Channels.renderAdmin()">⚙️ Administrar canales</button>` : '';
   v.innerHTML = `<div class="kp-chat-enterprise"><div class="kp-enterprise-head"><div><div class="kp-kicker">EQUIPO</div><h2>Canales</h2><p>Elegí un canal para chatear</p></div>${adminBtn}</div><input id="kpCanalesBuscar" placeholder="Buscar canal…" oninput="KP.Channels._filterCanales(this.value)" style="margin-top:12px"><div id="kpCanalesList" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div></div>`;
@@ -24879,7 +24877,6 @@ const PAGE_PERMISSIONS={
 };
 const MENU_MAP={inicio:'inicio',ordenes:'hoy',envios:'boxful',rastreos:'rastreosNacionales',repartidores:'repartidor',inventario:'adminOrdersInventory',chat:'principal',usuarios:'admin',reportes:'reportes',integraciones:'integraciones',admin:'admin',kplace_cash:'kplace_cash',kplace_packing:'kplace_packing',kplace_documents:'kplace_documents'};
 function canPage(id){if(!me())return false;if(allAccess(me()))return true;const perm=PAGE_PERMISSIONS[id];return !perm||perm!=='admin.only'&&has(me(),perm);}
-window.kpCanPage=canPage;
 function syncNavigation(){
  if(!me())return;
  const tabs=document.getElementById('tabs');
@@ -28230,7 +28227,6 @@ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.c
 window.kpEnvBadge=function(kind){var n=(window.ORDERS||[]).filter(function(o){return pendiente(o)&&String(o.fecha||'')===selD()&&(kind==='tegus'?esTegus(o):(esNac(o)&&!esTegus(o)))}).length;
  return n?'<span class="badge" style="margin-left:6px">'+n+'</span>':''};
 
-window.kpEnvQueueCount=function(){return (window.ORDERS||[]).filter(pendHoy).length};
 window.kpEnvExtra=function(){if(!isEnv())return '';var n=queue().length,nd=nDev();
  return '<button class="btn sm primary" onclick="setTab(\'adminEmpacar\')">📦 Empacar'+(n?'<span class="badge" style="margin-left:6px">'+n+'</span>':'')+'</button>'+(nd?'<button class="btn sm" onclick="setTab(\'adminEnviosDevoluciones\')">↩ Devoluciones<span class="badge" style="margin-left:6px">'+nd+'</span></button>':'')};
 /* ---------- Pestañas y menú del administrador de envíos ---------- */
@@ -28416,235 +28412,11 @@ async function loadMeta(){var u=me(),d=new Date(),per=d.getFullYear()+'-'+pad(d.
  return '<div class="kpm"><small>🎯 Mi meta · '+esc(mesES(per))+'</small><b class="big">'+pc+'% de la meta</b><div class="bar"><i style="width:'+pc+'%"></i></div>'+
   '<div class="row"><span>Vendido: <b>'+money(vend)+'</b></span><span>Meta: <b>'+money(meta)+'</b></span></div>'+
   '<div class="row"><span>'+(vend>=meta&&meta>0?'¡Meta cumplida! 🎉':'Faltan: <b>'+money(Math.max(0,meta-vend))+'</b>')+'</span>'+(Number(row.porcentaje)?'<span>Comisión estimada: <b>'+money(com)+'</b></span>':'')+'</div></div>'}
-function drawMeta(slot){try{var u=me();if(!u||u.esAdmin||u.esRepartidor||!window.db)return;
- if(slot&&slot.nodeType===1){if(slot.querySelector('#kpMiMeta'))return;var b2=document.createElement('div');b2.id='kpMiMeta';slot.appendChild(b2);loadMeta().then(function(h){if(h)b2.innerHTML=h;else b2.remove()}).catch(function(){b2.remove()});return}
- if(window.activeTab!=='inicio')return;
+function drawMeta(){try{var u=me();if(!u||u.esAdmin||u.esRepartidor||window.activeTab!=='inicio'||!window.db)return;
  var v=document.getElementById('view');if(!v||v.querySelector('#kpMiMeta'))return;
  var box=document.createElement('div');box.id='kpMiMeta';v.insertBefore(box,v.firstChild);
  loadMeta().then(function(h){if(h)box.innerHTML=h;else box.remove()}).catch(function(){box.remove()})}catch(e){}}
-window.kpDrawMeta=drawMeta;
 var pR=render;render=function(){var r=pR.apply(this,arguments);setTimeout(drawMeta,200);setTimeout(drawMeta,1200);return r};
-})();
-</script>
-<style id="kp-router-css">
-.kph{max-width:620px;margin:0 auto;padding:2px 2px 90px;color:#f1f4ff}
-.kph *{box-sizing:border-box}
-.kph-hero{background:linear-gradient(135deg,#2a1d5c 0%,#16203a 70%);border:1px solid #3b3a78;border-radius:22px;padding:18px 18px 16px;margin-bottom:14px}
-.kph-hero small{display:block;font-size:12px;color:#b7bfe0;text-transform:capitalize}
-.kph-hero h2{margin:4px 0 8px;font-size:24px;color:#fff}
-.kph-role{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#d8c9ff;background:#3a2c78;border-radius:999px;padding:4px 10px}
-.kph-h{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#9aa6c8;margin:18px 2px 8px}
-.kph-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.kph-kpi{background:#121b2d;border:1px solid #2c3754;border-radius:16px;padding:13px 14px}
-.kph-kpi small{display:block;font-size:11px;color:#9aa6c8;margin-bottom:4px}
-.kph-kpi b{font-size:24px;color:#fff;line-height:1}
-.kph-kpi.hot{background:#2a2216;border-color:#6b5230}.kph-kpi.hot b{color:#ffd59a}
-.kph-kpi.good b{color:#7ee2a8}
-.kph-tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.kph-tile{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;background:#121b2d;border:1px solid #2c3754;border-radius:16px;padding:14px;color:#f1f4ff;font-weight:700;font-size:14px;-webkit-tap-highlight-color:transparent}
-.kph-tile:active{background:#1a2540}
-.kph-tile i{font-style:normal;font-size:22px;flex:none}
-.kph-tile.main{grid-column:1/-1;background:linear-gradient(135deg,#6d3bd6,#4b2aa8);border-color:#7d55e6;font-size:15px}
-.kph-tile em{margin-left:auto;font-style:normal;font-size:12px;background:#e63e62;color:#fff;border-radius:999px;padding:2px 8px}
-.kph-panel{all:unset;box-sizing:border-box;cursor:pointer;display:block;text-align:center;margin-top:14px;padding:13px;border-radius:14px;border:1px dashed #3b4770;color:#b7bfe0;font-size:13px;font-weight:700}
-.kph-att{margin-bottom:12px}
-/* Tarjeta del repartidor */
-.kpd{background:#121b2d;border:1px solid #2c3754;border-radius:20px;padding:15px;margin:0 0 14px;color:#f1f4ff}
-.kpd *{box-sizing:border-box}
-.kpd-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
-.kpd-num{font-size:12px;font-weight:800;letter-spacing:.06em;color:#a9c0ff}
-.kpd-st{font-size:12px;font-weight:800;border-radius:999px;padding:4px 10px;background:#3a2c18;color:#ffd9aa;border:1px solid #8a6a2f}
-.kpd-st.ok{background:#1d3a2a;color:#7ee2a8;border-color:#2f5a3c}.kpd-st.warn{background:#2f2236;color:#e5b8ff;border-color:#6b4a80}
-.kpd-main{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.kpd-name{font-size:21px;font-weight:800;line-height:1.15;color:#fff}
-.kpd-cob{flex:none;text-align:right;font-size:11px;color:#9aa6c8}.kpd-cob b{display:block;font-size:20px;color:#7ee2a8}
-.kpd-cob.must b{color:#ffd59a}
-.kpd-pills{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
-.kpd-pill{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#e6ebff;background:#1a2540;border:1px solid #33416a;border-radius:999px;padding:8px 13px;font-size:14px;font-weight:700}
-.kpd-pill.wa{background:#12301f;border-color:#2f5a3c;color:#8df0b6}
-.kpd-addr{font-size:14px;color:#c9cfe2;margin:2px 0 8px;line-height:1.35}
-.kpd-prod{background:#0f1626;border:1px solid #252f47;border-radius:12px;padding:9px 11px;margin-top:6px;font-size:14px;color:#e6ebff}
-.kpd-note{background:#3a2c18;border:1px solid #8a6a2f;color:#ffe2b0;border-radius:12px;padding:9px 11px;margin-top:8px;font-size:14px}
-.kpd-step{margin-top:14px}
-.kpd-step b{display:block;font-size:13px;color:#c9cfe2;margin-bottom:7px}
-.kpd-step b span{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#2d3b61;color:#fff;align-items:center;justify-content:center;font-size:11px;margin-right:7px}
-.kpd-opts{display:flex;flex-wrap:wrap;gap:8px}
-.kpd-opt{font:inherit;font-size:15px;font-weight:800;color:#e6ebff;background:#1a2540;border:1px solid #33416a;border-radius:12px;padding:11px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.kpd-opt.on{background:#1d3a2a;border-color:#4fbf86;color:#8df0b6}
-.kpd-go{display:block;width:100%;margin-top:16px;font:inherit;font-size:17px;font-weight:800;border:0;border-radius:16px;padding:16px;background:#2ec27e;color:#04140c;cursor:pointer}
-.kpd-go.dis{background:#222c47;color:#8793b6}
-.kpd-need{text-align:center;font-size:12px;color:#ffd59a;margin-top:6px}
-.kpd-more{margin-top:12px;border-top:1px solid #252f47;padding-top:10px}
-.kpd-more summary{cursor:pointer;font-size:13px;font-weight:800;color:#9aa6c8;list-style:none}
-.kpd-more summary::-webkit-details-marker{display:none}
-.kpd-mb{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.kpd-mb button{font:inherit;font-size:13px;font-weight:700;color:#e6ebff;background:#1a2540;border:1px solid #33416a;border-radius:12px;padding:11px 8px;cursor:pointer}
-.kpd-mb button.red{background:#33191f;border-color:#7a3340;color:#ffb4bd}
-body.kp-hide-role,.kp-hide-role{display:none!important}
-</style>
-<script id="kp-router-v1">
-(function(){
-function me(){return window.CURRENT_USER||null}
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function nm(s){return String(s==null?'':s).trim().toLowerCase()}
-function toastS(m){try{window.toast(m)}catch(e){}}
-function pad(n){return ('0'+n).slice(-2)}
-function todayS(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
-function money(n){return (typeof kpMoneda==='function'?kpMoneda():'L.')+' '+Math.round(Number(n)||0).toLocaleString('es-HN')}
-function kind(u){return u.esAdmin?'admin':(u.esRepartidor?'rep':(u.esEncargadoEnvios?'env':'std'))}
-
-/* ================= Reglas por rol: una sola fuente de verdad ================= */
-var ALIAS={ordenes:'hoy',chat:'principal',envios:'boxful',rastreos:'rastreosNacionales',repartidores:'repartidor',inventario:'adminOrdersInventory',usuarios:'admin'};
-var ENV_IDS={inicio:1,principal:1,adminEnviosTegus:1,adminEnviosNacional:1,adminEmpacar:1,adminEnviosDevoluciones:1,rastreosNacionales:1,mapaEntregas:1,ayuda:1};
-var REP_IDS={inicio:1,hoy:1,repartidor:1,principal:1,ayuda:1};
-var SOLO_IDS={inicio:1,hoy:1,principal:1,ayuda:1};
-function allowed(id,u){u=u||me();if(!u)return false;var k=kind(u);
- if(k==='admin')return true;
- if(k==='rep')return REP_IDS[id]===1;
- if(k==='env')return ENV_IDS[id]===1;
- if(id==='inicio'||id==='principal'||id==='ayuda')return true;
- if(u.soloOrdenes)return SOLO_IDS[id]===1;
- if(id==='mapaEntregas'||id==='cotizaciones'||/^kplace_/.test(id))return true;
- if(id==='adminEmpacar'||/^adminEnvios/.test(id))return false;
- var f=window.kpCanPage;return typeof f==='function'?!!f(id):true}
-window.kpTabAllowed=allowed;
-var DIRECT={inicio:1,principal:1,hoy:1,boxful:1,programadas:1,retrasos:1,repartidor:1,rastreosNacionales:1,adminOrdersInventory:1,admin:1,reportes:1,gps:1,configNegocio:1,integraciones:1,ayuda:1,adminEnviosTegus:1,adminEnviosNacional:1,adminEnviosDevoluciones:1,adminEmpacar:1,mapaEntregas:1};
-
-/* ---- salir de Canales: se apagan sus escuchas para que no pisen otras pestañas ---- */
-function leaveChannels(){try{var C=window.KP&&KP.Channels;if(!C)return;
- if(typeof C._unsub==='function'){C._unsub();C._unsub=null}
- if(typeof C._typingUnsub==='function'){C._typingUnsub();C._typingUnsub=null}
- C._currentOpenId=null}catch(e){}}
-
-/* ================= Navegación ================= */
-var pS=setTab;
-setTab=function(id){var u=me();if(!u)return;
- id=ALIAS[id]||id;
- if(!allowed(id,u))id='inicio';
- if(window.__kpPanelOld)window.__kpPanelOld=false;
- if(id!=='principal')leaveChannels();
- if(!DIRECT[id])return pS.call(this,id);
- activeTab=id;
- try{buildTabs()}catch(e){console.error('tabs',e)}
- try{render()}catch(e){console.error('render',e)}
- try{updateKPlaceNav()}catch(e){}
- try{window.kpUpdateDateNav&&window.kpUpdateDateNav()}catch(e){}
- try{window.scrollTo(0,0)}catch(e){}};
-goHome=function(){setTab('inicio')};
-
-var pB=buildTabs;
-buildTabs=function(){var a=window.activeTab;pB.apply(this,arguments);var u=me();
- if(a&&a!==window.activeTab&&DIRECT[a]&&u&&allowed(a,u))activeTab=a;   /* no dejar que otra capa cambie la pestaña elegida */
- var t=document.getElementById('tabs');if(!t||!u)return;
- var bar=t.querySelectorAll('.tab');
- Array.prototype.forEach.call(bar,function(x){var id=x.getAttribute('data-tab');if(id&&!allowed(ALIAS[id]||id,u))x.remove()});   /* nunca pestañas de otro rol */
- function add(id,label,first){if(t.querySelector('.tab[data-tab="'+id+'"]'))return;var d=document.createElement('div');d.className='tab';d.setAttribute('data-tab',id);d.textContent=label;d.onclick=function(){window.setTab(id)};if(first)t.insertBefore(d,t.firstChild);else t.appendChild(d)}
- add('inicio','Inicio',true);
- if(!t.querySelector('.tab[data-tab="principal"]'))add('principal','Canales',false);
- var cur=window.activeTab;Array.prototype.forEach.call(t.querySelectorAll('.tab'),function(x){var id=x.getAttribute('data-tab'),on=(id===cur)||(id==='adminEnviosTegus'&&(cur==='adminEnviosNacional'||cur==='adminEmpacar'||cur==='adminEnviosDevoluciones'));if(x.classList.contains('active')!==on)x.classList.toggle('active',on);if(!x.onclick)x.onclick=function(){window.setTab(id)}})};
-
-/* ================= Render ================= */
-var pR=render;
-render=function(){var u=me();if(!u)return pR.apply(this,arguments);
- var a=window.activeTab;
- if(a!=='principal')leaveChannels();
- if(!allowed(a,u)&&DIRECT[a]){activeTab='inicio';a='inicio'}
- if(a==='inicio'){drawHome();return}
- return pR.apply(this,arguments)};
-var pDash=window.renderDashboard;
-if(typeof pDash==='function')renderDashboard=function(){if(window.activeTab==='inicio'&&!window.__kpPanelOld&&me())return drawHome();return pDash.apply(this,arguments)};
-window.kpPanelFinanciero=function(){window.__kpPanelOld=true;activeTab='inicio';try{buildTabs()}catch(e){}if(typeof pDash==='function')pDash();try{updateKPlaceNav()}catch(e){}};
-
-/* ================= Menú lateral: ocultar lo que no es de tu rol (por clase, sin pelear con otros scripts) ================= */
-var SIDE_ID={inicio:'inicio',chat:'principal',ordenes:'hoy',envios:'boxful',rastreos:'rastreosNacionales',repartidores:'repartidor',inventario:'adminOrdersInventory',usuarios:'admin'};
-function menuFilter(){var u=me();if(!u)return;
- var btns=document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top) button[data-section],#kpSideNav button[data-section]');
- Array.prototype.forEach.call(btns,function(b){var s=b.getAttribute('data-section'),id=SIDE_ID[s]||ALIAS[s]||s;
-  if(!DIRECT[id])return;var hide=!allowed(id,u);if(b.classList.contains('kp-hide-role')!==hide)b.classList.toggle('kp-hide-role',hide)});
- if(kind(u)==='rep'||kind(u)==='env'){var navs=document.querySelectorAll('#kpMenuDrawer .kp-drawer-nav:not(.kpn-top)');
-  Array.prototype.forEach.call(navs,function(nv){if(!nv.querySelector('button')||nv.querySelector('[data-section="inicio"]'))return;
-   var first=nv.querySelector('button'),b=document.createElement('button');b.type='button';b.className=first.className.replace(/\b(active|on|selected|current|is-active|open)\b/g,'').replace(/\s+/g,' ').trim();b.setAttribute('data-section','inicio');
-   b.innerHTML='<span class="dico">🏠</span>Inicio';b.onclick=function(ev){ev.preventDefault();try{closeKPlaceMenu()}catch(e){}setTab('inicio')};nv.insertBefore(b,nv.firstChild)})}}
-setInterval(menuFilter,600);
-
-/* ================= Inicio para todos los roles ================= */
-var ROL_LABEL={admin_general:'Administrador',gerente_general:'Gerente general',admin_sucursal:'Administrador de sucursal',vendedor:'Vendedor',cajero:'Cajero',inventario:'Encargado de inventario',empacador:'Empacador',admin_envios:'Administrador de envíos',repartidor:'Repartidor',atencion:'Atención al cliente',contador_general:'Contador general',contador_sucursal:'Contador de sucursal'};
-function rolTxt(u){var k=kind(u);if(k==='admin')return 'Administrador';if(k==='rep')return 'Repartidor';if(k==='env')return 'Administrador de envíos';return ROL_LABEL[u.kpRol]||'Equipo'}
-function validas(o){if(!o||o.eliminadoTs)return false;try{if(kpEsCancelada(o))return false}catch(e){}try{if(kpIsHazabPickup(o))return false}catch(e){}if(o.tipoEntrega==='programada'&&!o.enviadaAPrincipal)return false;return true}
-function devol(o){try{return !!kpNoRecibido(o)}catch(e){return false}}
-function kpi(label,val,cls){return '<div class="kph-kpi '+(cls||'')+'"><small>'+esc(label)+'</small><b>'+val+'</b></div>'}
-function fechaLarga(){try{return new Date().toLocaleDateString('es-HN',{weekday:'long',day:'numeric',month:'long'})}catch(e){return todayS()}}
-function tilesFor(u){var k=kind(u),T=[];
- function add(id,ico,label,badge,main){if(allowed(id,u))T.push('<button class="kph-tile'+(main?' main':'')+'" onclick="setTab(\''+id+'\')"><i>'+ico+'</i>'+esc(label)+(badge?'<em>'+badge+'</em>':'')+'</button>')}
- if(k==='env'){var q=0;try{q=(window.kpEnvQueueCount?kpEnvQueueCount():0)}catch(e){}add('adminEmpacar','📦','Empacar',q,true);add('adminEnviosTegus','📋','Órdenes');add('rastreosNacionales','📍','Rastreo');add('mapaEntregas','🗺️','Mapa de entregas');add('principal','💬','Canales');add('ayuda','📖','Ayuda');return T.join('')}
- if(k==='rep'){add('hoy','📦','Mis órdenes',0,true);add('principal','💬','Canales');add('ayuda','📖','Ayuda');return T.join('')}
- if(k==='admin'||['vendedor','gerente_general','admin_sucursal'].indexOf(u.kpRol)>-1)T.push('<button class="kph-tile main" onclick="openNewOrder()"><i>➕</i>Nueva orden</button>');
- add('hoy','📋','Órdenes');add('principal','💬','Canales');add('programadas','🗓️','Programadas');add('boxful','🚚','Envíos nacionales');add('rastreosNacionales','📍','Rastreo');add('retrasos','🚩','Retrasos');add('repartidor','🛵','Repartidores');add('adminOrdersInventory','🗃️','Inventario');add('mapaEntregas','🗺️','Mapa de entregas');add('reportes','📊','Reportes');add('admin','👥','Usuarios y equipo');add('cotizaciones','🧾','Cotizaciones');add('ayuda','📖','Ayuda');
- return T.join('')}
-function kpisFor(u){var k=kind(u),hoy=todayS(),all=(window.ORDERS||[]).filter(validas),dia=all.filter(function(o){return o.fecha===hoy}),h='';
- var ent=function(a){return a.filter(function(o){return o.entregado===true&&!devol(o)}).length};
- if(k==='rep'){var mias=all.filter(function(o){return o.enviadoRepartidor&&o.fecha===hoy&&(typeof kpOrderBelongsToCurrentDriver!=='function'||kpOrderBelongsToCurrentDriver(o))}),pend=mias.filter(function(o){return o.entregado!==true&&!devol(o)}).length;
-  var att='';try{att=window.kpDriverAttendanceHtml?kpDriverAttendanceHtml():''}catch(e){}
-  return (att?'<div class="kph-att">'+att+'</div>':'')+'<div class="kph-kpis">'+kpi('Mis órdenes hoy',mias.length)+kpi('Por entregar',pend,pend?'hot':'')+kpi('Entregadas',ent(mias),'good')+kpi('Para mañana',mias.filter(function(o){return o.entregado===false}).length)+'</div>'}
- if(k==='env'){var pendE=0;try{pendE=window.kpEnvQueueCount?kpEnvQueueCount():0}catch(e){}
-  var nac=dia.filter(function(o){try{return kpIsNational(o)}catch(e){return false}}),teg=dia.filter(function(o){try{return kpIsTegusShip(o)}catch(e){return false}}),emp=dia.filter(function(o){return o.estadoNacional==='empacado'||o.empacado===true});
-  var dv=all.filter(function(o){return o.devolucionPendiente&&!o.devolucionProcesada}).length;
-  return '<div class="kph-kpis">'+kpi('Por empacar',pendE,pendE?'hot':'')+kpi('Empacadas hoy',emp.length,'good')+kpi('Nacionales hoy',nac.length)+kpi('Tegucigalpa hoy',teg.length)+(dv?kpi('Devoluciones pendientes',dv,'hot'):'')+kpi('Entregadas hoy',ent(dia),'good')+'</div>'}
- if(k==='admin'){var ventas=0;dia.forEach(function(o){try{ventas+=Number(kpVentaContable(o))||0}catch(e){}});
-  var camino=all.filter(function(o){return o.enviadoRepartidor&&o.entregado!==true&&!devol(o)}).length,pe=0;try{pe=window.kpEnvQueueCount?kpEnvQueueCount():0}catch(e){}
-  return '<div class="kph-kpis">'+kpi('Ventas de hoy',money(ventas),'good')+kpi('Órdenes hoy',dia.length)+kpi('Entregadas hoy',ent(dia),'good')+kpi('Por entregar',all.filter(function(o){return o.entregado!==true&&!devol(o)&&o.fecha===hoy}).length,'hot')+kpi('Con repartidor',camino)+kpi('Devoluciones hoy',dia.filter(devol).length)+'</div>'}
- if(!allowed('hoy',u))return '';
- var mias2=dia.filter(function(o){return nm(o.vendedor)===nm(u.nombre)||(!!u.usuario&&nm(o.vendedor)===nm(u.usuario))}),base=mias2;
- return '<div class="kph-kpis">'+kpi('Mis órdenes hoy',base.length)+kpi('Por entregar',base.filter(function(o){return o.entregado!==true&&!devol(o)}).length,'hot')+kpi('Entregadas hoy',ent(base),'good')+kpi('Total del equipo hoy',dia.length)+'</div>'}
-function drawHome(){var v=document.getElementById('view'),u=me();if(!v||!u)return;
- var nombre=String(u.nombre||'').split(' ')[0]||'equipo',k=kind(u);
- var kp0=kpisFor(u);
- var h='<div class="kph"><div class="kph-hero"><small>'+esc(fechaLarga())+'</small><h2>Hola, '+esc(nombre)+' 👋</h2><span class="kph-role">'+esc(rolTxt(u))+'</span></div>'
-  +(kp0?'<div class="kph-h">Hoy</div>'+kp0:'')+'<div id="kpMetaSlot"></div><div class="kph-h">Accesos</div><div class="kph-tiles">'+tilesFor(u)+'</div>'
-  +(k==='admin'?'<button class="kph-panel" onclick="kpPanelFinanciero()">📊 Ver el panel financiero completo</button>':'')+'</div>';
- v.innerHTML=h;
- try{var slot=document.getElementById('kpMetaSlot');if(slot&&window.kpDrawMeta){var tmp=slot;window.kpDrawMeta(tmp)}}catch(e){}
- try{updateKPlaceNav()}catch(e){}}
-
-/* ================= Tarjeta del repartidor ================= */
-window.__kpDrvOpen=window.__kpDrvOpen||{};
-window.kpDrvToggle=function(id,open){window.__kpDrvOpen[id]=!!open};
-function find(id){return (window.ORDERS||[]).find(function(x){return String(x.id)===String(id)})}
-function ready(o){var pay=o.pagoRepOk===true||(o.metodoPago==='mitad'&&(((o.comprobantesMitad1||[]).length||(o.comprobantesMitad2||[]).length)>0)),tar=Number(o.tarifaRepartidor)>0;return {pay:pay,tar:tar,ok:pay&&tar}}
-window.kpDriverEntregar=function(id){var o=find(id);if(!o)return;var r=ready(o);
- if(!r.ok){var f=[];if(!r.pay)f.push('cómo pagó el cliente');if(!r.tar)f.push('tu tarifa');toastS('Falta elegir: '+f.join(' y '));return}
- if(o.pagoRepOk!==true){o.pagoRepOk=true;try{window.db.collection('orders').doc(String(id)).update({pagoRepOk:true})}catch(e){}}
- try{window.marcarEntrega(id,true)}catch(e){toastS('No se pudo marcar entregado')}};
-window.kpDriverCard=function(o){var id=String(o.id).replace(/'/g,"\\'"),num='';try{num=kpNumeroOrden(o)}catch(e){}
- var cobrar=0;try{cobrar=montoEfectivoACobrar(o)}catch(e){}
- var done=o.entregado===true,tom=o.entregado===false,r=ready(o),mitad=o.metodoPago==='mitad',tar=Number(o.tarifaRepartidor)||0;
- var st=done?'<span class="kpd-st ok">✔ Entregado</span>':(tom?'<span class="kpd-st warn">🔁 Para mañana</span>':'<span class="kpd-st">🚚 En camino</span>');
- var pills=[o.numero,o.numero2].filter(Boolean).map(function(n){var t='',w='';try{t=kpTelFull(o,n);w=kpWaFull(o,n)}catch(e){t=n;w=n}
-  return '<a class="kpd-pill" href="tel:'+esc(t)+'">📞 '+esc(n)+'</a><a class="kpd-pill wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(w)+'">💬 WhatsApp</a>'}).join('');
- var dir=[o.direccion,o.municipio].filter(Boolean).join(', '),maps='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((dir||'')+' Honduras');
- var prods=(o.productos||[]).map(function(p){var cat=p.categoria==='__custom__'?(p.categoriaManual||''):(p.categoria||''),mod=(p.modelo&&p.modelo!==p.categoria)?p.modelo:'',q=Number(p.cantidad||p.qty||1);
-  return '<div class="kpd-prod">'+esc((cat+' '+mod+' '+(p.tamano||'')).replace(/\s+/g,' ').trim()||'Producto')+' — '+esc((p.colorEn||'')+(p.colorEs?' ('+p.colorEs+')':''))+(q>1?' <b>×'+q+'</b>':'')+'</div>'}).join('');
- function pay(label,val){return '<button type="button" class="kpd-opt'+((o.pagoRepOk===true&&o.metodoPago===val)?' on':'')+'" onclick="corregirMetodoPago(\''+id+'\',\''+val+'\')">'+label+'</button>'}
- function tf(v){return '<button type="button" class="kpd-opt'+(tar===v?' on':'')+'" onclick="kpSetTarifa(\''+id+'\','+v+')">L. '+v+'</button>'}
- var otro='<button type="button" class="kpd-opt'+(tar&&[80,90,100].indexOf(tar)<0?' on':'')+'" onclick="kpSetTarifa(\''+id+'\',\'otro\')">'+(tar&&[80,90,100].indexOf(tar)<0?'L. '+tar:'Otro monto')+'</button>';
- var step1=mitad?'<div class="kpd-step"><b><span>1</span>Pago mitad y mitad</b><div class="kpd-opts">'+(typeof botonesComprobanteMitad==='function'?botonesComprobanteMitad(o):'')+'</div></div>'
-  :'<div class="kpd-step"><b><span>1</span>¿Cómo pagó el cliente?</b><div class="kpd-opts">'+pay('Efectivo','efectivo')+pay('Transferencia','transferencia')+pay('Link de pago','link de pago')+pay('POS','pos')+'</div></div>';
- var comp=(!mitad&&r.pay&&o.metodoPago&&o.metodoPago!=='efectivo')?'<div class="kpd-step"><button type="button" class="kpd-opt" onclick="gestionarComprobantes(\''+id+'\',\'comprobantes\',\'Comprobante de pago\')">📎 Subir comprobante ('+((o.comprobantes||[]).length)+')</button></div>':'';
- var step2='<div class="kpd-step"><b><span>2</span>Tu tarifa por este envío <small style="font-weight:400;color:#8793b6">(se te paga a ti)</small></b><div class="kpd-opts">'+tf(80)+tf(90)+tf(100)+otro+'</div></div>';
- var falta=[];if(!r.pay)falta.push('cómo pagó el cliente');if(!r.tar)falta.push('tu tarifa');
- var go=done?'':'<button type="button" class="kpd-go'+(r.ok?'':' dis')+'" onclick="kpDriverEntregar(\''+id+'\')">✅ Marcar entregado</button>'+(r.ok?'':'<div class="kpd-need">Falta: '+falta.join(' y ')+'</div>');
- var more='<details class="kpd-more"'+(window.__kpDrvOpen[o.id]?' open':'')+' ontoggle="kpDrvToggle(\''+id+'\',this.open)"><summary>Más opciones ▾</summary><div class="kpd-mb">'
-  +(done?'':'<button type="button" onclick="marcarEntrega(\''+id+'\',false)">🔁 Dejar para mañana</button><button type="button" class="red" onclick="kpSolicitarDevolucion(\''+id+'\')">↩ Devolución / no aceptó</button>')
-  +(mitad?'':'<button type="button" onclick="gestionarComprobantes(\''+id+'\',\'comprobantes\',\'Comprobante de pago\')">📎 Comprobantes ('+((o.comprobantes||[]).length)+')</button>')
-  +'<button type="button" onclick="kpEnviarOrdenWhatsApp(\''+id+'\')">📲 Enviar a WhatsApp</button></div></details>';
- return '<div class="kpd"><div class="kpd-top"><span class="kpd-num">ORDEN #'+esc(num)+'</span>'+st+'</div>'
-  +'<div class="kpd-main"><div class="kpd-name">'+esc(o.cliente||'')+'</div><div class="kpd-cob'+(cobrar>0?' must':'')+'">'+(cobrar>0?'Cobrar<b>'+money(cobrar)+'</b>':'<b>Pagado ✓</b>')+'</div></div>'
-  +'<div class="kpd-pills">'+pills+'</div>'
-  +(dir?'<div class="kpd-addr">📍 '+esc(dir)+' · <a href="'+maps+'" target="_blank" rel="noopener" style="color:#a9c0ff">Cómo llegar</a></div>':'')
-  +prods+(o.notas?'<div class="kpd-note">📝 '+esc(o.notas)+'</div>':'')
-  +(done?'':step1+comp+step2)+go+more+'</div>'};
-var pOC=window.orderCard;
-if(typeof pOC==='function')window.orderCard=function(o){var u=me();if(u&&u.esRepartidor&&o&&o.enviadoRepartidor&&typeof window.kpDriverCard==='function'){try{return window.kpDriverCard(o)}catch(e){console.error('kpDriverCard',e)}}return pOC.apply(this,arguments)};
 })();
 </script>
 </body>
